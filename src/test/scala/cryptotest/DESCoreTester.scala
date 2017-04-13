@@ -8,9 +8,9 @@ import spinalcrypto.symmetric._
 /**
   * DESBlock component
   */
-class DESBlockTester extends Component {
+class DESCoreTester extends Component {
 
-  val des = new DESBlock()
+  val des = new DESCore()
 
   val io  = new SymmetricCryptoBlockIO(des.gIO)
 
@@ -21,11 +21,11 @@ class DESBlockTester extends Component {
 /**
   * DES Block cocotb Test
   */
-class DESBlockCocotbBoot extends SpinalTesterCocotbBase {
+class DESCoreCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "DESTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/DESBlock"
-  override def createToplevel: Component = new DESBlockTester
+  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/DESCore"
+  override def createToplevel: Component = new DESCoreTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))
@@ -37,9 +37,9 @@ class DESBlockCocotbBoot extends SpinalTesterCocotbBase {
 /**
   * Triple DES component
   */
-class TripleDESBlockTester extends Component {
+class TripleDESCoreTester extends Component {
 
-  val des3 = new TripleDESBlock()
+  val des3 = new TripleDESCore()
 
   val io = new SymmetricCryptoBlockIO(des3.gIO)
 
@@ -49,11 +49,11 @@ class TripleDESBlockTester extends Component {
 /**
   * Triple DES cocotb Test
   */
-class TripleDESBlockCocotbBoot extends SpinalTesterCocotbBase {
+class TripleDESCoreCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "TripleDESTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/TripleDESBlock"
-  override def createToplevel: Component = new TripleDESBlockTester
+  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/TripleDESCore"
+  override def createToplevel: Component = new TripleDESCoreTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))

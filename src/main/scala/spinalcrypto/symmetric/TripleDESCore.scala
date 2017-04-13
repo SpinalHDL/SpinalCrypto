@@ -49,18 +49,17 @@ import spinal.lib.fsm._
   *    key = Concatenation(k1 , k2 , k3) = 3*64 bits = 192 bits
   *
   */
-class TripleDESBlock() extends Component{
+class TripleDESCore() extends Component{
 
-  val gDES = DESBlockGenerics
-  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = ((gDES.keyWidth.value + gDES.keyWidthParity.value) * 3) bits,
-                                         blockWidth  = gDES.blockWidth,
+  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
+                                         blockWidth  = DESCoreSpec.blockWidth,
                                          useEncDec   = true)
 
   val io = new SymmetricCryptoBlockIO(gIO)
 
-  val block    = Reg(Bits(gDES.blockWidth))
+  val block    = Reg(Bits(DESCoreSpec.blockWidth))
 
-  val blockDES = new DESBlock()
+  val coreDES = new DESCore()
 
   /**
     * Triple DES state machine
@@ -69,7 +68,7 @@ class TripleDESBlock() extends Component{
 
     val desCmdValid = False
     val desEncDec   = False
-    val desKey      = B(0, gDES.keyWidthParity + gDES.keyWidth)
+    val desKey      = B(0, DESCoreSpec.keyWidthParity + DESCoreSpec.keyWidth)
     val inSel       = False
     val cmdReady    = False
 
@@ -87,9 +86,9 @@ class TripleDESBlock() extends Component{
         desCmdValid := True
         desKey      := io.cmd.enc ? io.cmd.key(191 downto 128) | io.cmd.key(63 downto 0)
 
-        when(blockDES.io.rsp.valid){
+        when(coreDES.io.rsp.valid){
           desCmdValid := False
-          block       := blockDES.io.rsp.block
+          block       := coreDES.io.rsp.block
           goto(sStage2)
         }
       }
@@ -102,9 +101,9 @@ class TripleDESBlock() extends Component{
         desKey      := io.cmd.key(127 downto 64)
         desCmdValid := True
 
-        when(blockDES.io.rsp.valid){
+        when(coreDES.io.rsp.valid){
           desCmdValid := False
-          block       := blockDES.io.rsp.block
+          block       := coreDES.io.rsp.block
           goto(sStage3)
         }
       }
@@ -117,10 +116,10 @@ class TripleDESBlock() extends Component{
         desKey      := io.cmd.enc ? io.cmd.key(63 downto 0) | io.cmd.key(191 downto 128)
         desCmdValid := True
 
-        when(blockDES.io.rsp.valid){
+        when(coreDES.io.rsp.valid){
           desCmdValid := False
           cmdReady    := True
-          block       := blockDES.io.rsp.block
+          block       := coreDES.io.rsp.block
           goto(sIdle)
         }
       }
@@ -131,10 +130,10 @@ class TripleDESBlock() extends Component{
   /*
    * DES block connection
    */
-  blockDES.io.cmd.valid  <> sm3DES.desCmdValid
-  blockDES.io.cmd.key    <> sm3DES.desKey
-  blockDES.io.cmd.enc    <> sm3DES.desEncDec
-  blockDES.io.cmd.block  <> (sm3DES.inSel ? block | io.cmd.block)
+  coreDES.io.cmd.valid  <> sm3DES.desCmdValid
+  coreDES.io.cmd.key    <> sm3DES.desKey
+  coreDES.io.cmd.enc    <> sm3DES.desEncDec
+  coreDES.io.cmd.block  <> (sm3DES.inSel ? block | io.cmd.block)
 
 
   /*

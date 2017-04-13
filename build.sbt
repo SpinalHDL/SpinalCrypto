@@ -1,4 +1,4 @@
-name := "SpinalBaseProject"
+name := "SpinalCrypto"
 
 version := "1.0"
 
