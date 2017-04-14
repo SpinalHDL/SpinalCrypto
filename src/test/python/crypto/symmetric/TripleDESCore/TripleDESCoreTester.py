@@ -53,12 +53,12 @@ def int_2_String(integer, size):
 
 
 ###############################################################################
-# Test DES Block
+# Test Triple DES Core
 #
 @cocotb.test()
-def test_TripleDES(dut):
+def testTripleDESCore(dut):
 
-    dut.log.info("Cocotb test Triple DES Block")
+    dut.log.info("Cocotb test Triple DES Core")
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
 
