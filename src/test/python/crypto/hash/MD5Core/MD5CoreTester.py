@@ -4,7 +4,9 @@ from cocotb.triggers import Timer, Edge, RisingEdge
 from cocotblib.ClockDomain import ClockDomain, RESET_ACTIVE_LEVEL
 from cocotblib.Stream import Stream
 from cocotblib.Flow import Flow
+from cocotblib.misc import randBits, assertEquals
 
+import hashlib
 
 ###############################################################################
 # MD5 Core Helper
@@ -33,7 +35,6 @@ class MD5CoreHelper:
             self.cmd.payload.block  <= 0
 
 
-
 ###############################################################################
 # Test MD5 Core
 #
@@ -54,37 +55,63 @@ def testMD5Core(dut):
     #helperMD5.io.init()
     helperMD5.io.cmd.valid          <= 0
     helperMD5.io.cmd.payload.block  <= 0
+    helperMD5.io.init <= 0
     yield clockDomain.event_endReset.wait()
 
     # start monitoring rsp
     helperMD5.io.rsp.startMonitoringValid(helperMD5.io.clk)
 
 
-    # Init MD5
-    helperMD5.io.init <= 1
-    yield RisingEdge(helperMD5.io.clk)
-    helperMD5.io.init <= 0
-    yield RisingEdge(helperMD5.io.clk)
 
-    # Vector test ...
-    data  = [0x123456ABCD132536AABBCCDD11223344,
-             0x800000000000000000000000000000AA]
+    # Fix patterns
+    msgs  = [[0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000],
 
-    # Hash data
-    helperMD5.io.cmd.valid          <= 1
-    helperMD5.io.cmd.payload.block  <= data[0]
+              [0x00000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000],
 
-    # wait the end of the encryption
-    yield helperMD5.io.rsp.event_valid.wait()
+              [0x80636261000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001800000000],
 
-    helperMD5.io.cmd.valid <= 0
+              [0x34333231383736353231303936353433303938373433323138373635323130393635343330393837343332313837363532313039363534333039383734333231,
+               0x38373635323130393635343330393837000000800000000000000000000000000000000000000000000000000000000000000000000000000000028000000000]
+              ]
 
-
-    yield RisingEdge(helperMD5.io.clk)
-    yield Timer(100000)
+    digests = [0x031F1DAC6EA58ED01FAB67B774317791,
+               0xD98C1DD404B2008F980980E97E42F8EC,
+               0x98500190B04FD23C7D3F96D6727FE128,
+               0xA2F4ED5755C9E32B2EDA49AC7AB60721]
 
 
 
+    # Process all pattern
+    indexPattern = 0
+    for msgPattern in msgs:
+
+        # Init MD5
+        yield RisingEdge(helperMD5.io.clk)
+        helperMD5.io.init <= 1
+        yield RisingEdge(helperMD5.io.clk)
+        helperMD5.io.init <= 0
+        yield RisingEdge(helperMD5.io.clk)
 
 
+        for msgBlock in msgPattern:
 
+            # Hash data
+            helperMD5.io.cmd.valid          <= 1
+            helperMD5.io.cmd.payload.block  <= msgBlock
+
+            # wait the end of the encryption
+            yield helperMD5.io.rsp.event_valid.wait()
+
+            helperMD5.io.cmd.valid <= 0
+
+            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.digest), 2))
+
+            yield RisingEdge(helperMD5.io.clk)
+
+        assertEquals(int(rtlDigest, 16) , digests[indexPattern], "Wrong digest")
+
+        yield RisingEdge(helperMD5.io.clk)
+
+        yield Timer(50000)
+
+        indexPattern += 1

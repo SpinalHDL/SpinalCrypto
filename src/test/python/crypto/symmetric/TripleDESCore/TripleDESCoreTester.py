@@ -137,4 +137,4 @@ def testTripleDESCore(dut):
         assertEquals(rtlDecryptedBlock, data, "Decryption data wrong")
 
 
-    dut.log.info("Cocotb end test Triple DES Block")
+    dut.log.info("Cocotb end test Triple DES Core")
