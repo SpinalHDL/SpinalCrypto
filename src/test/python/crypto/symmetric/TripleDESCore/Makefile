@@ -1,8 +1,8 @@
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += $(SPINALROOT)/MD5CoreTester.v
+VERILOG_SOURCES += $(SPINALROOT)/TripleDESCoreTester.v
 
-TOPLEVEL=MD5CoreTester
-MODULE=MD5CoreTester
+TOPLEVEL=TripleDESCoreTester
+MODULE=TripleDESCoreTester
 
 include ../../common/Makefile.sim

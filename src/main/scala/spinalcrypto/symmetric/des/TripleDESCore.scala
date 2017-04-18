@@ -18,10 +18,11 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric
+package spinalcrypto.symmetric.des
 
 import spinal.core._
 import spinal.lib.fsm._
+import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
 
 
 /**
@@ -51,13 +52,13 @@ import spinal.lib.fsm._
   */
 class TripleDESCore() extends Component{
 
-  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
-                                         blockWidth  = DESCoreSpec.blockWidth,
-                                         useEncDec   = true)
+  val gIO  = SymmetricCryptoBlockGeneric(keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
+                                         blockWidth = DESCoreSpec.blockWidth,
+                                         useEncDec  = true)
 
   val io = new SymmetricCryptoBlockIO(gIO)
 
-  val block    = Reg(Bits(DESCoreSpec.blockWidth))
+  val block = Reg(Bits(DESCoreSpec.blockWidth))
 
   val coreDES = new DESCore()
 

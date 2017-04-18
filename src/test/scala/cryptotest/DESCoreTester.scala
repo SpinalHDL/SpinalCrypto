@@ -1,6 +1,7 @@
 package cryptotest
 
 import spinal.core._
+import spinalcrypto.symmetric.des.{DESCore, TripleDESCore}
 import spinalcrypto.symmetric._
 
 

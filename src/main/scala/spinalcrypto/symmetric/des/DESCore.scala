@@ -18,9 +18,10 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric
+package spinalcrypto.symmetric.des
 
 import spinal.core._
+import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
 
 
 /**
