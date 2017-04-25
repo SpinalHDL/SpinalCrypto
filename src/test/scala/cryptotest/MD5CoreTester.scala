@@ -26,7 +26,7 @@ class MD5CoreCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "MD5CoreTester"
   override def pythonTestLocation: String = "src/test/python/crypto/hash/MD5Core"
-  override def createToplevel: Component = new TripleDESCoreTester
+  override def createToplevel: Component = new MD5CoreTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))

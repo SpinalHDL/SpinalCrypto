@@ -50,7 +50,7 @@ import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlock
   *    key = Concatenation(k1 , k2 , k3) = 3*64 bits = 192 bits
   *
   */
-class TripleDESCore() extends Component{
+class TripleDESCore_Std() extends Component{
 
   val gIO  = SymmetricCryptoBlockGeneric(keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
                                          blockWidth = DESCoreSpec.blockWidth,
@@ -60,7 +60,7 @@ class TripleDESCore() extends Component{
 
   val block = Reg(Bits(DESCoreSpec.blockWidth))
 
-  val coreDES = new DESCore()
+  val coreDES = new DESCore_Std()
 
   /**
     * Triple DES state machine

@@ -115,7 +115,7 @@ object DESCoreSpec{
   /* Data width */
   def blockWidth     = 64 bits
   def keyWidth       = 56 bits
-  def keyWidthParity = 8  bits
+  def keyWidthParity =  8 bits
 
   /** Number of Round used by DES */
   def nbrRound       = 16
@@ -128,7 +128,7 @@ object DESCoreSpec{
 /**
   * Define some usefull funtion
   */
-object DESCore{
+object DESCore_Std{
 
   /** Permutation, Compression and expansion
     *  These functions permute a vector thanks to the table (!! The table is given for a software application !!)
@@ -155,7 +155,7 @@ object DESCore{
   *
   *
   */
-class DESCore() extends Component{
+class DESCore_Std() extends Component{
 
   val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
                                          blockWidth  = DESCoreSpec.blockWidth,
@@ -194,7 +194,7 @@ class DESCore() extends Component{
     * Initial permutation
     */
   val initialBlockPermutation = new Area{
-    val perm = DESCore.permutation(DESCoreSpec.initialPermutation, io.cmd.block)
+    val perm = DESCore_Std.permutation(DESCoreSpec.initialPermutation, io.cmd.block)
   }
 
 
@@ -231,7 +231,7 @@ class DESCore() extends Component{
     val shiftKey   = Reg(Bits(DESCoreSpec.keyWidth))
 
     // parity drop : 64bits -> 56 bits
-    when(init){ shiftKey := DESCore.compression(DESCoreSpec.pc_1, io.cmd.key) }
+    when(init){ shiftKey := DESCore_Std.compression(DESCoreSpec.pc_1, io.cmd.key) }
 
     // rotate the key (left for encryption and right for decryption)(key is divided into two groups of 28 bits)
     val shiftRes   = Bits(DESCoreSpec.keyWidth)
@@ -259,7 +259,7 @@ class DESCore() extends Component{
     when(nextRound){ shiftKey := shiftRes }
 
     // compression : (56bits -> 48 bits)
-    val keyRound = DESCore.compression(DESCoreSpec.pc_2, shiftRes)
+    val keyRound = DESCore_Std.compression(DESCoreSpec.pc_2, shiftRes)
   }
 
 
@@ -298,7 +298,7 @@ class DESCore() extends Component{
     val rightRound   = Bits(32 bits) // set in feistelNetwork Area
 
     // xor the key with the right block expanded(32 bits -> 48 bits)
-    val xorRes = keyScheduling.keyRound ^ DESCore.expansion(DESCoreSpec.expansion, rightRound)
+    val xorRes = keyScheduling.keyRound ^ DESCore_Std.expansion(DESCoreSpec.expansion, rightRound)
 
     // sBox stage
     val boxRes   = Bits(32 bits)
@@ -308,7 +308,7 @@ class DESCore() extends Component{
     }
 
     // fixed permutation
-    val rResult = DESCore.permutation(DESCoreSpec.fixedPermutation, boxRes)
+    val rResult = DESCore_Std.permutation(DESCoreSpec.fixedPermutation, boxRes)
   }
 
 
@@ -347,7 +347,7 @@ class DESCore() extends Component{
     *    ( swap outBlock in order to have the same feistel network for each round )
     */
   val finalBlockPermutation = new Area{
-    val perm = DESCore.permutation(DESCoreSpec.finalPermutation, feistelNetwork.outBlock(31 downto 0) ## feistelNetwork.outBlock(63 downto 32) )
+    val perm = DESCore_Std.permutation(DESCoreSpec.finalPermutation, feistelNetwork.outBlock(31 downto 0) ## feistelNetwork.outBlock(63 downto 32) )
   }
 
 
@@ -358,5 +358,5 @@ class DESCore() extends Component{
   io.rsp.block := RegNext(finalBlockPermutation.perm)
   io.rsp.valid := cmdReady
 
-  io.cmd.ready  := cmdReady
+  io.cmd.ready := cmdReady
 }

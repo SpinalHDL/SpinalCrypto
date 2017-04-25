@@ -12,12 +12,12 @@ from crypto.symmetric.pyDES import *
 ###############################################################################
 # DES Block Helper
 #
-class TripleDESCoreHelper:
+class TripleDESCoreStdHelper:
 
     def __init__(self,dut):
 
         # IO definition -----------------------------------
-        self.io = TripleDESCoreHelper.IO(dut)
+        self.io = TripleDESCoreStdHelper.IO(dut)
 
     #==========================================================================
     # Rename IO
@@ -62,7 +62,7 @@ def testTripleDESCore(dut):
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
 
-    helperDES    = TripleDESCoreHelper(dut)
+    helperDES    = TripleDESCoreStdHelper(dut)
     clockDomain  = ClockDomain(helperDES.io.clk, 200, helperDES.io.resetn , RESET_ACTIVE_LEVEL.LOW)
 
     # Start clock

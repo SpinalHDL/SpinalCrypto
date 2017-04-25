@@ -22,7 +22,6 @@ package spinalcrypto.hash.md5
 
 import spinal.core._
 import spinal.lib._
-import spinal.lib.bus.amba4.axilite.{AxiLite4, AxiLite4Config, AxiLite4SlaveFactory}
 
 import scala.math.{pow, sin}
 
@@ -35,7 +34,7 @@ case class MD5CoreCmd() extends Bundle{
 }
 
 /**
-  * MD5 core command
+  * MD5 core response
   */
 case class MD5CoreRsp() extends Bundle{
   val digest = Bits(MD5CoreSpec.digestSize)
@@ -78,7 +77,7 @@ object MD5CoreSpec{
     *   4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
     *   6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21)
     */
-  def shiftValue: List[Int] = List(7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21)
+  def shiftCstS: List[Int] = List(7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21)
 
 
   /**
@@ -150,15 +149,13 @@ class MD5Core extends Component{
   val ivC   = Reg(Bits(MD5CoreSpec.subBlockSize))
   val ivD   = Reg(Bits(MD5CoreSpec.subBlockSize))
 
-  val memT     = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
-  val memIndex = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
+  val memT  = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
+  val memK  = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
 
-  val memShift = List(Mem(UInt(5 bits),  MD5CoreSpec.shiftValue.slice(0,  4).map(U(_, 5 bits))),
-                      Mem(UInt(5 bits),  MD5CoreSpec.shiftValue.slice(4,  8).map(U(_, 5 bits))),
-                      Mem(UInt(5 bits),  MD5CoreSpec.shiftValue.slice(8, 12).map(U(_, 5 bits))),
-                      Mem(UInt(5 bits),  MD5CoreSpec.shiftValue.slice(12,16).map(U(_, 5 bits))))
-
-
+  val memS  = List(Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(0,  4).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(4,  8).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(8, 12).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(12,16).map(U(_, 5 bits))))
 
   /**
     * Iterative round:
@@ -214,27 +211,28 @@ class MD5Core extends Component{
                                  B"11" -> MD5CoreSpec.funcI(blockB, blockC, blockD))
 
     // Cut the message block into 32 bits
-    val k = memIndex(i)
+    val k = memK(i)
     val wordBlock = k.muxList(for(index <- 0 until 16) yield (15-index, io.cmd.block(index*32+32-1 downto index*32)))
 
     // Select among the 4 memShift memory
-    val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memShift(index)(i(1 downto 0)) ))
+    val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memS(index)(i(1 downto 0)) ))
 
     // Compute the new value of the B block
     val newBlockB = (funcResult.asUInt + blockA.asUInt + wordBlock.asUInt + memT(i)).rotateLeft(shiftValue) + blockB.asUInt
 
 
-    // Update the new value of blockA, B, C, D
+    // Update the new value of block A, B, C, D
+    sblockA := blockD
+    sblockB := newBlockB.asBits
+    sblockC := blockB
+    sblockD := blockC
+
+    // last round => add the initial vector to the current block
     when(endIteration){
       sblockA := (blockD.asUInt + ivA.asUInt).asBits
-      sblockB := (newBlockB + ivB.asUInt).asBits
+      sblockB := (newBlockB     + ivB.asUInt).asBits
       sblockC := (blockB.asUInt + ivC.asUInt).asBits
       sblockD := (blockC.asUInt + ivD.asUInt).asBits
-    }otherwise{
-      sblockA := blockD
-      sblockB := newBlockB.asBits
-      sblockC := blockB
-      sblockD := blockC
     }
 
     // Register signal block
@@ -296,67 +294,4 @@ class MD5Core extends Component{
   io.rsp.digest := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
   io.rsp.valid  := iterativeRound.endIteration
   io.cmd.ready  := iterativeRound.endIteration
-}
-
-
-
-object  MD5 {
-  def hash(s: String) = {
-    val m = java.security.MessageDigest.getInstance("MD5")
-    val b = s.getBytes("UTF-8")
-    m.update(b, 0, b.length)
-    new java.math.BigInteger(1, m.digest()).toString(16)
-  }
-}
-
-
-
-
-object PlayWithMD5{
-
-  class MD5CoreTester extends Component{
-    val io = new Bundle{
-      val init = in Bool
-      val cmd  = slave Stream(MD5CoreCmd())
-      val rsp  = master Flow(MD5CoreRsp())
-    }
-
-    val md5 = new MD5Core()
-    md5.io <> io
-  }
-
-  class MD5CoreTesterQuartus extends Component{
-    val io = new Bundle{
-      val axi = slave(new AxiLite4(new AxiLite4Config(10, 32)))
-    }
-
-    val factory = new AxiLite4SlaveFactory(io.axi)
-
-    val digest = Reg(Bits(128 bits))
-
-    val md5 = new MD5Core()
-
-    md5.io.init := False
-    factory.write(md5.io.init, 0x10)
-    md5.io.cmd.valid := factory.createWriteOnly(md5.io.cmd.valid, 0x14)
-    md5.io.cmd.block := factory.createWriteMultiWord(md5.io.cmd.block, 0x20)
-    factory.readMultiWord(digest, 0x100)
-
-    when(md5.io.rsp.valid){
-      digest := md5.io.rsp.digest
-    }
-
-  }
-
-  def main(args: Array[String]): Unit = {
-
-    println(MD5.hash(""))
-
-    SpinalConfig(
-      mode = Verilog,
-      dumpWave = DumpWaveConfig(depth = 0),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
-      defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new MD5CoreTester).printPruned()
-  }
 }

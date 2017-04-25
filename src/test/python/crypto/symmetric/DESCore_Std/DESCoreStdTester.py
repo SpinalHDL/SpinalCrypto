@@ -12,12 +12,12 @@ from crypto.symmetric.pyDES import *
 ###############################################################################
 # DES Block Helper
 #
-class DESCoreHelper:
+class DESCoreStdHelper:
 
     def __init__(self,dut):
 
         # IO definition -----------------------------------
-        self.io = DESCoreHelper.IO(dut)
+        self.io = DESCoreStdHelper.IO(dut)
 
     #==========================================================================
     # Rename IO
@@ -59,7 +59,7 @@ def testDESCore(dut):
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
 
-    helperDES    = DESCoreHelper(dut)
+    helperDES    = DESCoreStdHelper(dut)
     clockDomain  = ClockDomain(helperDES.io.clk, 200, helperDES.io.resetn , RESET_ACTIVE_LEVEL.LOW)
 
     # Start clock
