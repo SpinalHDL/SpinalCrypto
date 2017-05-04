@@ -6,17 +6,16 @@ from cocotblib.Stream import Stream
 from cocotblib.Flow import Flow
 from cocotblib.misc import randBits, assertEquals
 
-import hashlib
 
 ###############################################################################
 # MD5 Core Helper
 #
-class MD5CoreHelper:
+class MD5EngineStdHelper:
 
     def __init__(self,dut):
 
         # IO definition -----------------------------------
-        self.io = MD5CoreHelper.IO(dut)
+        self.io = MD5EngineStdHelper.IO(dut)
 
     #==========================================================================
     # Rename IO
@@ -30,32 +29,30 @@ class MD5CoreHelper:
             self.clk    = dut.clk
             self.resetn = dut.resetn
 
-        def init(self):
-            self.cmd.valid          <= 0
-            self.cmd.payload.block  <= 0
+        def initIO(self):
+            self.cmd.valid         <= 0
+            self.cmd.payload.block <= 0
+            self.init              <= 0
 
 
 ###############################################################################
-# Test MD5 Core
+# Test MD5 Engine
 #
 @cocotb.test()
-def testMD5Core(dut):
+def testMD5EngineStd(dut):
 
-    dut.log.info("Cocotb test MD5 Core")
+    dut.log.info("Cocotb test MD5 Engine Std")
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
 
-    helperMD5    = MD5CoreHelper(dut)
+    helperMD5    = MD5EngineStdHelper(dut)
     clockDomain  = ClockDomain(helperMD5.io.clk, 200, helperMD5.io.resetn , RESET_ACTIVE_LEVEL.LOW)
 
     # Start clock
     cocotb.fork(clockDomain.start())
 
     # Init IO and wait the end of the reset
-    #helperMD5.io.init()
-    helperMD5.io.cmd.valid          <= 0
-    helperMD5.io.cmd.payload.block  <= 0
-    helperMD5.io.init <= 0
+    helperMD5.io.initIO()
     yield clockDomain.event_endReset.wait()
 
     # start monitoring rsp
@@ -78,8 +75,6 @@ def testMD5Core(dut):
                0xD98C1DD404B2008F980980E97E42F8EC,
                0x98500190B04FD23C7D3F96D6727FE128,
                0xA2F4ED5755C9E32B2EDA49AC7AB60721]
-
-
 
     # Process all pattern
     indexPattern = 0
@@ -104,7 +99,7 @@ def testMD5Core(dut):
 
             helperMD5.io.cmd.valid <= 0
 
-            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.digest), 2))
+            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.hash), 2))
 
             yield RisingEdge(helperMD5.io.clk)
 

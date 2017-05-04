@@ -22,22 +22,195 @@ package spinalcrypto.hash.md5
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.fsm._
 
 import scala.math.{pow, sin}
+
+
+case class MD5CoreStdCmd() extends Bundle{
+  val msg  = Bits(32 bits)
+  val size = UInt(3 bits)
+}
+
+case class MD5CoreStdRsp() extends Bundle{
+  val hash = Bits(MD5CoreSpec.hashSize)
+}
+
+class MD5Core_Std() extends Component{
+
+  val io = new Bundle{
+    val init = in Bool
+    val cmd  = slave Stream(Fragment(MD5CoreStdCmd()))
+    val rsp  = master Flow(MD5CoreStdRsp())
+  }
+
+  val cntBit    = Reg(UInt(64 bits))
+  val block     = Reg(Vec(Bits(32 bits), 16))
+  val indexWord = Reg(UInt(4 bits))
+
+  val engine = new MD5Engine_Std()
+
+
+  val sm = new StateMachine{
+
+    val add1 = Reg(Bool)
+    val is448 = Reg(Bool)
+    val fillNewBlock = Reg(Bool)
+
+    always{
+      when(io.init){
+        cntBit := 0
+        indexWord := 15
+        goto(sLoad)
+      }
+    }
+
+    val sLoad: State = new State with EntryPoint{
+      whenIsActive{
+
+        add1 := True
+        is448 := False
+        fillNewBlock := False
+
+        when(io.cmd.valid){
+
+          when(io.cmd.last){
+            cntBit := cntBit + io.cmd.size.mux(
+              U"000"  ->  0,
+              U"001"  ->  8,
+              U"010"  -> 16,
+              U"011"  -> 24,
+              U"100"  -> 32,
+              default -> 0
+            )
+
+            when(indexWord <= 2){ is448 := True }
+
+            goto(sPadding)
+
+          }otherwise{
+            cntBit           := cntBit + 32
+            indexWord        := indexWord - 1
+            block(indexWord) := io.cmd.msg
+            io.cmd.ready     := True
+          }
+        }
+      }
+
+      val sPadding: State = new State{
+        onEntry{
+          val mask = io.cmd.size.mux(
+            U"000"  -> B"x00000000",
+            U"001"  -> B"x000000FF",
+            U"010"  -> B"x0000FFFF",
+            U"011"  -> B"x00FFFFFF",
+            U"100"  -> B"xFFFFFFFF",
+            default -> B"x00000000"
+          )
+          val mask1 = io.cmd.size.mux(
+            U"000"  -> B"x00000080",
+            U"001"  -> B"x00008000",
+            U"010"  -> B"x00800000",
+            U"011"  -> B"x80000000",
+            U"100"  -> B"x00000000",
+            default -> B"x00000000"
+          )
+
+          when(!fillNewBlock){
+            block(indexWord) := (io.cmd.msg & mask) | mask1
+            indexWord := indexWord - 1
+            when(io.cmd.size =/= 4){ add1 := False }
+          }otherwise{
+            block(indexWord) := 1
+            fillNewBlock := False
+          }
+        }
+        whenIsActive{
+          when(indexWord > 1 || is448){ // less than 448 bits
+
+            indexWord := indexWord - 1
+
+            when(add1){
+              block(indexWord) := B"x00000080"
+              add1 := False
+            }otherwise {
+              block(indexWord) := 0
+            }
+
+            when(indexWord === 0 && is448){
+              fillNewBlock:= True
+              goto(sProcessing)
+            }
+
+          }otherwise{
+            block(1) := cntBit(31 downto 0).asBits
+            block(0) := cntBit(63 downto 32).asBits
+            goto(sProcessing)
+          }
+        }
+      }
+
+      val sProcessing: State = new State{
+        whenIsActive{
+
+          engine.io.cmd.valid := True
+
+          when(engine.io.cmd.ready){
+
+            when(is448){
+              indexWord := 15
+              is448:= False
+              goto(sPadding)
+            }otherwise {
+              io.cmd.ready := True
+              goto(sLoad)
+            }
+          }
+
+        }
+      }
+    }
+  }
+
+
+  engine.io.cmd.block := block.asBits
+  engine.io.cmd.valid := False
+
+  engine.io.init := io.init
+
+
+  io.cmd.ready := False
+
+  io.rsp.hash  := engine.io.rsp.hash
+  io.rsp.valid := engine.io.rsp.valid && io.cmd.payload.last && !sm.is448
+
+}
+
+
+object PlayWithCore{
+  def main(args: Array[String]): Unit = {
+    SpinalConfig(
+      mode = Verilog,
+      dumpWave = DumpWaveConfig(depth = 0),
+      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
+      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    ).generate(new MD5Core_Std).printPruned
+  }
+}
 
 
 /**
   * MD5 core command
   */
-case class MD5CoreCmd() extends Bundle{
+case class MD5EngineStdCmd() extends Bundle{
   val block = Bits(MD5CoreSpec.msgBlockSize)
 }
 
 /**
   * MD5 core response
   */
-case class MD5CoreRsp() extends Bundle{
-  val digest = Bits(MD5CoreSpec.digestSize)
+case class MD5EngineStdRsp() extends Bundle{
+  val hash = Bits(MD5CoreSpec.hashSize)
 }
 
 
@@ -51,7 +224,7 @@ object MD5CoreSpec{
   /** Size of the A B C D block */
   def subBlockSize  =  32 bits
   /** Digest message */
-  def digestSize    = 128 bits
+  def hashSize    = 128 bits
   /** Total number of iterations */
   def nbrIteration  = 4*16
 
@@ -136,12 +309,12 @@ object MD5CoreSpec{
   *          -------------------------------
   *
   */
-class MD5Core extends Component{
+class MD5Engine_Std extends Component{
 
   val io = new Bundle{
     val init = in Bool
-    val cmd  = slave Stream(MD5CoreCmd())
-    val rsp  = master Flow(MD5CoreRsp())
+    val cmd  = slave Stream(MD5EngineStdCmd())
+    val rsp  = master Flow(MD5EngineStdRsp())
   }
 
   val ivA   = Reg(Bits(MD5CoreSpec.subBlockSize))
@@ -221,11 +394,7 @@ class MD5Core extends Component{
     val newBlockB = (funcResult.asUInt + blockA.asUInt + wordBlock.asUInt + memT(i)).rotateLeft(shiftValue) + blockB.asUInt
 
 
-    // Update the new value of block A, B, C, D
-    sblockA := blockD
-    sblockB := newBlockB.asBits
-    sblockC := blockB
-    sblockD := blockC
+
 
     // last round => add the initial vector to the current block
     when(endIteration){
@@ -233,6 +402,12 @@ class MD5Core extends Component{
       sblockB := (newBlockB     + ivB.asUInt).asBits
       sblockC := (blockB.asUInt + ivC.asUInt).asBits
       sblockD := (blockC.asUInt + ivD.asUInt).asBits
+    }otherwise{
+      // Update the new value of block A, B, C, D
+      sblockA := blockD
+      sblockB := newBlockB.asBits
+      sblockC := blockB
+      sblockD := blockC
     }
 
     // Register signal block
@@ -291,7 +466,7 @@ class MD5Core extends Component{
   /*
    * Drive the output signals
    */
-  io.rsp.digest := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
+  io.rsp.hash := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
   io.rsp.valid  := iterativeRound.endIteration
   io.cmd.ready  := iterativeRound.endIteration
 }
