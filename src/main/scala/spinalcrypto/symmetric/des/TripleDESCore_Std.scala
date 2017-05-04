@@ -21,8 +21,9 @@
 package spinalcrypto.symmetric.des
 
 import spinal.core._
+import spinal.lib._
 import spinal.lib.fsm._
-import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
+import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO}
 
 
 /**
@@ -52,11 +53,11 @@ import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlock
   */
 class TripleDESCore_Std() extends Component{
 
-  val gIO  = SymmetricCryptoBlockGeneric(keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
+  val gIO  = SymmetricCryptoCoreGeneric(keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
                                          blockWidth = DESCoreSpec.blockWidth,
                                          useEncDec  = true)
 
-  val io = new SymmetricCryptoBlockIO(gIO)
+  val io = slave(new SymmetricCryptoCoreIO(gIO))
 
   val block = Reg(Bits(DESCoreSpec.blockWidth))
 

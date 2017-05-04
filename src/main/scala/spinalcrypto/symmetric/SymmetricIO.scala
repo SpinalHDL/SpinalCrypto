@@ -30,15 +30,15 @@ import spinal.lib._
   * @param blockWidth Block width
   * @param useEncDec Create a signal for the encryption/decryption
   */
-case class SymmetricCryptoBlockGeneric(keyWidth    : BitCount,
-                                       blockWidth  : BitCount,
-                                       useEncDec   : Boolean = true){}
+case class SymmetricCryptoCoreGeneric(keyWidth    : BitCount,
+                                      blockWidth  : BitCount,
+                                      useEncDec   : Boolean = true){}
 
 
 /**
   * Command interface for a symmetric block algo
   */
-case class SymmetricCryptoBlockCmd(g: SymmetricCryptoBlockGeneric) extends Bundle {
+case class SymmetricCryptoCoreCmd(g: SymmetricCryptoCoreGeneric) extends Bundle {
   val key    = Bits(g.keyWidth)
   val block  = Bits(g.blockWidth)
   val enc    = if(g.useEncDec) Bool else null
@@ -47,7 +47,7 @@ case class SymmetricCryptoBlockCmd(g: SymmetricCryptoBlockGeneric) extends Bundl
 /**
   * Response interface for a symmetric block algo
   */
-case class SymmetricCryptoBlockRsp(g: SymmetricCryptoBlockGeneric) extends Bundle {
+case class SymmetricCryptoCoreRsp(g: SymmetricCryptoCoreGeneric) extends Bundle {
   val block = Bits(g.blockWidth)
 }
 
@@ -55,7 +55,12 @@ case class SymmetricCryptoBlockRsp(g: SymmetricCryptoBlockGeneric) extends Bundl
 /**
   * Interface used by a symmetric block algo
   */
-case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle {
-  val cmd  = slave  Stream(SymmetricCryptoBlockCmd(g))
-  val rsp  = master Flow(SymmetricCryptoBlockRsp(g))
+case class SymmetricCryptoCoreIO(g: SymmetricCryptoCoreGeneric) extends Bundle with IMasterSlave{
+  val cmd  = Stream(SymmetricCryptoCoreCmd(g))
+  val rsp  = Flow(SymmetricCryptoCoreRsp(g))
+
+  override def asMaster() = {
+    master(cmd)
+    slave(rsp)
+  }
 }

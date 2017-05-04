@@ -1,6 +1,7 @@
 package cryptotest
 
 import spinal.core._
+import spinal.lib._
 import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 import spinalcrypto.symmetric._
 
@@ -13,7 +14,7 @@ class DESCoreStdTester extends Component {
 
   val des = new DESCore_Std()
 
-  val io  = new SymmetricCryptoBlockIO(des.gIO)
+  val io  = slave(new SymmetricCryptoCoreIO(des.gIO))
 
   des.io <> io
 }
@@ -42,7 +43,7 @@ class TripleDESCoreStdTester extends Component {
 
   val des3 = new TripleDESCore_Std()
 
-  val io = new SymmetricCryptoBlockIO(des3.gIO)
+  val io = slave(new SymmetricCryptoCoreIO(des3.gIO))
 
   des3.io <> io
 }
