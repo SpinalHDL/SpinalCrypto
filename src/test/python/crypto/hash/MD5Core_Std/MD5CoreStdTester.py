@@ -7,6 +7,8 @@ from cocotblib.Flow import Flow
 from cocotblib.misc import randBits, assertEquals
 
 import hashlib
+import random
+import string
 
 ###############################################################################
 # MD5 Core Helper
@@ -52,6 +54,11 @@ def endianess(x):
 
     return "".join(tmp)
 
+###############################################################################
+# Generate a random word of a given length
+def randomword(length):
+    return "".join(random.choice(string.lowercase) for i in range(length))
+
 
 ###############################################################################
 # Test MD5 Core
@@ -88,6 +95,9 @@ def testMD5CoreStd(dut):
                   "cdefg",
                   "SpinalHdl is dsl language which generate ",
                   "SSinalHdl is a DSL language which generate vhdl and vhdsssss"]
+
+    msgPattern = [randomword(size) for size in range(0,100)]
+    #msgPattern = ["bnhrboahundzuovelnlyvpxmvdgbgoiwfzbnmiiqrrijpozypgwv"]
 
     for tmpMsg in msgPattern:
 
@@ -126,21 +136,22 @@ def testMD5CoreStd(dut):
             if isLast == 1:
                 yield helperMD5.io.rsp.event_valid.wait()
                 tmp = hex(int(helperMD5.io.rsp.event_valid.data.hash))[2:-1]
+                if(len(tmp) != 32):
+                    tmp = "0" * (32-len(tmp)) + tmp
             else:
                 yield helperMD5.io.cmd.event_ready.wait()
 
             helperMD5.io.cmd.valid                <= 0
 
-            #yield RisingEdge(helperMD5.io.clk)
+            yield RisingEdge(helperMD5.io.clk)
 
-        #rtlHash = endianess("{0:0>4X}".format(int(str(tmp), 2)))
         rtlHash = endianess(tmp)
 
         # Check result
         m = hashlib.md5(tmpMsg)
         modelHash = m.hexdigest()
 
-        print("hash-model: ", tmpMsg , " : ", rtlHash, " - ", modelHash)
+        print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
 
         yield Timer(50000)
 

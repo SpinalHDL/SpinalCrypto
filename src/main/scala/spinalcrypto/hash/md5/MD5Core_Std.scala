@@ -53,13 +53,14 @@ class MD5Core_Std() extends Component{
 
   val sm = new StateMachine{
 
-    val add1 = Reg(Bool)
+    val add1  =  Reg(Bool)
     val is448 = Reg(Bool)
     val fillNewBlock = Reg(Bool)
+    val addPaddingsNext = Reg(Bool)
 
     always{
       when(io.init){
-        cntBit := 0
+        cntBit    := 0
         indexWord := 15
         goto(sLoad)
       }
@@ -68,31 +69,43 @@ class MD5Core_Std() extends Component{
     val sLoad: State = new State with EntryPoint{
       whenIsActive{
 
-        add1 := True
-        is448 := False
-        fillNewBlock := False
+        add1            := True
+        is448           := False
+        fillNewBlock    := False
+        addPaddingsNext := False
 
         when(io.cmd.valid){
 
           when(io.cmd.last){
-            cntBit := cntBit + io.cmd.size.mux(
-              U"000"  ->  0,
-              U"001"  ->  8,
-              U"010"  -> 16,
-              U"011"  -> 24,
-              U"100"  -> 32,
-              default -> 0
-            )
 
-            when(indexWord <= 2){ is448 := True }
+            cntBit := cntBit + io.cmd.size.mux(U"000"  ->  0,
+                                               U"001"  ->  8,
+                                               U"010"  -> 16,
+                                               U"011"  -> 24,
+                                               U"100"  -> 32,
+                                               default -> 0)
 
-            goto(sPadding)
+            when(indexWord === 0 && io.cmd.size === 4){
+              block(indexWord) := io.cmd.msg
+              indexWord        := 15
+              addPaddingsNext  := True
+              goto(sProcessing)
+            }otherwise{
+              when(indexWord < 2 || (indexWord === 2 && io.cmd.size === 4)){ is448 := True }
+              goto(sPadding)
+            }
 
           }otherwise{
+
             cntBit           := cntBit + 32
             indexWord        := indexWord - 1
             block(indexWord) := io.cmd.msg
-            io.cmd.ready     := True
+
+            when(indexWord === 0){
+              goto(sProcessing)
+            }otherwise{
+              io.cmd.ready     := True
+            }
           }
         }
       }
@@ -115,30 +128,41 @@ class MD5Core_Std() extends Component{
             U"100"  -> B"x00000000",
             default -> B"x00000000"
           )
-
-          when(!fillNewBlock){
-            block(indexWord) := (io.cmd.msg & mask) | mask1
-            indexWord := indexWord - 1
-            when(io.cmd.size =/= 4){ add1 := False }
+          when(addPaddingsNext){
+            addPaddingsNext := False
+           // block(indexWord) := B"x00000080"
+           // indexWord := indexWord - 1
           }otherwise{
-            block(indexWord) := 1
-            fillNewBlock := False
+            when(!fillNewBlock){
+              block(indexWord) := (io.cmd.msg & mask) | mask1
+              indexWord := indexWord - 1
+              when(io.cmd.size =/= 4){ add1 := False }
+            }otherwise{
+              block(indexWord) := 0
+              fillNewBlock := False
+            }
           }
+
         }
         whenIsActive{
           when(indexWord > 1 || is448){ // less than 448 bits
 
-            indexWord := indexWord - 1
+            when(indexWord =/= 0){
+              indexWord := indexWord - 1
+            }
 
             when(add1){
               block(indexWord) := B"x00000080"
               add1 := False
             }otherwise {
-              block(indexWord) := 0
+              when(indexWord =/= 15){
+                block(indexWord) := 0
+              }
             }
 
-            when(indexWord === 0 && is448){
+            when((indexWord === 0 || indexWord === 15) && is448){
               fillNewBlock:= True
+              indexWord := 15
               goto(sProcessing)
             }
 
@@ -157,16 +181,16 @@ class MD5Core_Std() extends Component{
 
           when(engine.io.cmd.ready){
 
-            when(is448){
-              indexWord := 15
-              is448:= False
+            when(is448) {
+              is448 := False
               goto(sPadding)
-            }otherwise {
+            }.elsewhen(addPaddingsNext){
+              goto(sPadding)
+            }.otherwise {
               io.cmd.ready := True
               goto(sLoad)
             }
           }
-
         }
       }
     }
@@ -178,12 +202,10 @@ class MD5Core_Std() extends Component{
 
   engine.io.init := io.init
 
-
   io.cmd.ready := False
 
   io.rsp.hash  := engine.io.rsp.hash
-  io.rsp.valid := engine.io.rsp.valid && io.cmd.payload.last && !sm.is448
-
+  io.rsp.valid := engine.io.rsp.valid && io.cmd.payload.last && !sm.is448 && !sm.addPaddingsNext
 }
 
 
