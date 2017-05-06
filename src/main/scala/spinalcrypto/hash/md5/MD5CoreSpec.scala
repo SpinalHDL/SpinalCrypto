@@ -21,7 +21,6 @@
 package spinalcrypto.hash.md5
 
 import spinal.core._
-
 import scala.math.{pow, sin}
 
 
@@ -35,7 +34,7 @@ object MD5CoreSpec{
   /** Size of the A B C D block */
   def subBlockSize  =  32 bits
   /** Digest message */
-  def hashSize    = 128 bits
+  def hashSize      = 128 bits
   /** Total number of iterations */
   def nbrIteration  = 4*16
 
@@ -75,7 +74,7 @@ object MD5CoreSpec{
     * 63 .. 34 : index = 7 * i mod 16
     */
   def indexK: List[Int] = for(i <- List.range(0, 64)) yield if      (i < 16) i
-  else if (i < 32) (5 * i + 1) % 16
-  else if (i < 48) (3 * i + 5) % 16
-  else             (7 * i) % 16
+                                                            else if (i < 32) (5 * i + 1) % 16
+                                                            else if (i < 48) (3 * i + 5) % 16
+                                                            else             (7 * i) % 16
 }

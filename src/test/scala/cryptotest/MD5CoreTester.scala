@@ -32,7 +32,7 @@ class MD5EngineStdCocotbBoot extends SpinalTesterCocotbBase {
 
 
 /**
-  * MD5 Engine standard tester
+  * MD5 Core standard tester
   */
 class MD5CoreStdTester extends Component{
 

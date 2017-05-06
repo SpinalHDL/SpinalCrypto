@@ -26,16 +26,32 @@ import spinal.lib.fsm._
 
 import scala.math.{pow, sin}
 
-
+/**
+  * MD5 Core command
+  */
 case class MD5CoreStdCmd() extends Bundle{
   val msg  = Bits(32 bits)
   val size = UInt(3 bits)
 }
 
+/**
+  * MD5 Core response
+  */
 case class MD5CoreStdRsp() extends Bundle{
   val hash = Bits(MD5CoreSpec.hashSize)
 }
 
+
+/**
+  * The message to hash must be padded as following:
+  *    - Add a one bit a the end of the message
+  *    - Add a sequence of 0 until to get a block of 448-bits
+  *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
+  *
+  * !!!!! MD5 works in little-Endian !!!!!!!
+  *
+  * doc : https://www.ietf.org/rfc/rfc1321.txt
+  */
 class MD5Core_Std() extends Component{
 
   val io = new Bundle{
@@ -50,13 +66,25 @@ class MD5Core_Std() extends Component{
 
   val engine = new MD5Engine_Std()
 
+  val maskMsg = io.cmd.size.mux(U"001"  -> B"x000000FF",
+                                U"010"  -> B"x0000FFFF",
+                                U"011"  -> B"x00FFFFFF",
+                                U"100"  -> B"xFFFFFFFF",
+                                default -> B"x00000000")
+
+  val maskSet1 = io.cmd.size.mux(U"000"  -> B"x00000080",
+                                 U"001"  -> B"x00008000",
+                                 U"010"  -> B"x00800000",
+                                 U"011"  -> B"x80000000",
+                                 default -> B"x00000000")
 
   val sm = new StateMachine{
 
-    val add1  =  Reg(Bool)
-    val is448 = Reg(Bool)
-    val fillNewBlock = Reg(Bool)
-    val addPaddingsNext = Reg(Bool)
+    val addPaddingNextWord = Reg(Bool)
+    val isBiggerThan448    = Reg(Bool)
+    val fillNewBlock       = Reg(Bool)
+
+    val isLastFullWordInBlock = indexWord === 0 && io.cmd.size === 4
 
     always{
       when(io.init){
@@ -66,103 +94,78 @@ class MD5Core_Std() extends Component{
       }
     }
 
-    val sLoad: State = new State with EntryPoint{
+    val sLoad: State = new State with EntryPoint{ /* Load the block register of 512-bit */
       whenIsActive{
 
-        add1            := True
-        is448           := False
-        fillNewBlock    := False
-        addPaddingsNext := False
+        addPaddingNextWord := True
+        isBiggerThan448    := False
+        fillNewBlock       := False
 
         when(io.cmd.valid){
 
+          block(indexWord) := io.cmd.msg
+
           when(io.cmd.last){
 
-            cntBit := cntBit + io.cmd.size.mux(U"000"  ->  0,
-                                               U"001"  ->  8,
+            cntBit := cntBit + io.cmd.size.mux(U"001"  ->  8,
                                                U"010"  -> 16,
                                                U"011"  -> 24,
                                                U"100"  -> 32,
                                                default -> 0)
 
-            when(indexWord === 0 && io.cmd.size === 4){
-              block(indexWord) := io.cmd.msg
-              indexWord        := 15
-              addPaddingsNext  := True
+            when(isLastFullWordInBlock){
               goto(sProcessing)
             }otherwise{
-              when(indexWord < 2 || (indexWord === 2 && io.cmd.size === 4)){ is448 := True }
+              isBiggerThan448 := indexWord < 2 || (indexWord === 2 && io.cmd.size === 4)
               goto(sPadding)
             }
 
           }otherwise{
 
-            cntBit           := cntBit + 32
-            indexWord        := indexWord - 1
-            block(indexWord) := io.cmd.msg
+            cntBit     := cntBit + 32
+            indexWord  := indexWord - 1
 
             when(indexWord === 0){
               goto(sProcessing)
             }otherwise{
-              io.cmd.ready     := True
+              io.cmd.ready := True
             }
           }
         }
       }
 
-      val sPadding: State = new State{
+      val sPadding: State = new State{ /* Do padding  */
+
         onEntry{
-          val mask = io.cmd.size.mux(
-            U"000"  -> B"x00000000",
-            U"001"  -> B"x000000FF",
-            U"010"  -> B"x0000FFFF",
-            U"011"  -> B"x00FFFFFF",
-            U"100"  -> B"xFFFFFFFF",
-            default -> B"x00000000"
-          )
-          val mask1 = io.cmd.size.mux(
-            U"000"  -> B"x00000080",
-            U"001"  -> B"x00008000",
-            U"010"  -> B"x00800000",
-            U"011"  -> B"x80000000",
-            U"100"  -> B"x00000000",
-            default -> B"x00000000"
-          )
-          when(addPaddingsNext){
-            addPaddingsNext := False
-           // block(indexWord) := B"x00000080"
-           // indexWord := indexWord - 1
+
+          when(isLastFullWordInBlock || fillNewBlock){
+              indexWord     := 15
+              fillNewBlock  := False
           }otherwise{
-            when(!fillNewBlock){
-              block(indexWord) := (io.cmd.msg & mask) | mask1
-              indexWord := indexWord - 1
-              when(io.cmd.size =/= 4){ add1 := False }
-            }otherwise{
-              block(indexWord) := 0
-              fillNewBlock := False
-            }
+              block(indexWord) := (io.cmd.msg & maskMsg) | maskSet1
+              when(indexWord =/= 0)  { indexWord := indexWord - 1 }
+              when(io.cmd.size =/= 4){ addPaddingNextWord := False }
           }
-
         }
+
         whenIsActive{
-          when(indexWord > 1 || is448){ // less than 448 bits
 
-            when(indexWord =/= 0){
-              indexWord := indexWord - 1
-            }
+          when(indexWord > 1 || isBiggerThan448){
 
-            when(add1){
-              block(indexWord) := B"x00000080"
-              add1 := False
-            }otherwise {
-              when(indexWord =/= 15){
+            indexWord := indexWord - 1
+
+            when(addPaddingNextWord){
+              block(indexWord)   := B"x00000080"
+              addPaddingNextWord := False
+            }otherwise{
+              when(indexWord =/= 0){
                 block(indexWord) := 0
               }
             }
 
-            when((indexWord === 0 || indexWord === 15) && is448){
-              fillNewBlock:= True
-              indexWord := 15
+            when(indexWord === 0 && isBiggerThan448){
+              fillNewBlock := True
+              indexWord    := 15
               goto(sProcessing)
             }
 
@@ -171,41 +174,39 @@ class MD5Core_Std() extends Component{
             block(0) := cntBit(63 downto 32).asBits
             goto(sProcessing)
           }
+
         }
       }
 
-      val sProcessing: State = new State{
+      val sProcessing: State = new State{   /* Run MD5 Engine */
         whenIsActive{
 
           engine.io.cmd.valid := True
 
           when(engine.io.cmd.ready){
 
-            when(is448) {
-              is448 := False
+            when(isBiggerThan448 || isLastFullWordInBlock) {
+              isBiggerThan448 := False
               goto(sPadding)
-            }.elsewhen(addPaddingsNext){
-              goto(sPadding)
-            }.otherwise {
+            } otherwise {
               io.cmd.ready := True
               goto(sLoad)
             }
           }
+
         }
       }
     }
   }
 
-
   engine.io.cmd.block := block.asBits
-  engine.io.cmd.valid := False
+  engine.io.cmd.valid := False // default value
+  engine.io.init      := io.init
 
-  engine.io.init := io.init
-
-  io.cmd.ready := False
+  io.cmd.ready := False // default value
 
   io.rsp.hash  := engine.io.rsp.hash
-  io.rsp.valid := engine.io.rsp.valid && io.cmd.payload.last && !sm.is448 && !sm.addPaddingsNext
+  io.rsp.valid := engine.io.rsp.valid && io.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }
 
 
@@ -222,14 +223,15 @@ object PlayWithCore{
 
 
 /**
-  * MD5 core command
+  * MD5 Engine command
   */
 case class MD5EngineStdCmd() extends Bundle{
   val block = Bits(MD5CoreSpec.msgBlockSize)
 }
 
+
 /**
-  * MD5 core response
+  * MD5 Engine response
   */
 case class MD5EngineStdRsp() extends Bundle{
   val hash = Bits(MD5CoreSpec.hashSize)
@@ -237,11 +239,7 @@ case class MD5EngineStdRsp() extends Bundle{
 
 
 /**
-  * The MD5 algorithm is a hash function producing a 128-bit hash value. MD5 works with block of 512-bit. The message to
-  * hash must be padded as following:
-  *    - Add a one bit a the end of the message
-  *    - Add a sequence of 0 until to get a block of 448-bits
-  *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
+  * The MD5 algorithm is a hash function producing a 128-bit hash value. MD5 works with block of 512-bit.
   *
   * !!!!! MD5 works in little-Endian !!!!!!!
   *
@@ -363,8 +361,6 @@ class MD5Engine_Std extends Component{
     val newBlockB = (funcResult.asUInt + blockA.asUInt + wordBlock.asUInt + memT(i)).rotateLeft(shiftValue) + blockB.asUInt
 
 
-
-
     // last round => add the initial vector to the current block
     when(endIteration){
       sblockA := (blockD.asUInt + ivA.asUInt).asBits
@@ -394,15 +390,15 @@ class MD5Engine_Std extends Component{
     */
   val ctrlMD5 = new Area {
 
-    val isProcessing = Reg(Bool) init(False)
+    val isProcessing = Reg(Bool)
 
     when(io.init){
       iterativeRound.blockA := MD5CoreSpec.initBlockA
       iterativeRound.blockB := MD5CoreSpec.initBlockB
       iterativeRound.blockC := MD5CoreSpec.initBlockC
       iterativeRound.blockD := MD5CoreSpec.initBlockD
-      iterativeRound.i := 0
-      isProcessing     := False
+      iterativeRound.i      := 0
+      isProcessing          := False
     }.elsewhen(io.cmd.valid && !isProcessing && !io.cmd.ready){
       isProcessing := True
       ivA := iterativeRound.blockA

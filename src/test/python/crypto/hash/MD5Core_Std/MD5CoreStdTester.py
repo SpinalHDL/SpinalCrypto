@@ -87,17 +87,8 @@ def testMD5CoreStd(dut):
 
     # Fix patterns
     #
-    msgPattern = ["",
-                  "a",
-                  "ab",
-                  "abc",
-                  "abcd",
-                  "cdefg",
-                  "SpinalHdl is dsl language which generate ",
-                  "SSinalHdl is a DSL language which generate vhdl and vhdsssss"]
-
     msgPattern = [randomword(size) for size in range(0,100)]
-    #msgPattern = ["bnhrboahundzuovelnlyvpxmvdgbgoiwfzbnmiiqrrijpozypgwv"]
+    #msgPattern = ["icbdmrfnjjdfdcacnkkrlqvunrlurmclihscxntgmdwfvlgynshjgystkxff"]
 
     for tmpMsg in msgPattern:
 
