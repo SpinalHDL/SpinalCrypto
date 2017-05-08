@@ -88,7 +88,7 @@ def testMD5CoreStd(dut):
     # Fix patterns
     #
     msgPattern = [randomword(size) for size in range(0,100)]
-    #msgPattern = ["icbdmrfnjjdfdcacnkkrlqvunrlurmclihscxntgmdwfvlgynshjgystkxff"]
+    #msgPattern = ["abc"]
 
     for tmpMsg in msgPattern:
 
@@ -116,7 +116,7 @@ def testMD5CoreStd(dut):
             else:
                 block = endianessWord(hexMsg + "0" * (8 - len(hexMsg)))
                 isLast = 1
-                sizeLast = len(hexMsg)/2
+                sizeLast = (len(hexMsg)/2) - 1
                 hexMsg = None
 
             helperMD5.io.cmd.valid                 <= 1
