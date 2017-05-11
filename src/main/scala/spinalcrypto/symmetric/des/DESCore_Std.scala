@@ -57,8 +57,8 @@ object DESCore_Std{
 class DESCore_Std() extends Component{
 
   val gIO  = SymmetricCryptoCoreGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
-                                         blockWidth  = DESCoreSpec.blockWidth,
-                                         useEncDec   = true)
+                                        blockWidth  = DESCoreSpec.blockWidth,
+                                        useEncDec   = true)
 
   val io = slave(new SymmetricCryptoCoreIO(gIO))
 
@@ -66,8 +66,6 @@ class DESCore_Std() extends Component{
   val lastRound   = io.cmd.enc ? (roundNbr === (DESCoreSpec.nbrRound-2)) | (roundNbr === 2)
   val init        = io.cmd.valid.rise(False)
   val nextRound   = Reg(Bool) init(False) setWhen(init) clearWhen(lastRound)
-  val rspValid    = Reg(Bool) init(False) setWhen(lastRound) clearWhen(init)
-
 
   /**
     * Count the number of round
@@ -253,9 +251,9 @@ class DESCore_Std() extends Component{
   /*
    * Update the output
    */
-  val cmdReady  = RegNext(rspValid.rise())
-  io.rsp.block := RegNext(finalBlockPermutation.perm)
-  io.rsp.valid := cmdReady
+  val rspValid  = RegNext(lastRound)
+  io.rsp.block := finalBlockPermutation.perm
+  io.rsp.valid := rspValid
 
-  io.cmd.ready := cmdReady
+  io.cmd.ready := rspValid
 }

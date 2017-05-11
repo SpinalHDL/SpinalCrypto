@@ -87,7 +87,7 @@ def testMD5CoreStd(dut):
 
     # Fix patterns
     #
-    msgPattern = [randomword(size) for size in range(0,100)]
+    msgPattern = [randomword(size) for size in range(1,100)]
     #msgPattern = ["abc"]
 
     for tmpMsg in msgPattern:
@@ -142,7 +142,10 @@ def testMD5CoreStd(dut):
         m = hashlib.md5(tmpMsg)
         modelHash = m.hexdigest()
 
-        print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
+
+        assertEquals(int(rtlHash,16), int(modelHash, 16), "Wrong MD5 hash value computed ")
+
+        #print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
 
         yield Timer(50000)
 

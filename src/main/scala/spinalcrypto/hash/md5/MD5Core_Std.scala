@@ -24,7 +24,10 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
-
+/**
+  * MD5 Core configuration
+  * @param dataWidth : the width of the input data
+  */
 case class MD5CoreStdGeneric(dataWidth: BitCount = 32 bits)
 
 
@@ -62,7 +65,12 @@ case class MD5CoreStdIO(g: MD5CoreStdGeneric) extends Bundle with IMasterSlave{
 
 
 /**
-  * MD5 Core std
+  * MD5Core_Std component
+  *
+  * !!!!! MD5 works in little-Endian !!!!!!!
+  *
+  * MD5 specification : https://www.ietf.org/rfc/rfc1321.txt
+  *
   */
 class MD5Core_Std(val g: MD5CoreStdGeneric = MD5CoreStdGeneric()) extends Component{
 
@@ -82,9 +90,6 @@ class MD5Core_Std(val g: MD5CoreStdGeneric = MD5CoreStdGeneric()) extends Compon
   *    - Add a sequence of 0 until to get a block of 448-bits
   *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
   *
-  * !!!!! MD5 works in little-Endian !!!!!!!
-  *
-  * doc : https://www.ietf.org/rfc/rfc1321.txt
   */
 class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
 
@@ -240,18 +245,6 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
 }
 
 
-object PlayWithCore{
-  def main(args: Array[String]): Unit = {
-    SpinalConfig(
-      mode = Verilog,
-      dumpWave = DumpWaveConfig(depth = 0),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
-      defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new MD5Core_Std).printPruned
-  }
-}
-
-
 /**
   * MD5 Engine command
   */
@@ -286,11 +279,7 @@ case class MD5EngineStdIO() extends Bundle with IMasterSlave{
 
 
 /**
-  * The MD5 algorithm is a hash function producing a 128-bit hash value. MD5 works with block of 512-bit.
-  *
-  * !!!!! MD5 works in little-Endian !!!!!!!
-  *
-  * doc : https://www.ietf.org/rfc/rfc1321.txt
+  * The MD5 engine take as input a block message of 512 bits and produce a hash value of 128 bits
   *
   * msgBlock
   *(512 bits)

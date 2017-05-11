@@ -36,7 +36,6 @@ class MD5CoreStdTester extends Component{
 
   val io = slave(MD5CoreStdIO(md5.g))
 
-
   md5.io <> io
 }
 
