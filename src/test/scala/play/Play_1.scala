@@ -59,7 +59,7 @@ object PlayWithMD5Core_Std{
 
     val md5 = new MD5Core_Std()
 
-    val io = slave(MD5CoreStdIO(md5.g))
+    val io = slave(HashCoreIO(md5.g))
 
     md5.io <> io
   }
@@ -78,10 +78,10 @@ object PlayWithHMACCore_Std_MD5Core_Std{
 
   class HMACCoreStdTester() extends Component{
 
-    val io = slave(HMACCoreStdIO(HMACCoreStdGeneric()))
-
-    val hmac = new HMACCore_Std()
     val md5  = new MD5Core_Std()
+    val hmac = new HMACCore_Std(HMACCoreStdGeneric(md5.g.hashBlockWidth, md5.g))
+
+    val io = slave(HMACCoreStdIO(hmac.g))
 
     hmac.io.hmacCore <> io
     hmac.io.hashCore <> md5.io

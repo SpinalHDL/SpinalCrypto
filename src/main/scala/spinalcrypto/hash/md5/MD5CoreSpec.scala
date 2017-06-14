@@ -30,15 +30,16 @@ import scala.math.{pow, sin}
 object MD5CoreSpec{
 
   /** Size of a message block */
-  def msgBlockSize  = 512 bits
+  def blockWidth  = 512 bits
   /** Size of the A B C D block */
-  def subBlockSize  =  32 bits
+  def subBlockWidth  =  32 bits
   /** Digest message */
-  def hashSize      = 128 bits
+  def hashWidth      = 128 bits
   /** Total number of iterations */
   def nbrIteration  = 4*16
   /** Width of the counter of bit */
   def cntBitWidth    = 64 bits
+
 
   def initBlockA = B"x67452301"
   def initBlockB = B"xEFCDAB89"

@@ -12,10 +12,10 @@ import spinalcrypto.hash._
   */
 class HMACCoreStdTester() extends Component{
 
-  val io = slave(HMACCoreStdIO(HMACCoreStdGeneric()))
-
-  val hmac = new HMACCore_Std()
   val md5  = new MD5Core_Std()
+  val hmac = new HMACCore_Std(HMACCoreStdGeneric(md5.g.hashBlockWidth, md5.g))
+
+  val io = slave(HMACCoreStdIO(hmac.g))
 
   hmac.io.hmacCore <> io
   hmac.io.hashCore <> md5.io

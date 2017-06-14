@@ -18,49 +18,47 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric
+package spinalcrypto.hash
 
 import spinal.core._
 import spinal.lib._
 
 
 /**
-  * Symmetric Crypto block generiics
-  * @param keyWidth Key width
-  * @param blockWidth Block width
-  * @param useEncDec Create a signal for the encryption/decryption
+  * Hash Core configuration
   */
-case class SymmetricCryptoCoreGeneric(keyWidth    : BitCount,
-                                      blockWidth  : BitCount,
-                                      useEncDec   : Boolean = true){}
+case class HashCoreGeneric(dataWidth     : BitCount,
+                           hashWidth     : BitCount,
+                           hashBlockWidth: BitCount)
 
 
 /**
-  * Command interface for a symmetric block algo
+  * Hash Core command
   */
-case class SymmetricCryptoCoreCmd(g: SymmetricCryptoCoreGeneric) extends Bundle {
-  val key    = Bits(g.keyWidth)
-  val block  = Bits(g.blockWidth)
-  val enc    = if(g.useEncDec) Bool else null
+case class HashCoreCmd(g: HashCoreGeneric) extends Bundle{
+  val msg  = Bits(g.dataWidth)
+  val size = UInt(log2Up(g.dataWidth.value / 8) bits)
 }
 
 
 /**
-  * Response interface for a symmetric block algo
+  * Hash Core response
   */
-case class SymmetricCryptoCoreRsp(g: SymmetricCryptoCoreGeneric) extends Bundle {
-  val block = Bits(g.blockWidth)
+case class HashCoreRsp(g: HashCoreGeneric) extends Bundle{
+  val hash = Bits(g.hashWidth)
 }
 
 
 /**
-  * Interface used by a symmetric block algo
+  * Hash Core IO
   */
-case class SymmetricCryptoCoreIO(g: SymmetricCryptoCoreGeneric) extends Bundle with IMasterSlave{
-  val cmd  = Stream(SymmetricCryptoCoreCmd(g))
-  val rsp  = Flow(SymmetricCryptoCoreRsp(g))
+case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
+  val init = in Bool
+  val cmd  = Stream(Fragment(HashCoreCmd(g)))
+  val rsp  = Flow(HashCoreRsp(g))
 
   override def asMaster() = {
+    out(init)
     master(cmd)
     slave(rsp)
   }
