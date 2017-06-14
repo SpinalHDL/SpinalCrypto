@@ -70,13 +70,13 @@ object PlayWithMD5Core_Std{
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new MD5CoreStdTester).printPruned
+    ).generate(new MD5CoreStdTester).printUnused()
   }
 }
 
 object PlayWithHMACCore_Std_MD5Core_Std{
 
-  class HMACCoreStdMD5Tester() extends Component{
+  class HMACCoreStdTester() extends Component{
 
     val io = slave(HMACCoreStdIO(HMACCoreStdGeneric()))
 
@@ -93,6 +93,6 @@ object PlayWithHMACCore_Std_MD5Core_Std{
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new HMACCoreStdMD5Tester).printPruned
+    ).generate(new HMACCoreStdTester).printPruned
   }
 }

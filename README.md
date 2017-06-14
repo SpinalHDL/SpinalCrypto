@@ -13,6 +13,7 @@ This repository contains cryptographic Spinal IPs.
 
 ### Hash
 
+- HMACCore_Std (tested with MD5)
 - MD5Core_Std
 
 

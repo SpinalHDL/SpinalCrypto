@@ -133,6 +133,7 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
       when(io.core.init){
         cntBit    := 0
         indexWord := nbrWordInBlock - 1
+        block.map(_ := 0)
         goto(sLoad)
       }
     }
@@ -220,6 +221,8 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
           io.engine.cmd.valid := True
 
           when(io.engine.cmd.ready){
+
+            block.map(_ := 0)
 
             when(isBiggerThan448 || isLastFullWordInBlock) {
               isBiggerThan448 := False

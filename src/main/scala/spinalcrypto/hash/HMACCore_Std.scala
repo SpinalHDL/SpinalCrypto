@@ -33,16 +33,14 @@ object HMAC{
 
 
 
-case class HMACCoreStdGeneric(keyWidth: BitCount = 512 bits,
-                              dataWidth: BitCount = 32 bits,
-                              hashWidth: BitCount = 128 bits)
+case class HMACCoreStdGeneric(keyWidth  : BitCount = 512 bits,
+                              dataWidth : BitCount = 32  bits,
+                              hashWidth : BitCount = 128 bits)
 
 case class HMACCoreStdCmd(g: HMACCoreStdGeneric) extends Bundle{
-
   val key  = Bits(g.keyWidth)
   val msg  = Bits(g.dataWidth)
   val size = UInt(2 bits)
-
 }
 
 case class HMACCoreStdRsp(g: HMACCoreStdGeneric) extends Bundle{
@@ -62,7 +60,6 @@ case class HMACCoreStdIO(g: HMACCoreStdGeneric) extends Bundle with IMasterSlave
   }
 }
 
-
 /**
   *  HMAC(m) = k[ ( k ^ opad ) ## h((k ^ ipad) ## m) ]
   */
@@ -74,6 +71,7 @@ class HMACCore_Std(g: HMACCoreStdGeneric = HMACCoreStdGeneric()) extends Compone
   }
 
   val hashTmp = Reg(Bits(128 bits))
+  val cntByte = Reg(UInt(4 bits))
 
   io.hashCore.cmd.msg   := io.hmacCore.cmd.msg
   io.hashCore.cmd.size  := 0
@@ -82,30 +80,42 @@ class HMACCore_Std(g: HMACCoreStdGeneric = HMACCoreStdGeneric()) extends Compone
 
   io.hashCore.init := False
 
-  io.hmacCore.rsp.valid := io.hashCore.rsp.valid
+  io.hmacCore.rsp.valid := False
   io.hmacCore.rsp.hash  := io.hashCore.rsp.hash
   io.hmacCore.cmd.ready := False
 
 
+  val keyWord  = cntByte.muxList(for(index <- 0 until 16) yield (15-index, io.hmacCore.cmd.key(index*32+32-1 downto index*32)))
+  val hashWord = cntByte(1 downto 0).muxList( for(index <- 0 until 4) yield (3-index, hashTmp(index*32+32-1 downto index*32)))
+
 
   val sm = new StateMachine{
+
     always{
       when(io.hmacCore.init){
+        cntByte := 0
         io.hashCore.init := True
         goto(sLoadKeyIpad)
       }
     }
-    val sLoadKeyIpad: State = new State with EntryPoint{
+
+    val sIdle: State = new State with EntryPoint{
+      whenIsActive{}
+    }
+
+    val sLoadKeyIpad: State = new State{
       whenIsActive{
 
-        io.hashCore.cmd.msg   := (io.hmacCore.cmd.key ^ HMAC.ipad(g.keyWidth))(31 downto 0)
+        io.hashCore.cmd.msg   := keyWord ^ HMAC.ipad(32 bits)
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
         io.hashCore.cmd.last  := False
         io.hashCore.cmd.size  := 0
 
-        when(io.hmacCore.rsp.valid){
-          io.hmacCore.cmd.ready := True
-          goto(sLoadMsg)
+        when(io.hashCore.cmd.ready){
+          cntByte := cntByte + 1
+          when(cntByte === 15){
+            goto(sLoadMsg)
+          }
         }
       }
     }
@@ -116,12 +126,17 @@ class HMACCore_Std(g: HMACCoreStdGeneric = HMACCoreStdGeneric()) extends Compone
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
         io.hashCore.cmd.last  := io.hmacCore.cmd.last
         io.hashCore.cmd.size  := io.hmacCore.cmd.size
-        when(io.hashCore.rsp.valid){
-          io.hmacCore.cmd.ready := True
+
+        when(io.hashCore.cmd.ready){
+          cntByte := 0
+
           when(io.hmacCore.cmd.last){
             hashTmp := io.hashCore.rsp.hash
             io.hashCore.init := True
+           // io.hashCore.cmd.valid := False
             goto(sLoadKeyOpad)
+          }otherwise{
+            io.hmacCore.cmd.ready := True
           }
         }
 
@@ -131,15 +146,16 @@ class HMACCore_Std(g: HMACCoreStdGeneric = HMACCoreStdGeneric()) extends Compone
     val sLoadKeyOpad: State = new State{
       whenIsActive{
 
-        io.hashCore.cmd.msg   := (io.hmacCore.cmd.key ^ HMAC.opad(g.keyWidth))(31 downto 0)
+        io.hashCore.cmd.msg   := keyWord ^ HMAC.opad(32 bits)
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
         io.hashCore.cmd.last  := False
-        io.hashCore.cmd.size  := 0
+        io.hashCore.cmd.size  := 3
 
-        when(io.hmacCore.rsp.valid){
-          io.hmacCore.cmd.ready := True
-
-          goto(sLoadHash)
+        when(io.hashCore.cmd.ready){
+          cntByte := cntByte + 1
+          when(cntByte === 15){
+            goto(sLoadHash)
+          }
         }
       }
     }
@@ -147,9 +163,22 @@ class HMACCore_Std(g: HMACCoreStdGeneric = HMACCoreStdGeneric()) extends Compone
     val sLoadHash: State = new State{
       whenIsActive{
 
+        io.hashCore.cmd.msg   := hashWord
+        io.hashCore.cmd.valid := io.hmacCore.cmd.valid
+        io.hashCore.cmd.last  := cntByte === 3
+        io.hashCore.cmd.size  := 3
+
+        when(io.hashCore.cmd.ready){
+          cntByte := cntByte + 1
+          when(io.hashCore.cmd.last){
+            io.hmacCore.cmd.ready := True
+            io.hmacCore.rsp.valid := True
+            io.hmacCore.rsp.hash  := io.hashCore.rsp.hash
+            goto(sIdle)
+          }
+        }
       }
     }
   }
-
-
 }
+
