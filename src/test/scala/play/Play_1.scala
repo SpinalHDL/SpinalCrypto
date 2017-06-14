@@ -2,7 +2,8 @@ package play
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash.md5.{MD5CoreStdIO, MD5Core_Std}
+import spinalcrypto.hash._
+import spinalcrypto.hash.md5._
 import spinalcrypto.symmetric.SymmetricCryptoCoreIO
 import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 
@@ -58,7 +59,7 @@ object PlayWithMD5Core_Std{
 
     val md5 = new MD5Core_Std()
 
-    val io = slave(MD5CoreStdIO(md5.g))
+    val io = slave(HashCoreIO(md5.g))
 
     md5.io <> io
   }
@@ -69,6 +70,29 @@ object PlayWithMD5Core_Std{
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new MD5CoreStdTester).printPruned
+    ).generate(new MD5CoreStdTester).printUnused()
+  }
+}
+
+object PlayWithHMACCore_Std_MD5Core_Std{
+
+  class HMACCoreStdTester() extends Component{
+
+    val md5  = new MD5Core_Std()
+    val hmac = new HMACCore_Std(HMACCoreStdGeneric(md5.g.hashBlockWidth, md5.g))
+
+    val io = slave(HMACCoreStdIO(hmac.g))
+
+    hmac.io.hmacCore <> io
+    hmac.io.hashCore <> md5.io
+  }
+
+  def main(args: Array[String]): Unit = {
+    SpinalConfig(
+      mode = Verilog,
+      dumpWave = DumpWaveConfig(depth = 0),
+      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
+      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    ).generate(new HMACCoreStdTester).printPruned
   }
 }

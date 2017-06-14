@@ -23,45 +23,7 @@ package spinalcrypto.hash.md5
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
-
-/**
-  * MD5 Core configuration
-  * @param dataWidth : the width of the input data
-  */
-case class MD5CoreStdGeneric(dataWidth: BitCount = 32 bits)
-
-
-/**
-  * MD5 Core command
-  */
-case class MD5CoreStdCmd(g: MD5CoreStdGeneric) extends Bundle{
-  val msg  = Bits(g.dataWidth)
-  val size = UInt(log2Up(g.dataWidth.value / 8) bits)
-}
-
-
-/**
-  * MD5 Core response
-  */
-case class MD5CoreStdRsp() extends Bundle{
-  val hash = Bits(MD5CoreSpec.hashSize)
-}
-
-
-/**
-  * MD5 Core IO
-  */
-case class MD5CoreStdIO(g: MD5CoreStdGeneric) extends Bundle with IMasterSlave{
-  val init = in Bool
-  val cmd  = Stream(Fragment(MD5CoreStdCmd(g)))
-  val rsp  = Flow(MD5CoreStdRsp())
-
-  override def asMaster() = {
-    out(init)
-    master(cmd)
-    slave(rsp)
-  }
-}
+import spinalcrypto.hash._
 
 
 /**
@@ -72,9 +34,10 @@ case class MD5CoreStdIO(g: MD5CoreStdGeneric) extends Bundle with IMasterSlave{
   * MD5 specification : https://www.ietf.org/rfc/rfc1321.txt
   *
   */
-class MD5Core_Std(val g: MD5CoreStdGeneric = MD5CoreStdGeneric()) extends Component{
-
-  val io = slave(MD5CoreStdIO(g))
+class MD5Core_Std(val g: HashCoreGeneric = HashCoreGeneric(dataWidth      = 32 bits,
+                                                           hashWidth      = MD5CoreSpec.hashWidth,
+                                                           hashBlockWidth = MD5CoreSpec.blockWidth)) extends Component{
+  val io = slave(HashCoreIO(g))
 
   val engine  = new MD5Engine_Std()
   val padding = new MD5Padding_Std(g)
@@ -91,16 +54,16 @@ class MD5Core_Std(val g: MD5CoreStdGeneric = MD5CoreStdGeneric()) extends Compon
   *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
   *
   */
-class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
+class MD5Padding_Std(g: HashCoreGeneric) extends Component{
 
   assert(g.dataWidth != 32, "Currently MD5Core_Std supports only 32 bits")
 
   val io = new Bundle{
-    val core    = slave(MD5CoreStdIO(g))
+    val core    = slave(HashCoreIO(g))
     val engine  = master(MD5EngineStdIO())
   }
 
-  val nbrWordInBlock = MD5CoreSpec.msgBlockSize.value / g.dataWidth.value
+  val nbrWordInBlock = MD5CoreSpec.blockWidth.value / g.dataWidth.value
   val nbrByteInWord  = g.dataWidth.value / 8
 
   val cntBit         = Reg(UInt(MD5CoreSpec.cntBitWidth))
@@ -133,6 +96,7 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
       when(io.core.init){
         cntBit    := 0
         indexWord := nbrWordInBlock - 1
+        block.map(_ := 0)
         goto(sLoad)
       }
     }
@@ -221,6 +185,8 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
 
           when(io.engine.cmd.ready){
 
+            block.map(_ := 0)
+
             when(isBiggerThan448 || isLastFullWordInBlock) {
               isBiggerThan448 := False
               goto(sPadding)
@@ -249,7 +215,7 @@ class MD5Padding_Std(g: MD5CoreStdGeneric) extends Component{
   * MD5 Engine command
   */
 case class MD5EngineStdCmd() extends Bundle{
-  val block = Bits(MD5CoreSpec.msgBlockSize)
+  val block = Bits(MD5CoreSpec.blockWidth)
 }
 
 
@@ -257,7 +223,7 @@ case class MD5EngineStdCmd() extends Bundle{
   * MD5 Engine response
   */
 case class MD5EngineStdRsp() extends Bundle{
-  val hash = Bits(MD5CoreSpec.hashSize)
+  val hash = Bits(MD5CoreSpec.hashWidth)
 }
 
 
@@ -316,10 +282,10 @@ class MD5Engine_Std extends Component{
 
   val io = slave(MD5EngineStdIO())
 
-  val ivA   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivB   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivC   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivD   = Reg(Bits(MD5CoreSpec.subBlockSize))
+  val ivA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
 
   val memT  = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
   val memK  = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
@@ -364,16 +330,16 @@ class MD5Engine_Std extends Component{
     val endIteration = i === 63
 
     /* Register block */
-    val blockA   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockB   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockC   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockD   = Reg(Bits(MD5CoreSpec.subBlockSize))
+    val blockA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
 
     /* Block signals */
-    val sblockA = B(0, MD5CoreSpec.subBlockSize)
-    val sblockB = B(0, MD5CoreSpec.subBlockSize)
-    val sblockC = B(0, MD5CoreSpec.subBlockSize)
-    val sblockD = B(0, MD5CoreSpec.subBlockSize)
+    val sblockA = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockB = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockC = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockD = B(0, MD5CoreSpec.subBlockWidth)
 
     // mux to select among the three function F, G, H, I
     val selFunc = B(0, 2 bits)

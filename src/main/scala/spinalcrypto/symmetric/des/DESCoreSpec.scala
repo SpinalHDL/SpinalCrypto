@@ -22,6 +22,7 @@ package spinalcrypto.symmetric.des
 
 import spinal.core._
 
+
 /**
   * Constants for the DES Core
   */

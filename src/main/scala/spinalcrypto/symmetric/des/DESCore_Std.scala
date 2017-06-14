@@ -24,6 +24,7 @@ import spinal.core._
 import spinal.lib._
 import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO}
 
+
 /**
   * Define some usefull funtion
   */
