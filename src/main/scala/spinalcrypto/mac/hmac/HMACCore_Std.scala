@@ -56,7 +56,7 @@ case class HMACCoreStdCmd(g: HMACCoreStdGeneric) extends Bundle{
   * HMAC Rsp
   */
 case class HMACCoreStdRsp(g: HMACCoreStdGeneric) extends Bundle{
-  val hash = Bits(g.gHash.hashWidth)
+  val hmac = Bits(g.gHash.hashWidth)
 }
 
 
@@ -123,7 +123,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
   io.hashCore.init      := False
 
   io.hmacCore.rsp.valid := False
-  io.hmacCore.rsp.hash  := io.hashCore.rsp.digest
+  io.hmacCore.rsp.hmac  := io.hashCore.rsp.digest
   io.hmacCore.cmd.ready := False
 
 
@@ -204,7 +204,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
           when(io.hashCore.cmd.last){
             io.hmacCore.cmd.ready := True
             io.hmacCore.rsp.valid := True
-            io.hmacCore.rsp.hash  := io.hashCore.rsp.digest
+            io.hmacCore.rsp.hmac  := io.hashCore.rsp.digest
             goto(sIdle)
           }
         }
