@@ -206,7 +206,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
 
   io.core.cmd.ready := False // default value
 
-  io.core.rsp.hash  := io.engine.rsp.hash
+  io.core.rsp.digest  := io.engine.rsp.digest
   io.core.rsp.valid := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }
 
@@ -223,7 +223,7 @@ case class MD5EngineStdCmd() extends Bundle{
   * MD5 Engine response
   */
 case class MD5EngineStdRsp() extends Bundle{
-  val hash = Bits(MD5CoreSpec.hashWidth)
+  val digest = Bits(MD5CoreSpec.hashWidth)
 }
 
 
@@ -350,7 +350,7 @@ class MD5Engine_Std extends Component{
 
     // Cut the message block into 32 bits
     val k = memK(i)
-    val wordBlock = k.muxList(for(index <- 0 until 16) yield (15-index, io.cmd.block(index*32+32-1 downto index*32)))
+    val wordBlock = io.cmd.block.subdivideIn(32 bits).reverse(k)
 
     // Select among the 4 memShift memory
     val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memS(index)(i(1 downto 0)) ))
@@ -429,7 +429,7 @@ class MD5Engine_Std extends Component{
   /*
    * Drive the output signals
    */
-  io.rsp.hash := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
+  io.rsp.digest := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
   io.rsp.valid  := iterativeRound.endIteration
   io.cmd.ready  := iterativeRound.endIteration
 }

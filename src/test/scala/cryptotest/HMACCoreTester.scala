@@ -5,6 +5,7 @@ import spinal.core._
 import spinal.lib._
 import spinalcrypto.hash.md5._
 import spinalcrypto.hash._
+import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 
 
 /**
@@ -24,7 +25,7 @@ class HMACCoreStdTester() extends Component{
 class HMACCoreStdCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "HMACCoreStdTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/hash/HMACCore_Std"
+  override def pythonTestLocation: String = "src/test/python/crypto/mac/HMACCore_Std"
   override def createToplevel: Component = new HMACCoreStdTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),

@@ -126,7 +126,7 @@ def testMD5CoreStd(dut):
 
             if isLast == 1:
                 yield helperMD5.io.rsp.event_valid.wait()
-                tmp = hex(int(helperMD5.io.rsp.event_valid.data.hash))[2:-1]
+                tmp = hex(int(helperMD5.io.rsp.event_valid.data.digest))[2:-1]
                 if(len(tmp) != 32):
                     tmp = "0" * (32-len(tmp)) + tmp
             else:

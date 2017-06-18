@@ -4,6 +4,7 @@ import spinal.core._
 import spinal.lib._
 import spinalcrypto.hash._
 import spinalcrypto.hash.md5._
+import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 import spinalcrypto.symmetric.SymmetricCryptoCoreIO
 import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 
