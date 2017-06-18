@@ -153,7 +153,7 @@ def testHMACCore_MD5(dut):
 
             if isLast == 1:
                 yield helperHMAC.io.rsp.event_valid.wait()
-                rtlhmac = hex(int(helperHMAC.io.rsp.event_valid.data.hash))[2:-1]
+                rtlhmac = hex(int(helperHMAC.io.rsp.event_valid.data.hmac))[2:-1]
                 if(len(rtlhmac) != 32):
                     rtlhmac = "0" * (32-len(rtlhmac)) + rtlhmac
             else:
