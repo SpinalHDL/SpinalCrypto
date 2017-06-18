@@ -18,14 +18,17 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.hash
-
+package spinalcrypto.mac.hmac
 
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
+import spinalcrypto.hash.{HashCoreGeneric, HashCoreIO}
 
 
+/**
+  * HMAC specification
+  */
 object HMACCoreSpec{
   def ipad(width: BitCount): Bits = B("x" + "36" * (width.value/8))
   def opad(width: BitCount): Bits = B("x" + "5C" * (width.value/8))
@@ -104,10 +107,11 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
     val hmacCore = slave(HMACCoreStdIO(g))
   }
 
-  val hashTmp = Reg(Bits(128 bits))
-  val cntWord = Reg(UInt(4 bits))
+  val symbolInBlock = (g.gHash.hashBlockWidth / g.gHash.dataWidth).value
+  val symbolInHash  = (g.gHash.hashWidth / g.gHash.dataWidth).value
 
-  val wordInBlock = (g.gHash.hashBlockWidth / g.gHash.dataWidth).value - 1
+  val hashTmp   = Reg(Bits(g.gHash.hashWidth))
+  val cntSymbol = Reg(UInt(log2Up(symbolInBlock) bits))
 
   /*
    * Default value
@@ -119,12 +123,12 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
   io.hashCore.init      := False
 
   io.hmacCore.rsp.valid := False
-  io.hmacCore.rsp.hash  := io.hashCore.rsp.hash
+  io.hmacCore.rsp.hash  := io.hashCore.rsp.digest
   io.hmacCore.cmd.ready := False
 
 
-  val keyWord  = cntWord.muxList(for(index <- 0 until 16) yield (15-index, io.hmacCore.cmd.key(index*32+32-1 downto index*32)))
-  val hashWord = cntWord(1 downto 0).muxList( for(index <- 0 until 4) yield (3-index, hashTmp(index*32+32-1 downto index*32)))
+  val keySymbol  = io.hmacCore.cmd.key.subdivideIn(g.gHash.dataWidth)(cntSymbol)
+  val hashSymbol = hashTmp.subdivideIn(g.gHash.dataWidth)(cntSymbol(log2Up(symbolInHash)-1 downto 0))
 
 
   /**
@@ -132,11 +136,15 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
     */
   val sm = new StateMachine{
 
+    val isIpad = Reg(Bool)
+    val xPad   = isIpad ? HMACCoreSpec.ipad(g.gHash.dataWidth) | HMACCoreSpec.opad(g.gHash.dataWidth)
+
     always{
       when(io.hmacCore.init){
-        cntWord := 0
+        cntSymbol := 0
+        isIpad    := True
         io.hashCore.init := True
-        goto(sLoadKeyIpad)
+        goto(sLoadKey)
       }
     }
 
@@ -144,15 +152,20 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       whenIsActive{ /* Do nothing */}
     }
 
-    val sLoadKeyIpad: State = new State{
+    val sLoadKey: State = new State{
       whenIsActive{
-        io.hashCore.cmd.msg   := keyWord ^ HMACCoreSpec.ipad(g.gHash.dataWidth)
+        io.hashCore.cmd.msg   := keySymbol ^ xPad
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
 
         when(io.hashCore.cmd.ready){
-          cntWord := cntWord + 1
-          when(cntWord === wordInBlock){
-            goto(sLoadMsg)
+          cntSymbol := cntSymbol + 1
+          when(cntSymbol === (symbolInBlock-1)){
+            when(isIpad){
+              isIpad := False
+              goto(sLoadMsg)
+            }otherwise{
+              goto(sLoadHash)
+            }
           }
         }
       }
@@ -166,12 +179,12 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
         io.hashCore.cmd.size  := io.hmacCore.cmd.size
 
         when(io.hashCore.cmd.ready){
-          cntWord := 0
+          cntSymbol := 0
 
           when(io.hmacCore.cmd.last){
-            hashTmp := io.hashCore.rsp.hash
+            hashTmp := io.hashCore.rsp.digest
             io.hashCore.init := True
-            goto(sLoadKeyOpad)
+            goto(sLoadKey)
           }otherwise{
             io.hmacCore.cmd.ready := True
           }
@@ -179,33 +192,19 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       }
     }
 
-    val sLoadKeyOpad: State = new State{
-      whenIsActive{
-        io.hashCore.cmd.msg   := keyWord ^ HMACCoreSpec.opad(g.gHash.dataWidth)
-        io.hashCore.cmd.valid := io.hmacCore.cmd.valid
-
-        when(io.hashCore.cmd.ready){
-          cntWord := cntWord + 1
-          when(cntWord === wordInBlock){
-            goto(sLoadHash)
-          }
-        }
-      }
-    }
-
     val sLoadHash: State = new State{
       whenIsActive{
-        io.hashCore.cmd.msg   := hashWord
+        io.hashCore.cmd.msg   := hashSymbol
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
-        io.hashCore.cmd.last  := cntWord === 3
-        io.hashCore.cmd.size  := 3
+        io.hashCore.cmd.last  := cntSymbol === (symbolInHash-1)
+        io.hashCore.cmd.size  := (default -> true)
 
         when(io.hashCore.cmd.ready){
-          cntWord := cntWord + 1
+          cntSymbol := cntSymbol + 1
           when(io.hashCore.cmd.last){
             io.hmacCore.cmd.ready := True
             io.hmacCore.rsp.valid := True
-            io.hmacCore.rsp.hash  := io.hashCore.rsp.hash
+            io.hmacCore.rsp.hash  := io.hashCore.rsp.digest
             goto(sIdle)
           }
         }

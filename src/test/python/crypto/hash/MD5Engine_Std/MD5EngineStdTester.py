@@ -100,7 +100,7 @@ def testMD5EngineStd(dut):
 
             helperMD5.io.cmd.valid <= 0
 
-            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.hash), 2))
+            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.digest), 2))
 
             yield RisingEdge(helperMD5.io.clk)
 

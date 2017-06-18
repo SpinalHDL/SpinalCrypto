@@ -45,7 +45,7 @@ case class HashCoreCmd(g: HashCoreGeneric) extends Bundle{
   * Hash Core response
   */
 case class HashCoreRsp(g: HashCoreGeneric) extends Bundle{
-  val hash = Bits(g.hashWidth)
+  val digest = Bits(g.hashWidth)
 }
 
 
