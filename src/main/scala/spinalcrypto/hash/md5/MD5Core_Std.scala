@@ -34,9 +34,12 @@ import spinalcrypto.hash._
   * MD5 specification : https://www.ietf.org/rfc/rfc1321.txt
   *
   */
-class MD5Core_Std(val g: HashCoreGeneric = HashCoreGeneric(dataWidth      = 32 bits,
-                                                           hashWidth      = MD5CoreSpec.hashWidth,
-                                                           hashBlockWidth = MD5CoreSpec.blockWidth)) extends Component{
+class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
+
+  val g =  HashCoreGeneric(dataWidth      = dataWidth,
+                           hashWidth      = MD5CoreSpec.hashWidth,
+                           hashBlockWidth = MD5CoreSpec.blockWidth)
+
   val io = slave(HashCoreIO(g))
 
   val engine  = new MD5Engine_Std()
@@ -206,8 +209,8 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
 
   io.core.cmd.ready := False // default value
 
-  io.core.rsp.digest  := io.engine.rsp.digest
-  io.core.rsp.valid := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
+  io.core.rsp.digest := io.engine.rsp.digest
+  io.core.rsp.valid  := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }
 
 
