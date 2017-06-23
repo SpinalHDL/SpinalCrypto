@@ -22,7 +22,7 @@ package spinalcrypto.symmetric.des
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO}
+import spinalcrypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
 
 
 /**
@@ -57,11 +57,11 @@ object DESCore_Std{
   */
 class DESCore_Std() extends Component{
 
-  val gIO  = SymmetricCryptoCoreGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
+  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
                                         blockWidth  = DESCoreSpec.blockWidth,
                                         useEncDec   = true)
 
-  val io = slave(new SymmetricCryptoCoreIO(gIO))
+  val io = slave(new SymmetricCryptoBlockIO(gIO))
 
   val roundNbr    = UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)
   val lastRound   = io.cmd.enc ? (roundNbr === (DESCoreSpec.nbrRound-2)) | (roundNbr === 2)

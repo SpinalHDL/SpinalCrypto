@@ -14,7 +14,7 @@ class DESCoreStdTester extends Component {
 
   val des = new DESCore_Std()
 
-  val io  = slave(new SymmetricCryptoCoreIO(des.gIO))
+  val io  = slave(new SymmetricCryptoBlockIO(des.gIO))
 
   des.io <> io
 }
@@ -43,7 +43,7 @@ class TripleDESCoreStdTester extends Component {
 
   val des3 = new TripleDESCore_Std()
 
-  val io = slave(new SymmetricCryptoCoreIO(des3.gIO))
+  val io = slave(new SymmetricCryptoBlockIO(des3.gIO))
 
   des3.io <> io
 }
