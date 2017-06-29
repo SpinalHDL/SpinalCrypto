@@ -7,6 +7,7 @@ import spinalcrypto.hash.md5._
 import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 import spinalcrypto.symmetric.SymmetricCryptoCoreIO
 import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
+import spinalcrypto.symmetric.aes._
 
 
 
@@ -16,7 +17,7 @@ object PlayWithDesCore_Std{
 
     val des = new DESCore_Std()
 
-    val io  = slave(new SymmetricCryptoCoreIO(des.gIO))
+    val io  = slave(SymmetricCryptoCoreIO(des.gIO))
 
     des.io <> io
   }
@@ -38,7 +39,7 @@ object PlayWith3DesCore_Std{
 
     val des3 = new TripleDESCore_Std()
 
-    val io = slave(new SymmetricCryptoCoreIO(des3.gIO))
+    val io = slave(SymmetricCryptoCoreIO(des3.gIO))
 
     des3.io <> io
   }
@@ -95,5 +96,26 @@ object PlayWithHMACCore_Std_MD5Core_Std{
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
     ).generate(new HMACCoreStdTester).printPruned
+  }
+}
+
+
+object PlayWithAESCore_Std{
+  class AESCoreStdTester() extends Component{
+
+    val aes  = new AESCore_Std(128 bits)
+
+    val io = slave(SymmetricCryptoCoreIO(aes.gIO))
+
+    aes.io <> io
+  }
+
+  def main(args: Array[String]): Unit = {
+    SpinalConfig(
+      mode = Verilog,
+      dumpWave = DumpWaveConfig(depth = 0),
+      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
+      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    ).generate(new AESCoreStdTester).printPruned
   }
 }

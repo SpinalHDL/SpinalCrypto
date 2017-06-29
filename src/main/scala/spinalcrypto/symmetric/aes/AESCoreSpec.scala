@@ -6,7 +6,7 @@ import spinal.core._
 
 object AESCoreSpec {
 
-  def blockWidth = 128 bits
+  def blockWidth  = 128 bits
 
   def nbrRound(keySize: BitCount): Int = keySize.value match{
     case 128 => 10

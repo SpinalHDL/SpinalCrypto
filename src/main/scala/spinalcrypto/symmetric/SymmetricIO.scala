@@ -22,6 +22,7 @@ package spinalcrypto.symmetric
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.misc.BusSlaveFactory
 
 
 /**
@@ -64,4 +65,10 @@ case class SymmetricCryptoCoreIO(g: SymmetricCryptoCoreGeneric) extends Bundle w
     master(cmd)
     slave(rsp)
   }
+
+  /** Drive IO from a bus */
+  def driveFrom(busCtrl: BusSlaveFactory, baseAddress: Int = 0) = new Area {
+    // TODO
+  }
+
 }
