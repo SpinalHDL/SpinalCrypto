@@ -22,6 +22,7 @@ package spinalcrypto.mac.hmac
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.fsm._
 import spinalcrypto.hash.{HashCoreGeneric, HashCoreIO}
 
@@ -73,6 +74,63 @@ case class HMACCoreStdIO(g: HMACCoreStdGeneric) extends Bundle with IMasterSlave
     master(cmd)
     slave(rsp)
     out(init)
+  }
+
+  /** Drive IO from a bus */
+  def driveFrom(busCtrl: BusSlaveFactory, baseAddress: Int = 0) = new Area {
+
+    var addr = baseAddress
+
+    /* Write operation */
+
+    busCtrl.driveMultiWord(cmd.msg,   addr)
+    addr += (widthOf(cmd.msg)/32)*4
+
+    busCtrl.driveMultiWord(cmd.key,   addr)
+    addr += (widthOf(cmd.key)/32)*4
+
+    busCtrl.drive(cmd.last, addr)
+    addr += 4
+
+    busCtrl.drive(cmd.size, addr)
+    addr += 4
+
+    val initReg = busCtrl.drive(init, addr)
+    initReg.clearWhen(!initReg)
+    addr += 4
+
+    val validReg = busCtrl.drive(cmd.valid, addr)
+    validReg.clearWhen(cmd.ready)
+    addr += 4
+
+    /* Read operation */
+
+    val hmac   = Reg(cloneOf(rsp.hmac))
+    val rspValid = Reg(Bool) init(False) setWhen(rsp.valid)
+
+    when(rsp.valid){
+      hmac := rsp.hmac
+    }
+
+    busCtrl.onRead(addr){
+      when(rspValid){
+        rspValid := False
+      }
+    }
+
+    busCtrl.read(rspValid, addr)
+    addr += 4
+
+    busCtrl.readMultiWord(hmac, addr)
+    addr += (widthOf(hmac)/32)*4
+
+
+    //manage interrupts
+    val interruptCtrl = new Area {
+      val doneIntEnable = busCtrl.createReadAndWrite(Bool, address = addr, 0) init(False)
+      val doneInt       = doneIntEnable & !rsp.valid
+      val interrupt     = doneInt
+    }
   }
 }
 

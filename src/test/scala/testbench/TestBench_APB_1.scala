@@ -1,4 +1,4 @@
-package play
+package testbench
 
 import spinal.core._
 import spinal.lib._
@@ -6,56 +6,70 @@ import spinal.lib.bus.amba3.apb.{Apb3, Apb3Decoder, Apb3Gpio, Apb3SlaveFactory}
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.com.uart.Apb3UartCtrl
 import spinal.lib.io.TriStateArray
-import spinalcrypto.symmetric.SymmetricCryptoCoreIO
 import spinalcrypto.symmetric.des._
+import spinalcrypto.hash.md5._
+import spinalcrypto.mac.hmac._
 
 
-
-case class Apb3DESCore() extends Component{
-
-  val desCore = new DESCore_Std()
+case class Apb3_DESCore() extends Component{
 
   val io = new Bundle{
     val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
-    val core      = slave(SymmetricCryptoCoreIO(desCore.gIO))
   }
+
+  val desCore = new DESCore_Std()
 
   val busCtrl = Apb3SlaveFactory(io.apb)
-
-  //
+  desCore.io.driveFrom(busCtrl)
 }
 
-/*
 
-object Axi4ToAxi4Shared{
-  def apply(axi : Axi4): Axi4Shared ={
-    val axiShared = new Axi4Shared(axi.config)
-    val arbiter = StreamArbiterFactory.roundRobin.build(new Axi4Ax(axi.config),2)
-    arbiter.io.inputs(0) << axi.ar.asInstanceOf[Stream[Axi4Ax]]
-    arbiter.io.inputs(1) << axi.aw.asInstanceOf[Stream[Axi4Ax]]
+case class APB3_3DESCore() extends Component{
 
-    axiShared.arw.arbitrationFrom(arbiter.io.output)
-    axiShared.arw.payload.assignSomeByName(arbiter.io.output.payload)
-    axiShared.arw.write := arbiter.io.chosenOH(1)
-    axi.w >> axiShared.w
-    axi.b << axiShared.b
-    axi.r << axiShared.r
-    axiShared
+  val io = new Bundle{
+    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
   }
 
-  def main(args: Array[String]) {
-    SpinalVhdl(new Component{
-      val axi = slave(Axi4(Axi4Config(32,32,2)))
-      val axiShared = master(Axi4ToAxi4Shared(axi))
-    })
-  }
+  val desCore = new TripleDESCore_Std()
+
+  val busCtrl = Apb3SlaveFactory(io.apb)
+  desCore.io.driveFrom(busCtrl)
 }
 
-*/
+case class APB3_MD5() extends Component{
+
+  val io = new Bundle{
+    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+  }
+
+  val md5Core = new MD5Core_Std()
+
+  val busCtrl = Apb3SlaveFactory(io.apb)
+  md5Core.io.driveFrom(busCtrl)
+}
+
+
+case class APB3_HMAC_MD5() extends Component{
+
+  val io = new Bundle{
+    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+  }
+
+  val md5Core  = new MD5Core_Std()
+  val hmacCore = new HMACCore_Std(HMACCoreStdGeneric(md5Core.g.hashBlockWidth, md5Core.g))
+
+  hmacCore.io.hashCore <> md5Core.io
+
+  val busCtrl = Apb3SlaveFactory(io.apb)
+  hmacCore.io.hmacCore.driveFrom(busCtrl)
+
+}
 
 
 
-class TestBench extends Component{
+
+
+class TestBench_APB_1 extends Component{
 
   val axi4Config = Axi4Config(addressWidth = 32,
                               dataWidth    = 32,
@@ -93,9 +107,6 @@ class TestBench extends Component{
 
   val axi = new ClockingArea(axiClockDomain) {
 
-
-    println(log2Up(1))
-
     val apbBridge = Axi4SharedToApb3Bridge(
       addressWidth = 32,
       dataWidth    = 32,
@@ -106,24 +117,22 @@ class TestBench extends Component{
       gpioWidth = 32
     )
 
-   // val desCore = new DESCore_Std()
+    val desCore       = Apb3_DESCore()
+    val tripleDESCore = APB3_3DESCore()
+    val md5Core       = APB3_MD5()
+    val hmacMD5       = APB3_HMAC_MD5()
 
 
-    val axiArbitrer = new Axi4SharedArbiter(
-      outputConfig      = axi4Config,
-      readInputsCount   = 1,
-      writeInputsCount  = 1,
-      sharedInputsCount = 0,
-      routeBufferSize   = 2)
-
-    axiArbitrer.io.readInputs(0)  <> io.axi.toReadOnly()
-    axiArbitrer.io.writeInputs(0) <> io.axi.toWriteOnly()
-    apbBridge.io.axi <> axiArbitrer.io.output
+    apbBridge.io.axi <> Axi4ToAxi4Shared(io.axi)
 
     val apbDecoder = Apb3Decoder(
       master = apbBridge.io.apb,
       slaves = List(
-        gpioACtrl.io.apb -> (0x00000, 4 kB)
+        gpioACtrl.io.apb     -> (0x0000, 256 MB),
+        desCore.io.apb       -> (0x1000, 256 MB),
+        tripleDESCore.io.apb -> (0x2000, 256 MB),
+        hmacMD5.io.apb       -> (0x3000, 256 MB),
+        md5Core.io.apb       -> (0x4000, 256 MB)
       )
     )
 
@@ -135,6 +144,12 @@ class TestBench extends Component{
 
 object PlayWithTestBench{
   def main(args: Array[String]): Unit = {
-    SpinalVhdl(new TestBench)
+    //SpinalVhdl(new TestBench_APB_1)
+    SpinalConfig(
+      mode = Verilog,
+      dumpWave = DumpWaveConfig(depth = 0),
+      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
+      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    ).generate(new TestBench_APB_1).printPruned
   }
 }

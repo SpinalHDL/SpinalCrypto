@@ -22,6 +22,7 @@ package spinalcrypto.hash
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.misc.BusSlaveFactory
 
 
 /**
@@ -53,6 +54,7 @@ case class HashCoreRsp(g: HashCoreGeneric) extends Bundle{
   * Hash Core IO
   */
 case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
+
   val init = in Bool
   val cmd  = Stream(Fragment(HashCoreCmd(g)))
   val rsp  = Flow(HashCoreRsp(g))
@@ -61,5 +63,59 @@ case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
     out(init)
     master(cmd)
     slave(rsp)
+  }
+
+  /** Drive IO from a bus */
+  def driveFrom(busCtrl: BusSlaveFactory, baseAddress: Int = 0) = new Area {
+
+    var addr = baseAddress
+
+    /* Write operation */
+
+    busCtrl.driveMultiWord(cmd.msg,   addr)
+    addr += (widthOf(cmd.msg)/32)*4
+
+    busCtrl.drive(cmd.size, addr)
+    addr += 4
+
+    busCtrl.drive(cmd.last, addr)
+    addr += 4
+
+    val initReg = busCtrl.drive(init, addr)
+    initReg.clearWhen(!initReg)
+    addr += 4
+
+    val validReg = busCtrl.drive(cmd.valid, addr)
+    validReg.clearWhen(cmd.ready)
+    addr += 4
+
+    /* Read operation */
+
+    val digest   = Reg(cloneOf(rsp.digest))
+    val rspValid = Reg(Bool) init(False) setWhen(rsp.valid)
+
+    when(rsp.valid){
+      digest := rsp.digest
+    }
+
+    busCtrl.onRead(addr){
+      when(rspValid){
+        rspValid := False
+      }
+    }
+
+    busCtrl.read(rspValid, addr)
+    addr += 4
+
+    busCtrl.readMultiWord(digest, addr)
+    addr += (widthOf(digest)/32)*4
+
+
+    //manage interrupts
+    val interruptCtrl = new Area {
+      val doneIntEnable = busCtrl.createReadAndWrite(Bool, address = addr, 0) init(False)
+      val doneInt       = doneIntEnable & !rsp.valid
+      val interrupt     = doneInt
+    }
   }
 }

@@ -68,7 +68,51 @@ case class SymmetricCryptoCoreIO(g: SymmetricCryptoCoreGeneric) extends Bundle w
 
   /** Drive IO from a bus */
   def driveFrom(busCtrl: BusSlaveFactory, baseAddress: Int = 0) = new Area {
-    // TODO
-  }
 
+    var addr = baseAddress
+
+    /* Write operation */
+
+    busCtrl.driveMultiWord(cmd.key,   addr)
+    addr += (widthOf(cmd.key)/32)*4
+
+    busCtrl.driveMultiWord(cmd.block, addr)
+    addr += (widthOf(cmd.block)/32)*4
+
+    busCtrl.drive(cmd.enc, addr)
+    addr += 4
+
+    val validReg = busCtrl.drive(cmd.valid, addr)
+    validReg.clearWhen(cmd.ready)
+    addr += 4
+
+    /* Read operation */
+
+    val block    = Reg(cloneOf(rsp.block))
+    val rspValid = Reg(Bool) init(False) setWhen(rsp.valid)
+
+    when(rsp.valid){
+      block := rsp.block
+    }
+
+    busCtrl.onRead(addr){
+      when(rspValid){
+        rspValid := False
+      }
+    }
+
+    busCtrl.read(rspValid, addr)
+    addr += 4
+
+    busCtrl.readMultiWord(block, addr)
+    addr += (widthOf(block)/32)*4
+
+
+    //manage interrupts
+    val interruptCtrl = new Area {
+      val doneIntEnable = busCtrl.createReadAndWrite(Bool, address = addr, 0) init(False)
+      val doneInt       = doneIntEnable & !rsp.valid
+      val interrupt     = doneInt
+    }
+  }
 }
