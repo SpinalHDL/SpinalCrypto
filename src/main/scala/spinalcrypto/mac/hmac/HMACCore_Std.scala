@@ -95,11 +95,11 @@ case class HMACCoreStdIO(g: HMACCoreStdGeneric) extends Bundle with IMasterSlave
     busCtrl.drive(cmd.size, addr)
     addr += 4
 
-    val initReg = busCtrl.drive(init, addr)
-    initReg.clearWhen(!initReg)
+    val initReg = busCtrl.drive(init, addr) init(False)
+    initReg.clearWhen(initReg)
     addr += 4
 
-    val validReg = busCtrl.drive(cmd.valid, addr)
+    val validReg = busCtrl.drive(cmd.valid, addr) init(False)
     validReg.clearWhen(cmd.ready)
     addr += 4
 

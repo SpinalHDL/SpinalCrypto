@@ -2,19 +2,27 @@ package testbench
 
 import spinal.core._
 import spinal.lib._
-import spinal.lib.bus.amba3.apb.{Apb3, Apb3Decoder, Apb3Gpio, Apb3SlaveFactory}
+import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
-import spinal.lib.com.uart.Apb3UartCtrl
 import spinal.lib.io.TriStateArray
 import spinalcrypto.symmetric.des._
 import spinalcrypto.hash.md5._
 import spinalcrypto.mac.hmac._
 
+object Apb3_TestBenchConfig{
+  def getApb3Config = Apb3Config(
+    addressWidth  = 10,
+    dataWidth     = 32,
+    selWidth      = 1,
+    useSlaveError = false
+  )
+}
+
 
 case class Apb3_DESCore() extends Component{
 
   val io = new Bundle{
-    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+    val apb       = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
   }
 
   val desCore = new DESCore_Std()
@@ -27,7 +35,7 @@ case class Apb3_DESCore() extends Component{
 case class APB3_3DESCore() extends Component{
 
   val io = new Bundle{
-    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+    val apb       = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
   }
 
   val desCore = new TripleDESCore_Std()
@@ -39,7 +47,7 @@ case class APB3_3DESCore() extends Component{
 case class APB3_MD5() extends Component{
 
   val io = new Bundle{
-    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+    val apb       = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
   }
 
   val md5Core = new MD5Core_Std()
@@ -52,7 +60,7 @@ case class APB3_MD5() extends Component{
 case class APB3_HMAC_MD5() extends Component{
 
   val io = new Bundle{
-    val apb       = slave(Apb3(Apb3UartCtrl.getApb3Config))
+    val apb       = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
   }
 
   val md5Core  = new MD5Core_Std()
@@ -128,25 +136,23 @@ class TestBench_APB_1 extends Component{
     val apbDecoder = Apb3Decoder(
       master = apbBridge.io.apb,
       slaves = List(
-        gpioACtrl.io.apb     -> (0x0000, 256 MB),
-        desCore.io.apb       -> (0x1000, 256 MB),
-        tripleDESCore.io.apb -> (0x2000, 256 MB),
-        hmacMD5.io.apb       -> (0x3000, 256 MB),
-        md5Core.io.apb       -> (0x4000, 256 MB)
+        gpioACtrl.io.apb     -> (0x0000, 1 kB),
+        desCore.io.apb       -> (0x1000, 1 kB),
+        tripleDESCore.io.apb -> (0x2000, 1 kB),
+        hmacMD5.io.apb       -> (0x3000, 1 kB),
+        md5Core.io.apb       -> (0x4000, 1 kB)
       )
     )
-
   }
 
   io.gpioA  <> axi.gpioACtrl.io.gpio
 }
 
 
-object PlayWithTestBench{
+object PlayWithTestBench_APB_1{
   def main(args: Array[String]): Unit = {
-    //SpinalVhdl(new TestBench_APB_1)
     SpinalConfig(
-      mode = Verilog,
+      mode = VHDL,
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)

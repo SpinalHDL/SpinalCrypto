@@ -82,7 +82,7 @@ case class SymmetricCryptoCoreIO(g: SymmetricCryptoCoreGeneric) extends Bundle w
     busCtrl.drive(cmd.enc, addr)
     addr += 4
 
-    val validReg = busCtrl.drive(cmd.valid, addr)
+    val validReg = busCtrl.drive(cmd.valid, addr) init(False)
     validReg.clearWhen(cmd.ready)
     addr += 4
 

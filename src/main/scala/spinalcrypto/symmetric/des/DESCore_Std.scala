@@ -74,7 +74,7 @@ class DESCore_Std() extends Component{
     *   - Decryption 16 -> 1
     */
   val ctnRound = new Area{
-    val round = Reg(UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits))
+    val round = Reg(UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)) init(0)
 
     when(init){
       round := io.cmd.enc ? U(0) | DESCoreSpec.nbrRound
@@ -252,7 +252,7 @@ class DESCore_Std() extends Component{
   /*
    * Update the output
    */
-  val rspValid  = RegNext(lastRound)
+  val rspValid  = RegNext(lastRound) init(False)
   io.rsp.block := finalBlockPermutation.perm
   io.rsp.valid := rspValid
 
