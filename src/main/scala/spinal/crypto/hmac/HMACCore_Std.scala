@@ -18,13 +18,13 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.mac.hmac
+package spinal.crypto.hmac
 
 import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.fsm._
-import spinalcrypto.hash.{HashCoreGeneric, HashCoreIO}
+import spinal.crypto.hash.{HashCoreGeneric, HashCoreIO}
 
 
 /**

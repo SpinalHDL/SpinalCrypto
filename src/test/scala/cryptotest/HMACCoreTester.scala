@@ -3,9 +3,9 @@ package cryptotest
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash.md5._
-import spinalcrypto.hash._
-import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+
+import spinal.crypto.hash.md5._
+import spinal.crypto.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 
 
 /**

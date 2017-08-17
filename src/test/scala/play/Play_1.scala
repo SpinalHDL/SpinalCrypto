@@ -2,12 +2,12 @@ package play
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash._
-import spinalcrypto.hash.md5._
-import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
-import spinalcrypto.symmetric.SymmetricCryptoCoreIO
-import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
-import spinalcrypto.symmetric.aes._
+
+import spinal.crypto.hash._
+import spinal.crypto.hash.md5._
+import spinal.crypto.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.symmetric.SymmetricCryptoBlockIO
+import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 
 
 
@@ -17,7 +17,7 @@ object PlayWithDesCore_Std{
 
     val des = new DESCore_Std()
 
-    val io  = slave(SymmetricCryptoCoreIO(des.gIO))
+    val io  = slave(new SymmetricCryptoBlockIO(des.gIO))
 
     des.io <> io
   }
@@ -39,7 +39,7 @@ object PlayWith3DesCore_Std{
 
     val des3 = new TripleDESCore_Std()
 
-    val io = slave(SymmetricCryptoCoreIO(des3.gIO))
+    val io = slave(new SymmetricCryptoBlockIO(des3.gIO))
 
     des3.io <> io
   }

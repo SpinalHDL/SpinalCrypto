@@ -18,7 +18,7 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.hash
+package spinal.crypto.symmetric
 
 import spinal.core._
 import spinal.lib._
@@ -26,41 +26,43 @@ import spinal.lib.bus.misc.BusSlaveFactory
 
 
 /**
-  * Hash Core configuration
+  * Symmetric Crypto block generiics
+  * @param keyWidth Key width
+  * @param blockWidth Block width
+  * @param useEncDec Create a signal for the encryption/decryption
   */
-case class HashCoreGeneric(dataWidth     : BitCount,
-                           hashWidth     : BitCount,
-                           hashBlockWidth: BitCount)
+case class SymmetricCryptoBlockGeneric(
+              keyWidth  : BitCount,
+              blockWidth: BitCount,
+              useEncDec : Boolean = true){}
 
 
 /**
-  * Hash Core command
+  * Command interface for a symmetric block algo
   */
-case class HashCoreCmd(g: HashCoreGeneric) extends Bundle{
-  val msg  = Bits(g.dataWidth)
-  val size = UInt(log2Up(g.dataWidth.value / 8) bits)
+case class SymmetricCryptoBlockCmd(g: SymmetricCryptoBlockGeneric) extends Bundle {
+  val key    = Bits(g.keyWidth)
+  val block  = Bits(g.blockWidth)
+  val enc    = if(g.useEncDec) Bool else null
 }
 
 
 /**
-  * Hash Core response
+  * Response interface for a symmetric block algo
   */
-case class HashCoreRsp(g: HashCoreGeneric) extends Bundle{
-  val digest = Bits(g.hashWidth)
+case class SymmetricCryptoBlockRsp(g: SymmetricCryptoBlockGeneric) extends Bundle {
+  val block = Bits(g.blockWidth)
 }
 
 
 /**
-  * Hash Core IO
+  * Interface used by a symmetric block algo
   */
-case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
-
-  val init = in Bool
-  val cmd  = Stream(Fragment(HashCoreCmd(g)))
-  val rsp  = Flow(HashCoreRsp(g))
+case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle with IMasterSlave {
+  val cmd  = Stream(SymmetricCryptoBlockCmd(g))
+  val rsp  = Flow(SymmetricCryptoBlockRsp(g))
 
   override def asMaster() = {
-    out(init)
     master(cmd)
     slave(rsp)
   }
@@ -72,17 +74,13 @@ case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
 
     /* Write operation */
 
-    busCtrl.driveMultiWord(cmd.msg,   addr)
-    addr += (widthOf(cmd.msg)/32)*4
+    busCtrl.driveMultiWord(cmd.key,   addr)
+    addr += (widthOf(cmd.key)/32)*4
 
-    busCtrl.drive(cmd.size, addr)
-    addr += 4
+    busCtrl.driveMultiWord(cmd.block, addr)
+    addr += (widthOf(cmd.block)/32)*4
 
-    busCtrl.drive(cmd.last, addr)
-    addr += 4
-
-    val initReg = busCtrl.drive(init, addr) init(False)
-    initReg.clearWhen(initReg)
+    busCtrl.drive(cmd.enc, addr) // TODO if cmd.enc is null ????
     addr += 4
 
     val validReg = busCtrl.drive(cmd.valid, addr) init(False)
@@ -91,11 +89,11 @@ case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
 
     /* Read operation */
 
-    val digest   = Reg(cloneOf(rsp.digest))
+    val block    = Reg(cloneOf(rsp.block))
     val rspValid = Reg(Bool) init(False) setWhen(rsp.valid)
 
     when(rsp.valid){
-      digest := rsp.digest
+      block := rsp.block
     }
 
     busCtrl.onRead(addr){
@@ -107,8 +105,8 @@ case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
     busCtrl.read(rspValid, addr)
     addr += 4
 
-    busCtrl.readMultiWord(digest, addr)
-    addr += (widthOf(digest)/32)*4
+    busCtrl.readMultiWord(block, addr)
+    addr += (widthOf(block)/32)*4
 
 
     //manage interrupts

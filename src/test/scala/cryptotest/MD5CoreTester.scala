@@ -2,8 +2,10 @@ package cryptotest
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash.HashCoreIO
-import spinalcrypto.hash.md5._
+
+import spinal.crypto.hash.HashCoreIO
+import spinal.crypto.hash.md5._
+
 
 /**
   * MD5 Engine standard tester
