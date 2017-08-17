@@ -18,12 +18,10 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric
+package spinal.crypto.symmetric
 
 import spinal.core._
 import spinal.lib._
-
-import spinalcrypto.symmetric.des._
 
 trait EncryptionMode
 case object ENCRYPT  extends EncryptionMode
@@ -66,13 +64,13 @@ case class BCMO_IO(g: BCMO_Generic) extends Bundle with IMasterSlave {
 
 
 
-case class CBC(g: SymmetricCryptoCoreGeneric, mode: EncryptionMode) extends Component{
+case class CBC(g: SymmetricCryptoBlockGeneric, mode: EncryptionMode) extends Component{
 
   val io = new Bundle{
     val bcmo = slave (BCMO_IO(BCMO_Generic(keyWidth   = g.keyWidth,
                                            blockWidth = g.blockWidth,
                                            useEncDec  = mode == ENC_DEC)))
-    val core = master(SymmetricCryptoCoreIO(g))
+    val core = master(SymmetricCryptoBlockIO(g))
   }
 
   val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_CmdMode.INIT
@@ -139,6 +137,8 @@ case class CTR()
 
 
 object PlayWithBCMO{
+
+  import spinal.crypto.symmetric.des._
 
   class TestCBC() extends Component{
 
