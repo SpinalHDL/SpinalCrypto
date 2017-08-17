@@ -1,10 +1,9 @@
-package spinalcrypto.symmetric.aes
-
+package spinal.crypto.symmetric.aes
 
 import spinal.core.{Mem, _}
+import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
 import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
-import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO}
 
 
 /**
@@ -13,11 +12,11 @@ import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO
   */
 class AESCore_Std(keyWidth: BitCount) extends Component{
 
-  val gIO  = SymmetricCryptoCoreGeneric(keyWidth    = keyWidth,
+  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = keyWidth,
                                         blockWidth  = AESCoreSpec.blockWidth,
                                         useEncDec   = true)
 
-  val io = slave(new SymmetricCryptoCoreIO(gIO))
+  val io = slave(new SymmetricCryptoBlockIO(gIO))
 
 
   val sBoxMem = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))

@@ -1,5 +1,4 @@
-package spinalcrypto.symmetric.aes
-
+package spinal.crypto.symmetric.aes
 
 import spinal.core._
 

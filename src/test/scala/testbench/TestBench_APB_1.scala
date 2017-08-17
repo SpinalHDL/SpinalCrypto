@@ -5,9 +5,9 @@ import spinal.lib._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.io.TriStateArray
-import spinalcrypto.symmetric.des._
-import spinalcrypto.hash.md5._
-import spinalcrypto.mac.hmac._
+import spinal.crypto.symmetric.des._
+import spinal.crypto.hash.md5._
+import spinal.crypto.mac.hmac._
 
 object Apb3_TestBenchConfig{
   def getApb3Config = Apb3Config(

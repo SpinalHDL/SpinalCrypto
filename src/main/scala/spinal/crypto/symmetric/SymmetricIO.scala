@@ -34,7 +34,7 @@ import spinal.lib.bus.misc.BusSlaveFactory
 case class SymmetricCryptoBlockGeneric(
               keyWidth  : BitCount,
               blockWidth: BitCount,
-              useEncDec : Boolean = true){}
+              useEncDec : Boolean = true) {}
 
 
 /**

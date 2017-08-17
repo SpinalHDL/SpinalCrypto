@@ -5,9 +5,10 @@ import spinal.lib._
 
 import spinal.crypto.hash._
 import spinal.crypto.hash.md5._
-import spinal.crypto.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 import spinal.crypto.symmetric.SymmetricCryptoBlockIO
 import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
+import spinal.crypto.symmetric.aes._
 
 
 
@@ -105,7 +106,7 @@ object PlayWithAESCore_Std{
 
     val aes  = new AESCore_Std(128 bits)
 
-    val io = slave(SymmetricCryptoCoreIO(aes.gIO))
+    val io = slave(SymmetricCryptoBlockIO(aes.gIO))
 
     aes.io <> io
   }
