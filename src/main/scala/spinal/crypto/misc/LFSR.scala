@@ -1,4 +1,4 @@
-package spinalcrypto.misc
+package spinal.crypto.misc
 
 import spinal.core._
 
