@@ -2,18 +2,17 @@ package cryptotest
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash.md5._
+
+import spinal.crypto.hash.HashCoreIO
+import spinal.crypto.hash.md5._
+
 
 /**
   * MD5 Engine standard tester
   */
 class MD5EngineStdTester extends Component{
 
-  val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave Stream(MD5EngineStdCmd())
-    val rsp  = master Flow(MD5EngineStdRsp())
-  }
+  val io = slave(MD5EngineStdIO())
 
   val md5 = new MD5Engine_Std()
   md5.io <> io
@@ -36,13 +35,10 @@ class MD5EngineStdCocotbBoot extends SpinalTesterCocotbBase {
   */
 class MD5CoreStdTester extends Component{
 
-  val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave Stream(Fragment(MD5CoreStdCmd()))
-    val rsp  = master Flow(MD5CoreStdRsp())
-  }
-
   val md5 = new MD5Core_Std()
+
+  val io = slave(HashCoreIO(md5.g))
+
   md5.io <> io
 }
 

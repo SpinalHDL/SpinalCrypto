@@ -18,27 +18,35 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.hash.md5
+package spinal.crypto.hash.md5
 
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
+import spinal.crypto.hash._
 
-import scala.math.{pow, sin}
-
-/**
-  * MD5 Core command
-  */
-case class MD5CoreStdCmd() extends Bundle{
-  val msg  = Bits(32 bits)
-  val size = UInt(3 bits)
-}
 
 /**
-  * MD5 Core response
+  * MD5Core_Std component
+  *
+  * !!!!! MD5 works in little-Endian !!!!!!!
+  *
+  * MD5 specification : https://www.ietf.org/rfc/rfc1321.txt
+  *
   */
-case class MD5CoreStdRsp() extends Bundle{
-  val hash = Bits(MD5CoreSpec.hashSize)
+class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
+
+  val g =  HashCoreGeneric(dataWidth      = dataWidth,
+                           hashWidth      = MD5CoreSpec.hashWidth,
+                           hashBlockWidth = MD5CoreSpec.blockWidth)
+
+  val io = slave(HashCoreIO(g))
+
+  val engine  = new MD5Engine_Std()
+  val padding = new MD5Padding_Std(g)
+
+  padding.io.engine  <> engine.io
+  padding.io.core    <> io
 }
 
 
@@ -48,48 +56,50 @@ case class MD5CoreStdRsp() extends Bundle{
   *    - Add a sequence of 0 until to get a block of 448-bits
   *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
   *
-  * !!!!! MD5 works in little-Endian !!!!!!!
-  *
-  * doc : https://www.ietf.org/rfc/rfc1321.txt
   */
-class MD5Core_Std() extends Component{
+class MD5Padding_Std(g: HashCoreGeneric) extends Component{
+
+  assert(g.dataWidth != 32, "Currently MD5Core_Std supports only 32 bits")
 
   val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave Stream(Fragment(MD5CoreStdCmd()))
-    val rsp  = master Flow(MD5CoreStdRsp())
+    val core    = slave(HashCoreIO(g))
+    val engine  = master(MD5EngineStdIO())
   }
 
-  val cntBit    = Reg(UInt(64 bits))
-  val block     = Reg(Vec(Bits(32 bits), 16))
-  val indexWord = Reg(UInt(4 bits))
+  val nbrWordInBlock = MD5CoreSpec.blockWidth.value / g.dataWidth.value
+  val nbrByteInWord  = g.dataWidth.value / 8
 
-  val engine = new MD5Engine_Std()
+  val cntBit         = Reg(UInt(MD5CoreSpec.cntBitWidth))
+  val block          = Reg(Vec(Bits(g.dataWidth), nbrWordInBlock))
+  val indexWord      = Reg(UInt(log2Up(nbrWordInBlock) bits))
 
-  val maskMsg = io.cmd.size.mux(U"001"  -> B"x000000FF",
-                                U"010"  -> B"x0000FFFF",
-                                U"011"  -> B"x00FFFFFF",
-                                U"100"  -> B"xFFFFFFFF",
-                                default -> B"x00000000")
 
-  val maskSet1 = io.cmd.size.mux(U"000"  -> B"x00000080",
-                                 U"001"  -> B"x00008000",
-                                 U"010"  -> B"x00800000",
-                                 U"011"  -> B"x80000000",
-                                 default -> B"x00000000")
+  val maskMsg = io.core.cmd.size.mux(U"00"  -> B"x000000FF",
+                                     U"01"  -> B"x0000FFFF",
+                                     U"10"  -> B"x00FFFFFF",
+                                     U"11"  -> B"xFFFFFFFF")
 
+  val maskSet1 = io.core.cmd.size.mux(U"00"  -> B"x00008000",
+                                      U"01"  -> B"x00800000",
+                                      U"10"  -> B"x80000000",
+                                      U"11"  -> B"x00000000")
+
+  /**
+    * Padding state machine
+    */
   val sm = new StateMachine{
 
     val addPaddingNextWord = Reg(Bool)
     val isBiggerThan448    = Reg(Bool)
     val fillNewBlock       = Reg(Bool)
 
-    val isLastFullWordInBlock = indexWord === 0 && io.cmd.size === 4
+    val isLastFullWordInBlock = indexWord === 0 && io.core.cmd.size === (nbrByteInWord-1)
 
     always{
-      when(io.init){
+      when(io.core.init){
         cntBit    := 0
-        indexWord := 15
+        indexWord := nbrWordInBlock - 1
+        block.map(_ := 0)
         goto(sLoad)
       }
     }
@@ -101,50 +111,46 @@ class MD5Core_Std() extends Component{
         isBiggerThan448    := False
         fillNewBlock       := False
 
-        when(io.cmd.valid){
+        when(io.core.cmd.valid){
 
-          block(indexWord) := io.cmd.msg
+          block(indexWord) := io.core.cmd.msg
 
-          when(io.cmd.last){
+          when(io.core.cmd.last){
 
-            cntBit := cntBit + io.cmd.size.mux(U"001"  ->  8,
-                                               U"010"  -> 16,
-                                               U"011"  -> 24,
-                                               U"100"  -> 32,
-                                               default -> 0)
-
+            cntBit := cntBit + io.core.cmd.size.mux(U"00"  ->  8,
+                                                    U"01"  -> 16,
+                                                    U"10"  -> 24,
+                                                    U"11"  -> 32)
             when(isLastFullWordInBlock){
               goto(sProcessing)
             }otherwise{
-              isBiggerThan448 := indexWord < 2 || (indexWord === 2 && io.cmd.size === 4)
+              isBiggerThan448 := indexWord < 2 || (indexWord === 2 && io.core.cmd.size === (nbrByteInWord-1))
               goto(sPadding)
             }
-
           }otherwise{
 
-            cntBit     := cntBit + 32
+            cntBit     := cntBit + g.dataWidth.value
             indexWord  := indexWord - 1
 
             when(indexWord === 0){
               goto(sProcessing)
             }otherwise{
-              io.cmd.ready := True
+              io.core.cmd.ready := True
             }
           }
         }
       }
 
       val sPadding: State = new State{ /* Do padding  */
-
         onEntry{
 
           when(isLastFullWordInBlock || fillNewBlock){
-              indexWord     := 15
+              indexWord     := nbrWordInBlock - 1
               fillNewBlock  := False
           }otherwise{
-              block(indexWord) := (io.cmd.msg & maskMsg) | maskSet1
+              block(indexWord) := (io.core.cmd.msg & maskMsg) | maskSet1
               when(indexWord =/= 0)  { indexWord := indexWord - 1 }
-              when(io.cmd.size =/= 4){ addPaddingNextWord := False }
+              when(io.core.cmd.size =/= (nbrByteInWord-1)){ addPaddingNextWord := False }
           }
         }
 
@@ -163,9 +169,8 @@ class MD5Core_Std() extends Component{
               }
             }
 
-            when(indexWord === 0 && isBiggerThan448){
+            when(indexWord === 0){
               fillNewBlock := True
-              indexWord    := 15
               goto(sProcessing)
             }
 
@@ -174,51 +179,38 @@ class MD5Core_Std() extends Component{
             block(0) := cntBit(63 downto 32).asBits
             goto(sProcessing)
           }
-
         }
       }
 
       val sProcessing: State = new State{   /* Run MD5 Engine */
         whenIsActive{
+          io.engine.cmd.valid := True
 
-          engine.io.cmd.valid := True
+          when(io.engine.cmd.ready){
 
-          when(engine.io.cmd.ready){
+            block.map(_ := 0)
 
             when(isBiggerThan448 || isLastFullWordInBlock) {
               isBiggerThan448 := False
               goto(sPadding)
             } otherwise {
-              io.cmd.ready := True
+              io.core.cmd.ready := True
               goto(sLoad)
             }
           }
-
         }
       }
     }
   }
 
-  engine.io.cmd.block := block.asBits
-  engine.io.cmd.valid := False // default value
-  engine.io.init      := io.init
+  io.engine.cmd.block := block.asBits
+  io.engine.cmd.valid := False // default value
+  io.engine.init      := io.core.init
 
-  io.cmd.ready := False // default value
+  io.core.cmd.ready := False // default value
 
-  io.rsp.hash  := engine.io.rsp.hash
-  io.rsp.valid := engine.io.rsp.valid && io.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
-}
-
-
-object PlayWithCore{
-  def main(args: Array[String]): Unit = {
-    SpinalConfig(
-      mode = Verilog,
-      dumpWave = DumpWaveConfig(depth = 0),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
-      defaultClockDomainFrequency = FixedFrequency(50 MHz)
-    ).generate(new MD5Core_Std).printPruned
-  }
+  io.core.rsp.digest := io.engine.rsp.digest
+  io.core.rsp.valid  := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }
 
 
@@ -226,7 +218,7 @@ object PlayWithCore{
   * MD5 Engine command
   */
 case class MD5EngineStdCmd() extends Bundle{
-  val block = Bits(MD5CoreSpec.msgBlockSize)
+  val block = Bits(MD5CoreSpec.blockWidth)
 }
 
 
@@ -234,16 +226,29 @@ case class MD5EngineStdCmd() extends Bundle{
   * MD5 Engine response
   */
 case class MD5EngineStdRsp() extends Bundle{
-  val hash = Bits(MD5CoreSpec.hashSize)
+  val digest = Bits(MD5CoreSpec.hashWidth)
 }
 
 
 /**
-  * The MD5 algorithm is a hash function producing a 128-bit hash value. MD5 works with block of 512-bit.
-  *
-  * !!!!! MD5 works in little-Endian !!!!!!!
-  *
-  * doc : https://www.ietf.org/rfc/rfc1321.txt
+  * MD5 Engine IO
+  */
+case class MD5EngineStdIO() extends Bundle with IMasterSlave{
+
+  val init = Bool
+  val cmd  = Stream(MD5EngineStdCmd())
+  val rsp  = Flow(MD5EngineStdRsp())
+
+  override def asMaster() = {
+    out(init)
+    master(cmd)
+    slave(rsp)
+  }
+}
+
+
+/**
+  * The MD5 engine take as input a block message of 512 bits and produce a hash value of 128 bits
   *
   * msgBlock
   *(512 bits)
@@ -278,16 +283,12 @@ case class MD5EngineStdRsp() extends Bundle{
   */
 class MD5Engine_Std extends Component{
 
-  val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave Stream(MD5EngineStdCmd())
-    val rsp  = master Flow(MD5EngineStdRsp())
-  }
+  val io = slave(MD5EngineStdIO())
 
-  val ivA   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivB   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivC   = Reg(Bits(MD5CoreSpec.subBlockSize))
-  val ivD   = Reg(Bits(MD5CoreSpec.subBlockSize))
+  val ivA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val ivD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
 
   val memT  = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
   val memK  = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
@@ -332,16 +333,16 @@ class MD5Engine_Std extends Component{
     val endIteration = i === 63
 
     /* Register block */
-    val blockA   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockB   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockC   = Reg(Bits(MD5CoreSpec.subBlockSize))
-    val blockD   = Reg(Bits(MD5CoreSpec.subBlockSize))
+    val blockA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+    val blockD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
 
     /* Block signals */
-    val sblockA = B(0, MD5CoreSpec.subBlockSize)
-    val sblockB = B(0, MD5CoreSpec.subBlockSize)
-    val sblockC = B(0, MD5CoreSpec.subBlockSize)
-    val sblockD = B(0, MD5CoreSpec.subBlockSize)
+    val sblockA = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockB = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockC = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockD = B(0, MD5CoreSpec.subBlockWidth)
 
     // mux to select among the three function F, G, H, I
     val selFunc = B(0, 2 bits)
@@ -352,7 +353,7 @@ class MD5Engine_Std extends Component{
 
     // Cut the message block into 32 bits
     val k = memK(i)
-    val wordBlock = k.muxList(for(index <- 0 until 16) yield (15-index, io.cmd.block(index*32+32-1 downto index*32)))
+    val wordBlock = io.cmd.block.subdivideIn(32 bits).reverse(k)
 
     // Select among the 4 memShift memory
     val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memS(index)(i(1 downto 0)) ))
@@ -431,7 +432,7 @@ class MD5Engine_Std extends Component{
   /*
    * Drive the output signals
    */
-  io.rsp.hash := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
+  io.rsp.digest := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
   io.rsp.valid  := iterativeRound.endIteration
   io.cmd.ready  := iterativeRound.endIteration
 }

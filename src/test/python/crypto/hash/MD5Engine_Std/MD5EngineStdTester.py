@@ -27,7 +27,7 @@ class MD5EngineStdHelper:
             self.rsp    = Flow(dut, "io_rsp")
             self.init   = dut.io_init
             self.clk    = dut.clk
-            self.resetn = dut.resetn
+            #self.resetn = dut.resetn
 
         def initIO(self):
             self.cmd.valid         <= 0
@@ -46,14 +46,15 @@ def testMD5EngineStd(dut):
     cocotbXHack()
 
     helperMD5    = MD5EngineStdHelper(dut)
-    clockDomain  = ClockDomain(helperMD5.io.clk, 200, helperMD5.io.resetn , RESET_ACTIVE_LEVEL.LOW)
+    clockDomain  = ClockDomain(helperMD5.io.clk, 200)
 
     # Start clock
     cocotb.fork(clockDomain.start())
 
     # Init IO and wait the end of the reset
     helperMD5.io.initIO()
-    yield clockDomain.event_endReset.wait()
+    #yield clockDomain.event_endReset.wait()
+    yield RisingEdge(helperMD5.io.clk)
 
     # start monitoring rsp
     helperMD5.io.rsp.startMonitoringValid(helperMD5.io.clk)
@@ -99,7 +100,7 @@ def testMD5EngineStd(dut):
 
             helperMD5.io.cmd.valid <= 0
 
-            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.hash), 2))
+            rtlDigest = "{0:0>4X}".format(int(str(helperMD5.io.rsp.payload.digest), 2))
 
             yield RisingEdge(helperMD5.io.clk)
 

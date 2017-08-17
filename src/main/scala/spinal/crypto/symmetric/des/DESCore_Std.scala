@@ -18,11 +18,12 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric.des
+package spinal.crypto.symmetric.des
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.symmetric.{SymmetricCryptoCoreGeneric, SymmetricCryptoCoreIO}
+import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
+
 
 /**
   * Define some usefull funtion
@@ -56,18 +57,16 @@ object DESCore_Std{
   */
 class DESCore_Std() extends Component{
 
-  val gIO  = SymmetricCryptoCoreGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
-                                         blockWidth  = DESCoreSpec.blockWidth,
-                                         useEncDec   = true)
+  val gIO  = SymmetricCryptoBlockGeneric(keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
+                                        blockWidth  = DESCoreSpec.blockWidth,
+                                        useEncDec   = true)
 
-  val io = slave(new SymmetricCryptoCoreIO(gIO))
+  val io = slave(new SymmetricCryptoBlockIO(gIO))
 
   val roundNbr    = UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)
   val lastRound   = io.cmd.enc ? (roundNbr === (DESCoreSpec.nbrRound-2)) | (roundNbr === 2)
   val init        = io.cmd.valid.rise(False)
   val nextRound   = Reg(Bool) init(False) setWhen(init) clearWhen(lastRound)
-  val rspValid    = Reg(Bool) init(False) setWhen(lastRound) clearWhen(init)
-
 
   /**
     * Count the number of round
@@ -253,9 +252,9 @@ class DESCore_Std() extends Component{
   /*
    * Update the output
    */
-  val cmdReady  = RegNext(rspValid.rise())
-  io.rsp.block := RegNext(finalBlockPermutation.perm)
-  io.rsp.valid := cmdReady
+  val rspValid  = RegNext(lastRound)
+  io.rsp.block := finalBlockPermutation.perm
+  io.rsp.valid := rspValid
 
-  io.cmd.ready := cmdReady
+  io.cmd.ready := rspValid
 }

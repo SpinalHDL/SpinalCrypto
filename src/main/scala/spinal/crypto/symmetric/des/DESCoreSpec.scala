@@ -18,9 +18,10 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.symmetric.des
+package spinal.crypto.symmetric.des
 
 import spinal.core._
+
 
 /**
   * Constants for the DES Core

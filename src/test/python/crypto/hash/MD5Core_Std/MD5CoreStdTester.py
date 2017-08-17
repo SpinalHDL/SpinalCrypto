@@ -87,8 +87,8 @@ def testMD5CoreStd(dut):
 
     # Fix patterns
     #
-    msgPattern = [randomword(size) for size in range(0,100)]
-    #msgPattern = ["icbdmrfnjjdfdcacnkkrlqvunrlurmclihscxntgmdwfvlgynshjgystkxff"]
+    msgPattern = [randomword(100-size) for size in range(1,100)]
+    #msgPattern = ["11111111222222223333333344444444555555556666666677777777"]
 
     for tmpMsg in msgPattern:
 
@@ -114,10 +114,10 @@ def testMD5CoreStd(dut):
                 hexMsg = hexMsg[8:]
                 isLast = 0
             else:
-                block = endianessWord(hexMsg + "0" * (8 - len(hexMsg)))
-                isLast = 1
-                sizeLast = len(hexMsg)/2
-                hexMsg = None
+                block    = endianessWord(hexMsg + "0" * (8 - len(hexMsg)))
+                isLast   = 1
+                sizeLast = (len(hexMsg)/2) - 1
+                hexMsg   = None
 
             helperMD5.io.cmd.valid                 <= 1
             helperMD5.io.cmd.payload.fragment_msg  <= int(block, 16)
@@ -126,7 +126,7 @@ def testMD5CoreStd(dut):
 
             if isLast == 1:
                 yield helperMD5.io.rsp.event_valid.wait()
-                tmp = hex(int(helperMD5.io.rsp.event_valid.data.hash))[2:-1]
+                tmp = hex(int(helperMD5.io.rsp.event_valid.data.digest))[2:-1]
                 if(len(tmp) != 32):
                     tmp = "0" * (32-len(tmp)) + tmp
             else:
@@ -142,7 +142,10 @@ def testMD5CoreStd(dut):
         m = hashlib.md5(tmpMsg)
         modelHash = m.hexdigest()
 
-        print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
+
+        assertEquals(int(rtlHash,16), int(modelHash, 16), "Wrong MD5 hash value computed ")
+
+        #print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
 
         yield Timer(50000)
 
