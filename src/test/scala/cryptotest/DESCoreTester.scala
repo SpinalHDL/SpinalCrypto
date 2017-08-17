@@ -2,8 +2,9 @@ package cryptotest
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
-import spinalcrypto.symmetric._
+
+import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
+import spinal.crypto.symmetric._
 
 
 

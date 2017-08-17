@@ -18,12 +18,12 @@
 **      You should have received a copy of the GNU Lesser General Public     **
 **    License along with this library.                                       **
 \*                                                                           */
-package spinalcrypto.hash.md5
+package spinal.crypto.hash.md5
 
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
-import spinalcrypto.hash._
+import spinal.crypto.hash._
 
 
 /**

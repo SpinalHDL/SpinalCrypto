@@ -2,11 +2,12 @@ package play
 
 import spinal.core._
 import spinal.lib._
-import spinalcrypto.hash._
-import spinalcrypto.hash.md5._
-import spinalcrypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
-import spinalcrypto.symmetric.SymmetricCryptoBlockIO
-import spinalcrypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
+
+import spinal.crypto.hash._
+import spinal.crypto.hash.md5._
+import spinal.crypto.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.symmetric.SymmetricCryptoBlockIO
+import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 
 
 
