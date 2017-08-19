@@ -20,8 +20,19 @@
 \*                                                                           */
 package spinal.crypto
 
-
+/**
+  * Polynomial in Galois Field 2
+  */
 class PolynomialGF2(val coefficient: List[Int]) {
 
-  override def toString: String = "Coefficient"
+  def ==(that: PolynomialGF2): Boolean = this.coefficient.sorted == that.coefficient.sorted
+  def !=(that: PolynomialGF2): Boolean = !(this == that)
+
+  override def toString: String = {
+    (for(coef <- coefficient) yield coef match{
+      case 0 => "1"
+      case 1 => "x"
+      case _ => s"x^$coef"
+    }).mkString(" + ")
+  }
 }
