@@ -16,7 +16,7 @@ This repository contains cryptographic Spinal IPs.
 - MD5Core_Std
 
 
-### Mac
+### MAC
 
 - HMACCore_Std (tested with MD5)
 
