@@ -93,8 +93,9 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   keySchedule.io.init.key     := io.cmd.key
 
   /* Output default value */
-  io.cmd.ready := False
-  io.rsp.valid := False
+  val smDone    = False
+  io.cmd.ready := RegNext(smDone) init(False)
+  io.rsp.valid := io.cmd.ready
   io.rsp.block := dataState.asBits
 
   val blockByte = io.cmd.block.subdivideIn(8 bits).reverse
@@ -104,23 +105,21 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   /**
     * Main state machine
     */
-  val sm = new StateMachine{
+  val sm = new StateMachine {
 
-    val keyAddition_cmd = Stream(NoData)
-    keyAddition_cmd.valid := False
+    val keyAddition_cmd = False
 
     val byteSub_cmd = Stream(NoData)
     byteSub_cmd.valid := False
 
-    val shiftRow_cmd = Stream(NoData)
-    shiftRow_cmd.valid := False
+    val shiftRow_cmd = False
 
     val mixCol_cmd = Stream(NoData)
     mixCol_cmd.valid := False
 
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-        when(io.cmd.valid){
+        when(io.cmd.valid && !io.cmd.ready){
           cntRound := io.cmd.enc ? U(0) | U(15)
           keySchedule.io.init.valid := True
         }
@@ -133,20 +132,20 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     val sKeyAdd: State = new State{
       whenIsActive{
     //    when(keySchedule.io.rsp.valid){
-          keyAddition_cmd.valid := True
+          keyAddition_cmd := True
     //    }
-        when(keyAddition_cmd.ready){
+
           keySchedule.io.update.valid := True
           when(io.cmd.enc){
             when(cntRound === nbrRound){
-              io.cmd.ready := True
-              io.rsp.valid := True
+              smDone := True
+
               goto(sIdle)
             }otherwise {
               goto(sByteSub)
             }
           }otherwise{
-            when(cntRound === nbrRound-1){
+            when(cntRound === nbrRound){
               goto(sShiftRow)
             }.elsewhen(cntRound === 0){
               io.cmd.ready := True
@@ -155,7 +154,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
               goto(sMixColumn)
             }
           }
-        }
+
       }
     }
 
@@ -176,8 +175,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     val sShiftRow: State = new State{
       whenIsActive{
-        shiftRow_cmd.valid := True
-        when(shiftRow_cmd.ready){
+        shiftRow_cmd := True
           when(io.cmd.enc){
             when(cntRound === nbrRound){
               goto(sKeyAdd)
@@ -187,7 +185,6 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
           }otherwise{
             goto(sByteSub)
           }
-        }
       }
     }
 
@@ -207,14 +204,13 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Key Addition
+    * Key Addition (1 clock)
     * newState = currentState XOR key
     */
   val keyAddition = new Area{
-    sm.keyAddition_cmd.ready := False
 
-    when(sm.keyAddition_cmd.valid){
-      when(cntRound === 0){
+    when(sm.keyAddition_cmd){
+      when((cntRound === 0 && io.cmd.enc) || (cntRound === nbrRound && !io.cmd.enc) ){
         for(i <- 0 until dataState.length){
           dataState(i) := blockByte(i) ^ keyByte(i)
         }
@@ -223,14 +219,12 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
           dataState(i) := dataState(i) ^ keyByte(i)
         }
       }
-
-      sm.keyAddition_cmd.ready := True
     }
   }
 
 
   /**
-    * Byte substitution
+    * Byte substitution (16 clock)
     * 16 identical SBOX
     * newState(i) = SBox(currentState(i))
     */
@@ -255,13 +249,11 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Shift row
+    * Shift row (1 clock)
     * newState(i) = ShiftRow(currentState(i))
     */
   val shiftRow = new Area{
-    sm.shiftRow_cmd.ready := False
-
-    when(sm.shiftRow_cmd.valid) {
+    when(sm.shiftRow_cmd) {
       when(io.cmd.enc){
         for ((src, dst) <- AESCoreSpec.shiftRowIndex.zipWithIndex){
           dataState(dst) := dataState(src)
@@ -271,13 +263,12 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
           dataState(dst) := dataState(src)
         }
       }
-      sm.shiftRow_cmd.ready := True
     }
   }
 
 
   /**
-    * Mix Column
+    * Mix Column (4 clock)
     *
     * newState(i) = MixColumn(currentState(i))
     *
@@ -308,10 +299,10 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
         dataState(2 + cntColumn) := mult_01(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_02(dataState(2 + cntColumn)) ^ mult_03(dataState(3 + cntColumn))
         dataState(3 + cntColumn) := mult_03(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_01(dataState(2 + cntColumn)) ^ mult_02(dataState(3 + cntColumn))
       }otherwise{
-        dataState(0 + cntColumn) := dataState(0 + cntColumn) ^ dataState(1 + cntColumn) ^ dataState(2 + cntColumn) ^ dataState(3 + cntColumn)
-        dataState(1 + cntColumn) := dataState(0 + cntColumn) ^ dataState(1 + cntColumn) ^ dataState(2 + cntColumn) ^ dataState(3 + cntColumn)
-        dataState(2 + cntColumn) := dataState(0 + cntColumn) ^ dataState(1 + cntColumn) ^ dataState(2 + cntColumn) ^ dataState(3 + cntColumn)
-        dataState(3 + cntColumn) := dataState(0 + cntColumn) ^ dataState(1 + cntColumn) ^ dataState(2 + cntColumn) ^ dataState(3 + cntColumn)
+        dataState(0 + cntColumn) := mult_0E(dataState(0 + cntColumn)) ^ mult_0B(dataState(1 + cntColumn)) ^ mult_0D(dataState(2 + cntColumn)) ^ mult_09(dataState(3 + cntColumn))
+        dataState(1 + cntColumn) := mult_09(dataState(0 + cntColumn)) ^ mult_0E(dataState(1 + cntColumn)) ^ mult_0B(dataState(2 + cntColumn)) ^ mult_0D(dataState(3 + cntColumn))
+        dataState(2 + cntColumn) := mult_0D(dataState(0 + cntColumn)) ^ mult_09(dataState(1 + cntColumn)) ^ mult_0E(dataState(2 + cntColumn)) ^ mult_0B(dataState(3 + cntColumn))
+        dataState(3 + cntColumn) := mult_0B(dataState(0 + cntColumn)) ^ mult_0D(dataState(1 + cntColumn)) ^ mult_09(dataState(2 + cntColumn)) ^ mult_0E(dataState(3 + cntColumn))
       }
 
       cntColumn := cntColumn + 4
@@ -320,10 +311,46 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       cntColumn := 0
     }
 
-    def mult_03(din: Bits): Bits = (din(7) ^ din(6)) ## (din(5) ^ din(6)) ## (din(5) ^ din(4)) ## (din(3) ^ din(4) ^ din(7)) ## (din(2) ^ din(3) ^ din(7))  ## (din(2) ^ din(1)) ## (din(1) ^ din(7) ^ din(0)) ## (din(7) ^ din(0))
+    def mult_03(din: Bits): Bits = (din(7) ^ din(6))  ##  (din(5) ^ din(6)) ##  (din(5) ^ din(4)) ## (din(3) ^ din(4) ^ din(7)) ##
+                                   (din(2) ^ din(3) ^ din(7))  ## (din(2) ^ din(1)) ## (din(1) ^ din(7) ^ din(0)) ## (din(7) ^ din(0))
     def mult_02(din: Bits): Bits = din(6) ## din(5) ## din(4) ## (din(3) ^ din(7)) ## (din(2) ^ din(7)) ## din(1) ## (din(0) ^ din(7)) ## din(7)
     def mult_01(din: Bits): Bits = din
 
+    def mult_0E(din: Bits): Bits = (din(4) ^ din(5) ^ din(6)) ##
+                                   (din(3) ^ din(4) ^ din(5) ^ din(7)) ##
+                                   (din(2) ^ din(3) ^ din(4) ^ din(6)) ##
+                                   (din(1) ^ din(2) ^ din(3) ^ din(5)) ##
+                                   (din(0) ^ din(1) ^ din(2) ^ din(5) ^ din(6)) ##
+                                   (din(0) ^ din(1) ^ din(6)) ##
+                                   (din(0) ^ din(5)) ##
+                                   (din(5) ^ din(6) ^ din(7))
+
+    def mult_09(din: Bits): Bits = (din(4) ^ din(7)) ##
+                                   (din(3) ^ din(6) ^ din(7)) ##
+                                   (din(2) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(1) ^ din(4) ^ din(5) ^ din(6)) ##
+                                   (din(0) ^ din(3) ^ din(5) ^ din(7)) ##
+                                   (din(2) ^ din(6) ^ din(7)) ##
+                                   (din(1) ^ din(5) ^ din(6)) ##
+                                   (din(0) ^ din(5))
+
+    def mult_0D(din: Bits): Bits = (din(4) ^ din(5) ^ din(7)) ##
+                                   (din(3) ^ din(4) ^ din(6) ^ din(7)) ##
+                                   (din(2) ^ din(3) ^ din(5) ^ din(6)) ##
+                                   (din(1) ^ din(2) ^ din(4) ^ din(5) ^ din(7)) ##
+                                   (din(0) ^ din(1) ^ din(3) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(0) ^ din(2) ^ din(6)) ##
+                                   (din(1) ^ din(5) ^ din(7)) ##
+                                   (din(0) ^ din(5) ^ din(6))
+
+    def mult_0B(din: Bits): Bits = (din(4) ^ din(6) ^ din(7)) ##
+                                   (din(3) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(2) ^ din(4) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(1) ^ din(3) ^ din(4) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(0) ^ din(2) ^ din(3) ^ din(5)) ##
+                                   (din(1) ^ din(2) ^ din(6) ^ din(7)) ##
+                                   (din(0) ^ din(1) ^ din(5) ^ din(6) ^ din(7)) ##
+                                   (din(0) ^ din(5) ^ din(7))
   }
 }
 
