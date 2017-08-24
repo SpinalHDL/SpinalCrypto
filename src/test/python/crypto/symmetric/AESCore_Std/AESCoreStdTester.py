@@ -89,18 +89,22 @@ def testAESCore128_Std(dut):
     helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
 
 
-    # Vector test ...
-    key  = 0x00000000000000000000000000000000
-    data = 0x0000000000000000
-    data = 0x3243f6a8885a308d313198a2e0370734
-    key  = 0x2B7E151628AED2A6ABF7158809CF4F3C
-    #data = 0xC0B7A8D05F3A829C
+    # Vector test (Encryption)
 
+    # Vector 0
+    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
+    key    = 0x2B7E151628AED2A6ABF7158809CF4F3C
+    cipher = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
+
+    # Vector 1
+    #plain  = 0x11111111AAAAAAAA55555555DDDDDDDD# encrypt vector
+    #key    = 0x44444444444444444444444444444444
+    #cipher = 0x614afa11507ac929b68138d8b896aefb # decrypt vector
 
     # Encrpytion
     helperAES.io.cmd.valid          <= 1
     helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= data
+    helperAES.io.cmd.payload.block  <= plain
     helperAES.io.cmd.payload.enc    <= 1  # do an encryption
 
 
@@ -109,9 +113,34 @@ def testAESCore128_Std(dut):
 
     helperAES.io.cmd.valid <= 0
 
-    rtlEncryptedBlock = int(helperAES.io.rsp.event_valid.data.block)
 
-    print("RTL encrypted", hex(rtlEncryptedBlock))
+    #data = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
+
+    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Cipher", hex(rtlCipherBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
+    # DECYPTION
+    helperAES.io.cmd.valid          <= 1
+    helperAES.io.cmd.payload.key    <= key
+    helperAES.io.cmd.payload.block  <= cipher
+    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
+
+
+    # Wait the end of the process and read the result
+    yield helperAES.io.rsp.event_valid.wait()
+
+    helperAES.io.cmd.valid <= 0
+
+
+    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Plain", hex(rtlPlainBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
 
 
     yield Timer(1000)

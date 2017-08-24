@@ -86,20 +86,27 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   val nbrRound   = AESCoreSpec.nbrRound(keyWidth)
 
   /* Key scheduling */
-  val keySchedule = new KeyScheduleCore128_Std()
-  keySchedule.io.init.valid   := False
-  keySchedule.io.update.valid := False
-  keySchedule.io.round        := (cntRound + 1).resized
-  keySchedule.io.init.key     := io.cmd.key
+  val keySchedule = keyWidth.value match {
+    case 128  => new KeyScheduleCore128_Std()
+    case 192  => new KeyScheduleCore192_Std()
+    case 256  => new KeyScheduleCore256_Std()
+  }
+
+  val keyValid  = RegInit(False) clearWhen(keySchedule.io.cmd.ready)
+  val keyMode   = RegInit(KeyScheduleCmdMode.INIT)
+  keySchedule.io.cmd.valid   := keyValid
+  keySchedule.io.cmd.round   := (cntRound + 1).resized
+  keySchedule.io.cmd.key     := io.cmd.key
+  keySchedule.io.cmd.mode    := keyMode
 
   /* Output default value */
   val smDone    = False
   io.cmd.ready := RegNext(smDone) init(False)
   io.rsp.valid := io.cmd.ready
-  io.rsp.block := dataState.asBits
+  io.rsp.block := dataState.reverse.asBits
 
   val blockByte = io.cmd.block.subdivideIn(8 bits).reverse
-  val keyByte   = keySchedule.io.rsp.key_i.subdivideIn(8 bits).reverse
+  val keyByte   = keySchedule.io.key_i.subdivideIn(8 bits).reverse
 
 
   /**
@@ -119,11 +126,15 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-        when(io.cmd.valid && !io.cmd.ready){
-          cntRound := io.cmd.enc ? U(0) | U(15)
-          keySchedule.io.init.valid := True
+
+        when(io.cmd.valid && !io.cmd.ready && !keyValid){
+          cntRound := io.cmd.enc ? U(0) | U(AESCoreSpec.nbrRound(keyWidth) )
+          keyValid := True
+          keyMode  := KeyScheduleCmdMode.INIT
         }
-        when(keySchedule.io.init.ready){
+
+        when(keySchedule.io.cmd.ready){
+          keyValid := False
           goto(sKeyAdd)
         }
       }
@@ -131,42 +142,52 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     val sKeyAdd: State = new State{
       whenIsActive{
-    //    when(keySchedule.io.rsp.valid){
+        when(!keyValid) {
           keyAddition_cmd := True
-    //    }
 
-          keySchedule.io.update.valid := True
-          when(io.cmd.enc){
-            when(cntRound === nbrRound){
+          when(io.cmd.enc) {
+
+            when(cntRound =/= 0x0A){
+              keyValid := True
+              keyMode  := KeyScheduleCmdMode.NEXT
+            }
+
+            when(cntRound === nbrRound) {
               smDone := True
-
               goto(sIdle)
-            }otherwise {
+            } otherwise {
               goto(sByteSub)
             }
-          }otherwise{
-            when(cntRound === nbrRound){
+          } otherwise {
+            cntRound := cntRound - 1
+
+            when(cntRound =/= 0x00){
+              keyValid := True
+              keyMode  := KeyScheduleCmdMode.NEXT
+            }
+
+            when(cntRound === nbrRound) {
               goto(sShiftRow)
-            }.elsewhen(cntRound === 0){
-              io.cmd.ready := True
+            }.elsewhen(cntRound === 0) {
+              smDone := True
               goto(sIdle)
-            }otherwise{
+            } otherwise {
               goto(sMixColumn)
             }
           }
-
+        }
       }
     }
 
     val sByteSub: State = new State{
       whenIsActive{
         byteSub_cmd.valid := True
+
         when(byteSub_cmd.ready){
           when(io.cmd.enc){
             cntRound := cntRound + 1
             goto(sShiftRow)
           }otherwise{
-            cntRound := cntRound - 1
             goto(sKeyAdd)
           }
         }
@@ -177,6 +198,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       whenIsActive{
         shiftRow_cmd := True
           when(io.cmd.enc){
+
             when(cntRound === nbrRound){
               goto(sKeyAdd)
             }otherwise{
@@ -191,6 +213,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     val sMixColumn: State = new State{
       whenIsActive{
         mixCol_cmd.valid := True
+
         when(mixCol_cmd.ready){
           when(io.cmd.enc){
             goto(sKeyAdd)
@@ -210,7 +233,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   val keyAddition = new Area{
 
     when(sm.keyAddition_cmd){
-      when((cntRound === 0 && io.cmd.enc) || (cntRound === nbrRound && !io.cmd.enc) ){
+      when((cntRound === 0 && io.cmd.enc) || (cntRound === (nbrRound) && !io.cmd.enc) ){
         for(i <- 0 until dataState.length){
           dataState(i) := blockByte(i) ^ keyByte(i)
         }
@@ -241,7 +264,6 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       }otherwise{
         dataState(cntByte) := sBoxMemInv(dataState(cntByte).asUInt)
       }
-
     }.otherwise{
       cntByte.clear()
     }

@@ -9,100 +9,43 @@ import spinal.lib._
   *
   * @param storeAllSubKey : used to store all the key during the decryption in order to speed up to processing time
   */
-case class KeyScheduleGeneric_Std(val storeAllSubKey: Boolean = false)
+case class KeyScheduleGeneric_Std(val keyWidth: BitCount,
+                                  val storeAllSubKey: Boolean = false)
 
-case class KeyScheduleRsp_Std() extends Bundle{
-  val key_i = Bits(AESCoreSpec.blockWidth)
-}
 
 case class KeyScheduleInit_Std(keyWidth: BitCount) extends Bundle{
   val key = Bits(keyWidth)
 }
 
+object KeyScheduleCmdMode extends SpinalEnum{
+  val INIT, NEXT = newElement()
+}
+
+case class KeyScheduleCmd(keyWidth: BitCount) extends Bundle{
+  val mode  = KeyScheduleCmdMode()
+  val round = UInt(6 bits)
+  val key   = Bits(keyWidth)
+}
+
 case class KeyScheduleIO_Std(keyWidth: BitCount) extends Bundle{
 
-  val init     = slave(Stream(KeyScheduleInit_Std(keyWidth)))
+  val cmd    = slave(Stream(KeyScheduleCmd(keyWidth)))
 
-  val update   = slave(Stream(NoData))
-  val round    = in UInt(6 bits)
-
-  val rsp      = out(Flow(KeyScheduleRsp_Std()))
+  val key_i  = out Bits(keyWidth)
 }
 
 
 // Maybe an option to store the key computed....
-class KeyScheduleCore192_Std() extends Component{
 
-  val io = KeyScheduleIO_Std(129 bits)
+abstract class KeyScheduleCore_Std(g: KeyScheduleGeneric_Std) extends Component{
 
+  val io = KeyScheduleIO_Std(g.keyWidth)
 
-}
+  val cntRound = Reg(UInt(log2Up(AESCoreSpec.nbrRound(g.keyWidth)) + 2 bits))
 
-
-class KeyScheduleCore256_Std() extends Component{}
-
-class KeyScheduleCore128_Std(g: KeyScheduleGeneric_Std = KeyScheduleGeneric_Std()) extends Component{
-
-  val io = KeyScheduleIO_Std(128 bits)
-
-  val cntRound = Reg(UInt(log2Up(10) bits))
-
-  // TODO maybe used the SBox of the core ....
-  val sBoxMem = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))
   val rconMem = Mem(Bits(8 bits), AESCoreSpec.rcon.map(B(_, 8 bits)))
+  val sBoxMem = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))  // TODO maybe used the SBox of the core
 
-  /* Create a memory to store all keys */
-  var keyMem : Mem[Bits] = null
-  if(g.storeAllSubKey){
-    keyMem = Mem(Bits(128 bits), 10)
-  }
-
-
-  val stateKey     = Reg(Vec(Bits(32 bits), 4))
-  val stateKey_tmp = Vec(Bits(32 bits), 4)
-  val rspValid     = RegInit(False) setWhen(io.update.valid) clearWhen(!io.update.valid)
-  val autoUpdate   = RegInit(False)
-
-
-  io.update.ready := False
-  io.init.ready   := False
-  io.rsp.valid    := rspValid
-  io.rsp.key_i    := stateKey(0) ## stateKey(1) ## stateKey(2) ## stateKey(3)//Cat(stateKey)//stateKey.asBits // wx(3) ## wx(2) ## wx(1) ## wx(0)
-
-
-  val keyWord = io.init.key.subdivideIn(32 bits).reverse
-
-  /* Initialize the key state */
-  when(io.init.valid){
-    for(i <- 0 until stateKey.length){
-      stateKey(i) := keyWord(i)
-    }
-    io.init.ready := True
-    cntRound      := 1
-  }
-
-  /* Compute the next state of the key */
-  stateKey_tmp(0) := stateKey(0)     ^ gFunc(rconMem(io.round), stateKey(3))
-  stateKey_tmp(1) := stateKey_tmp(0) ^ stateKey(1)
-  stateKey_tmp(2) := stateKey_tmp(1) ^ stateKey(2)
-  stateKey_tmp(3) := stateKey_tmp(2) ^ stateKey(3)
-
-  /* Update the current key */
-  when(io.update.valid || autoUpdate){
-    stateKey := stateKey_tmp
-    cntRound := cntRound + 1
-
-    when(cntRound === io.round){
-      io.update.ready := True
-      autoUpdate := False
-    }.elsewhen (!autoUpdate){
-      autoUpdate := True
-      cntRound   := 1
-      for(i <- 0 until stateKey.length){
-        stateKey(i) := keyWord(i)
-      }
-    }
-  }
 
   def gFunc(rc: Bits, word: Bits): Bits = {
     val result = Bits(32 bits)
@@ -114,4 +57,85 @@ class KeyScheduleCore128_Std(g: KeyScheduleGeneric_Std = KeyScheduleGeneric_Std(
 
     return result
   }
+}
+
+class KeyScheduleCore256_Std(g: KeyScheduleGeneric_Std = KeyScheduleGeneric_Std(256 bits)) extends KeyScheduleCore_Std(g){}
+
+class KeyScheduleCore192_Std(g: KeyScheduleGeneric_Std = KeyScheduleGeneric_Std(192 bits)) extends KeyScheduleCore_Std(g){}
+
+
+class KeyScheduleCore128_Std(g: KeyScheduleGeneric_Std = KeyScheduleGeneric_Std(128 bits)) extends KeyScheduleCore_Std(g){
+
+  /* Create a memory to store all keys */
+  //var keyMem : Mem[Bits] = null
+  //if(g.storeAllSubKey){
+  //  keyMem = Mem(Bits(128 bits), 10)
+  //}
+
+  val stateKey     = Reg(Vec(Bits(32 bits), 4))
+  val stateKey_tmp = Vec(Bits(32 bits), 4)
+  val autoUpdate   = RegInit(False)
+
+
+  val cmdready    = RegInit(False)
+  io.cmd.ready    := cmdready
+  io.key_i        := stateKey.reverse.asBits()
+
+  when(cmdready) {cmdready := False}
+
+  val keyWord = io.cmd.key.subdivideIn(32 bits).reverse
+
+  /* Initialize the key state */
+  when(io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.INIT && !cmdready){
+    for(i <- 0 until stateKey.length){
+      stateKey(i) := keyWord(i)
+    }
+    when(io.cmd.round === 0x0B){
+      autoUpdate := True
+      cntRound := 1
+    }otherwise {
+      cmdready   := True
+      cntRound   := 1
+    }
+  }
+
+  /* Compute the next state of the key */
+  stateKey_tmp(0) := stateKey(0)     ^ gFunc(rconMem(cntRound), stateKey(3))
+  stateKey_tmp(1) := stateKey_tmp(0) ^ stateKey(1)
+  stateKey_tmp(2) := stateKey_tmp(1) ^ stateKey(2)
+  stateKey_tmp(3) := stateKey_tmp(2) ^ stateKey(3)
+
+  /* Update the current key */
+  when((io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.NEXT && !cmdready) && !autoUpdate && !cmdready){
+
+    when(cntRound === io.cmd.round){
+      cmdready   := True
+      autoUpdate := False
+
+      stateKey := stateKey_tmp
+      cntRound := cntRound + 1
+
+    }.elsewhen (!autoUpdate){
+      when(io.cmd.round === 1){
+        cmdready := True
+      }otherwise{
+        autoUpdate := True
+      }
+      cntRound   := 1
+      for(i <- 0 until stateKey.length){
+        stateKey(i) := keyWord(i)
+      }
+    }
+  }
+
+  when(autoUpdate){
+    stateKey := stateKey_tmp
+    cntRound := cntRound + 1
+
+    when(cntRound === io.cmd.round-1){
+      cmdready   := True
+      autoUpdate := False
+    }
+  }
+
 }

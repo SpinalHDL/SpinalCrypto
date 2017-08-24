@@ -7,6 +7,7 @@ This repository contains cryptographic Spinal IPs.
 
 ### Symmetric
 
+- AESCore_Std (128/192/256-bit)
 - DESCore_Std
 - TripleDESCore_Std
 
@@ -20,7 +21,3 @@ This repository contains cryptographic Spinal IPs.
 ## Documentation
 
 Documentation is available on the [wiki](https://github.com/SpinalHDL/SpinalCrypto/wiki) page. 
-
-## Getting started
-
-Todo
