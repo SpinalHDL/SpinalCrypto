@@ -252,7 +252,7 @@ class DESCore_Std() extends Component{
   /*
    * Update the output
    */
-  val rspValid  = RegNext(lastRound)
+  val rspValid  = RegNext(lastRound) init(False)
   io.rsp.block := finalBlockPermutation.perm
   io.rsp.valid := rspValid
 
