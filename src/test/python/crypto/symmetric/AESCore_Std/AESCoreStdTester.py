@@ -17,19 +17,19 @@ from crypto.symmetric.pyaes.aes import *
 #
 class AESCoreStdHelper:
 
-    def __init__(self,dut):
+    def __init__(self,dut, prefix):
 
         # IO definition -----------------------------------
-        self.io = AESCoreStdHelper.IO(dut)
+        self.io = AESCoreStdHelper.IO(dut, prefix)
 
     #==========================================================================
     # Rename IO
     #==========================================================================
     class IO:
 
-        def __init__ (self, dut):
-            self.cmd    = Stream(dut, "io_cmd")
-            self.rsp    = Flow(dut, "io_rsp")
+        def __init__ (self, dut, prefix):
+            self.cmd    = Stream(dut, prefix + "_cmd")
+            self.rsp    = Flow(dut, prefix +  "_rsp")
             self.clk    = dut.clk
             self.resetn = dut.resetn
 
@@ -45,7 +45,7 @@ class AESCoreStdHelper:
 ###############################################################################
 # Test AES Core
 #
-@cocotb.test()
+#@cocotb.test()
 def testAESCore128_Std(dut):
     print("Test pyaes")
 
@@ -71,11 +71,11 @@ def testAESCore128_Std(dut):
 
 
     #########
-    dut.log.info("Cocotb test AES Core")
+    dut.log.info("Cocotb test AES Core 128")
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
 
-    helperAES    = AESCoreStdHelper(dut)
+    helperAES    = AESCoreStdHelper(dut, "io_aes_128")
     clockDomain  = ClockDomain(helperAES.io.clk, 200, helperAES.io.resetn , RESET_ACTIVE_LEVEL.LOW)
 
     # Start clock
@@ -100,6 +100,86 @@ def testAESCore128_Std(dut):
     #plain  = 0x11111111AAAAAAAA55555555DDDDDDDD# encrypt vector
     #key    = 0x44444444444444444444444444444444
     #cipher = 0x614afa11507ac929b68138d8b896aefb # decrypt vector
+
+    # Encrpytion
+    helperAES.io.cmd.valid          <= 1
+    helperAES.io.cmd.payload.key    <= key
+    helperAES.io.cmd.payload.block  <= plain
+    helperAES.io.cmd.payload.enc    <= 1  # do an encryption
+
+
+    # Wait the end of the process and read the result
+    yield helperAES.io.rsp.event_valid.wait()
+
+    helperAES.io.cmd.valid <= 0
+
+
+    #data = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
+
+    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Cipher", hex(rtlCipherBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
+    # DECYPTION
+    helperAES.io.cmd.valid          <= 1
+    helperAES.io.cmd.payload.key    <= key
+    helperAES.io.cmd.payload.block  <= cipher
+    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
+
+
+    # Wait the end of the process and read the result
+    yield helperAES.io.rsp.event_valid.wait()
+
+    helperAES.io.cmd.valid <= 0
+
+
+    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Plain", hex(rtlPlainBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
+
+
+    yield Timer(1000)
+
+
+
+###############################################################################
+# Test AES Core
+#
+@cocotb.test()
+def testAESCore256_Std(dut):
+
+    #########
+    dut.log.info("Cocotb test AES Core 256")
+    from cocotblib.misc import cocotbXHack
+    cocotbXHack()
+
+    helperAES    = AESCoreStdHelper(dut, "io_aes_256")
+    clockDomain  = ClockDomain(helperAES.io.clk, 200, helperAES.io.resetn , RESET_ACTIVE_LEVEL.LOW)
+
+    # Start clock
+    cocotb.fork(clockDomain.start())
+
+    # Init IO and wait the end of the reset
+    helperAES.io.init()
+    yield clockDomain.event_endReset.wait()
+
+    # start monitoring the Valid signal
+    helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
+
+
+    # Vector test (Encryption)
+
+    # Vector 0
+    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
+    key    = 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+    cipher = 0x9a198830ff9a4e39ec1501547d4a6b1bL # decrypt vector
+
+
 
     # Encrpytion
     helperAES.io.cmd.valid          <= 1

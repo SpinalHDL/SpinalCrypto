@@ -147,7 +147,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
           when(io.cmd.enc) {
 
-            when(cntRound =/= 0x0A){
+            when(cntRound =/= AESCoreSpec.nbrRound(keyWidth)){
               keyValid := True
               keyMode  := KeyScheduleCmdMode.NEXT
             }

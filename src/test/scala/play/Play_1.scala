@@ -104,11 +104,19 @@ object PlayWithHMACCore_Std_MD5Core_Std{
 object PlayWithAESCore_Std{
   class AESCoreStdTester() extends Component{
 
-    val aes  = new AESCore_Std(128 bits)
+    val aes128  = new AESCore_Std(128 bits)
+    //val aes192  = new AESCore_Std(192 bits)
+    val aes256  = new AESCore_Std(256 bits)
 
-    val io = slave(SymmetricCryptoBlockIO(aes.gIO))
+    val io = new Bundle{
+      val aes_128 = slave(SymmetricCryptoBlockIO(aes128.gIO))
+      //val aes_192 = slave(SymmetricCryptoBlockIO(aes192.gIO))
+      val aes_256 = slave(SymmetricCryptoBlockIO(aes256.gIO))
+    }
 
-    aes.io <> io
+    aes128.io <> io.aes_128
+    //aes192.io <> io.aes_192
+    aes256.io <> io.aes_256
   }
 
   def main(args: Array[String]): Unit = {
