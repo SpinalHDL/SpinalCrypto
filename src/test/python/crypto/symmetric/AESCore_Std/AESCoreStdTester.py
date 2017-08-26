@@ -45,7 +45,7 @@ class AESCoreStdHelper:
 ###############################################################################
 # Test AES Core 128
 #
-#@cocotb.test()
+@cocotb.test()
 def testAESCore128_Std(dut):
     print("Test pyaes")
 
@@ -177,8 +177,6 @@ def testAESCore192_Std(dut):
     key    = 0x000102030405060708090a0b0c0d0e0f1011121314151617
     cipher = 0xbc3aaab5d97baa7b325d7b8f69cd7ca8 # decrypt vector
 
-
-
     # Encrpytion
     helperAES.io.cmd.valid          <= 1
     helperAES.io.cmd.payload.key    <= key
@@ -228,7 +226,7 @@ def testAESCore192_Std(dut):
 ###############################################################################
 # Test AES Core 256
 #
-#@cocotb.test()
+@cocotb.test()
 def testAESCore256_Std(dut):
 
     #########

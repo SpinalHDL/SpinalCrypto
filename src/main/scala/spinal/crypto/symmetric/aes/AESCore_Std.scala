@@ -30,7 +30,7 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBloc
   *
   * Advanced Encryption Standard (AES)
   *
-  * This design works in encrypt or decrypt with 128, 192 and 256 key width
+  * This design works in encrypt or decrypt with 128, 192 and 256-bit key width
   *
   *****************************************************************************
   *
@@ -73,9 +73,11 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   assert(List(128, 192, 256).contains(keyWidth.value), "AES support only 128/192/256 keys width")
 
 
-  val gIO  = SymmetricCryptoBlockGeneric(keyWidth   = keyWidth,
-    blockWidth  = AESCoreSpec.blockWidth,
-    useEncDec   = true)
+  val gIO  = SymmetricCryptoBlockGeneric(
+    keyWidth   = keyWidth,
+    blockWidth = AESCoreSpec.blockWidth,
+    useEncDec  = true
+  )
 
   val io = slave(new SymmetricCryptoBlockIO(gIO))
 
@@ -86,11 +88,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   val nbrRound   = AESCoreSpec.nbrRound(keyWidth)
 
   /* Key scheduling */
-  val keySchedule = keyWidth.value match {
-    case 128  => new KeyScheduleCore128_Std()
-    case 192  => new KeyScheduleCore192_Std()
-    case 256  => new KeyScheduleCore256_Std()
-  }
+  val keySchedule = new KeyScheduleCore_Std(keyWidth)
 
   val keyValid  = RegInit(False) clearWhen(keySchedule.io.cmd.ready)
   val keyMode   = RegInit(KeyScheduleCmdMode.INIT)

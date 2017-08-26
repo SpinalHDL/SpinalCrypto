@@ -58,7 +58,7 @@ case class KeyScheduleIO_Std(keyWidth: BitCount) extends Bundle{
   *
   * Key scheduling pattern http://www.samiam.org/key-schedule.html
   */
-abstract class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
+class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
   val io = KeyScheduleIO_Std(keyWidth)
 
@@ -83,127 +83,34 @@ abstract class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
   val cmdready    = RegInit(False)
   io.cmd.ready    := cmdready
 
-
   // generate a pulse on the cmd.ready
   when(cmdready){ cmdready := False }
 
-  /* G function */
-  def gFunc(rc: Bits, word: Bits): Bits = {
-    val result = Bits(32 bits)
 
-    result(31 downto 24) := sBoxMem(word(23 downto 16).asUInt) ^ rc
-    result(23 downto 16) := sBoxMem(word(15 downto  8).asUInt)
-    result(15 downto  8) := sBoxMem(word( 7 downto  0).asUInt)
-    result( 7 downto  0) := sBoxMem(word(31 downto 24).asUInt)
-
-    return result
-  }
-
-  def hFunc(word: Bits): Bits = {
-    val result = Bits(32 bits)
-
-    result( 7 downto  0) := sBoxMem(word( 7 downto  0).asUInt)
-    result(15 downto  8) := sBoxMem(word(15 downto  8).asUInt)
-    result(23 downto 16) := sBoxMem(word(23 downto 16).asUInt)
-    result(31 downto 24) := sBoxMem(word(31 downto 24).asUInt)
-
-    return result
-  }
-}
-
-
-/**
-  * Key Schedule for a key of 128-bit
-  */
-class KeyScheduleCore128_Std() extends KeyScheduleCore_Std(128 bits){
-
-  io.key_i        := stateKey.reverse.asBits()
-
-  /** Init command  */
-  val initKey = new Area{
-    when(io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.INIT && !cmdready && !autoUpdate ){
-
-      // initialize the statekey
-      for(i <- 0 until stateKey.length)  stateKey(i) := keyWord(i)
-
-      when(io.cmd.round === 0xB){ // init cmd with round == 0xB => decrypt mode
-        autoUpdate := True
-        cntRound   := 1
-      }otherwise {               // encrypt mode
-        cmdready   := True
-        cntRound   := 1
-      }
-    }
-  }
-
-  /** Compute the next state of the key */
-  val newKey = new Area{
-
-    stateKey_tmp(0) := stateKey(0)     ^ gFunc(rconMem(cntRound), stateKey(3))
-    stateKey_tmp(1) := stateKey_tmp(0) ^ stateKey(1)
-    stateKey_tmp(2) := stateKey_tmp(1) ^ stateKey(2)
-    stateKey_tmp(3) := stateKey_tmp(2) ^ stateKey(3)
-  }
-
-
-  /** Update Cmd + autoUpdate */
-  val updateKey = new Area{
-
-    // Update cmd
-    when((io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.NEXT && !cmdready) && !autoUpdate && !cmdready){
-
-      when(cntRound === io.cmd.round){ //  encrypt mode => update the next key
-        cmdready   := True
-        autoUpdate := False
-
-        stateKey := stateKey_tmp
-        cntRound := cntRound + 1
-
-      }otherwise{  // decrypt mode => initialize the stateKey and set autoUpdate
-
-        when(io.cmd.round === 1){
-          cmdready   := True
-        }otherwise{
-          autoUpdate := True
-        }
-
-        cntRound := 1
-        for(i <- 0 until stateKey.length) stateKey(i) := keyWord(i)
-
-      }
-    }
-
-    // update automatically the key until cntRound == io.cmd.round
-    when(autoUpdate){
-      stateKey := stateKey_tmp
-      cntRound := cntRound + 1
-
-      when(cntRound === io.cmd.round-1){
-        cmdready   := True
-        autoUpdate := False
-      }
-    }
-  }
-}
-
-
-
-/**
-  * Key Schedule for a key of 192-bit
-  */
-class KeyScheduleCore192_Std() extends KeyScheduleCore_Std(192 bits){
-
+  // used by 192-bit and 256-bit key width
   val cntStage = Reg(UInt(4 bits))
+
+  // used by the 192-bit key
   val selKey   = Reg(UInt(2 bits))
 
 
-  io.key_i := selKey.mux(
-    0  -> stateKey.reverse.asBits()(191 downto 64),
-    1  -> stateKey.reverse.asBits()(63 downto   0) ## stateKey.reverse.asBits()(191 downto 128),
-    2  -> stateKey.reverse.asBits()(127 downto  0),
-    3  -> B(0, 128 bits)
-  )
-
+  /** Drive key_i */
+  keyWidth.value match{
+    case 128 =>
+      io.key_i := stateKey.reverse.asBits()
+    case 192 =>
+      io.key_i := selKey.mux(
+        0  -> stateKey.reverse.asBits()(191 downto 64),
+        1  -> stateKey.reverse.asBits()(63 downto   0) ## stateKey.reverse.asBits()(191 downto 128),
+        2  -> stateKey.reverse.asBits()(127 downto  0),
+        3  -> B(0, 128 bits)
+      )
+    case 256 =>
+      io.key_i := cntRound(0).mux(
+        False -> stateKey.reverse.asBits()(127 downto 0),
+        True  -> stateKey.reverse.asBits()(255 downto 128)
+      )
+  }
 
   /** Init command  */
   val initKey = new Area{
@@ -212,7 +119,7 @@ class KeyScheduleCore192_Std() extends KeyScheduleCore_Std(192 bits){
       // initialize the statekey
       for(i <- 0 until stateKey.length)  stateKey(i) := keyWord(i)
 
-      when(io.cmd.round === 0xD){ // init cmd with round == 0xB => decrypt mode
+      when(io.cmd.round === AESCoreSpec.nbrRound(keyWidth) + 1){ // init cmd with round == (nbrRound+1) => decrypt mode
         autoUpdate := True
         cntRound   := 1
       }otherwise {               // encrypt mode
@@ -225,26 +132,52 @@ class KeyScheduleCore192_Std() extends KeyScheduleCore_Std(192 bits){
     }
   }
 
+
   /** Compute the next state of the key */
   val newKey = new Area{
 
-    stateKey_tmp.foreach(_ := 0)
+    keyWidth.value match{
+      case 128 =>
+        stateKey_tmp(0) := stateKey(0)     ^ gFunc(rconMem(cntRound), stateKey(3))
+        stateKey_tmp(1) := stateKey_tmp(0) ^ stateKey(1)
+        stateKey_tmp(2) := stateKey_tmp(1) ^ stateKey(2)
+        stateKey_tmp(3) := stateKey_tmp(2) ^ stateKey(3)
 
-    when(selKey === 0){
-      stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey(5))
-      stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
-      stateKey_tmp(2) := stateKey(2) ^ stateKey_tmp(1)
-      stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
-    }.elsewhen(selKey === 1){
-      stateKey_tmp(4) := stateKey(3) ^ stateKey(4)
-      stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
-      stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey_tmp(5)).addTag(noCombinatorialLoopCheck)
-      stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
-    }.elsewhen(selKey === 2){
-      stateKey_tmp(2) := stateKey(2) ^ stateKey(1)
-      stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
-      stateKey_tmp(4) := stateKey(4) ^ stateKey_tmp(3)
-      stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
+      case 192 =>
+        // spinal doesn't do condition analyse for combinatorial loop => must add a tag to avoid error
+        stateKey_tmp.foreach(_ := 0)
+
+        when(selKey === 0){
+          stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey(5))
+          stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
+          stateKey_tmp(2) := stateKey(2) ^ stateKey_tmp(1)
+          stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
+        }.elsewhen(selKey === 1){
+          stateKey_tmp(4) := stateKey(3) ^ stateKey(4)
+          stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
+          stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey_tmp(5)).addTag(noCombinatorialLoopCheck)
+          stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
+        }.elsewhen(selKey === 2){
+          stateKey_tmp(2) := stateKey(2) ^ stateKey(1)
+          stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
+          stateKey_tmp(4) := stateKey(4) ^ stateKey_tmp(3)
+          stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
+        }
+
+      case 256 =>
+        stateKey_tmp.foreach(_ := 0)
+
+        when(cntRound(0) === True){
+          stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey(7))
+          stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
+          stateKey_tmp(2) := stateKey(2) ^ stateKey_tmp(1)
+          stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
+        }otherwise{
+          stateKey_tmp(4) := stateKey(4) ^ hFunc(stateKey(3))
+          stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
+          stateKey_tmp(6) := stateKey(6) ^ stateKey_tmp(5)
+          stateKey_tmp(7) := stateKey(7) ^ stateKey_tmp(6)
+        }
     }
   }
 
@@ -252,42 +185,17 @@ class KeyScheduleCore192_Std() extends KeyScheduleCore_Std(192 bits){
   /** Update Cmd + autoUpdate */
   val updateKey = new Area{
 
+    val storeKey = False
+
     // Update cmd
     when((io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.NEXT && !cmdready) && !autoUpdate && !cmdready){
 
       when(cntRound === io.cmd.round){ //  encrypt mode => update the next key
         cmdready   := True
         autoUpdate := False
-
-        switch(selKey){
-          is(0){
-            stateKey(0) := stateKey_tmp(0)
-            stateKey(1) := stateKey_tmp(1)
-            stateKey(2) := stateKey_tmp(2)
-            stateKey(3) := stateKey_tmp(3)
-            cntStage    := cntStage + 1
-          }
-          is(1){
-            stateKey(4) := stateKey_tmp(4)
-            stateKey(5) := stateKey_tmp(5)
-            stateKey(0) := stateKey_tmp(0)
-            stateKey(1) := stateKey_tmp(1)
-            cntStage    := cntStage + 1
-          }
-          is(2){
-            stateKey(2) := stateKey_tmp(2)
-            stateKey(3) := stateKey_tmp(3)
-            stateKey(4) := stateKey_tmp(4)
-            stateKey(5) := stateKey_tmp(5)
-          }
-        }
-
-        cntRound := cntRound + 1
-        selKey   := selKey + 1
-
-        when(selKey === 2){
-          selKey := 0
-        }
+        storeKey   := True
+        cntRound   := cntRound + 1
+        selKey     := selKey + 1
 
       }otherwise{  // decrypt mode => initialize the stateKey and set autoUpdate
 
@@ -296,171 +204,97 @@ class KeyScheduleCore192_Std() extends KeyScheduleCore_Std(192 bits){
         }otherwise{
           autoUpdate := True
         }
-
         cntRound := 1
         cntStage := 1
         selKey   := 0
         for(i <- 0 until stateKey.length) stateKey(i) := keyWord(i)
-
       }
     }
 
-    // update automatically the key until cntRound == io.cmd.round
+    /* update automatically the key until cntRound == io.cmd.round */
     when(autoUpdate){
-
-      switch(selKey){
-        is(0){
-          stateKey(0) := stateKey_tmp(0)
-          stateKey(1) := stateKey_tmp(1)
-          stateKey(2) := stateKey_tmp(2)
-          stateKey(3) := stateKey_tmp(3)
-          cntStage    := cntStage + 1
-        }
-        is(1){
-          stateKey(4) := stateKey_tmp(4)
-          stateKey(5) := stateKey_tmp(5)
-          stateKey(0) := stateKey_tmp(0)
-          stateKey(1) := stateKey_tmp(1)
-          cntStage    := cntStage + 1
-        }
-        is(2){
-          stateKey(2) := stateKey_tmp(2)
-          stateKey(3) := stateKey_tmp(3)
-          stateKey(4) := stateKey_tmp(4)
-          stateKey(5) := stateKey_tmp(5)
-        }
-      }
-
+      storeKey := True
       cntRound := cntRound + 1
       selKey   := selKey + 1
+
+      when(cntRound === io.cmd.round-1){
+        cmdready   := True
+        autoUpdate := False
+      }
+    }
+
+    /* Register the current computed key */
+    when(storeKey){
 
       when(selKey === 2){
         selKey := 0
       }
 
-      when(cntRound === io.cmd.round-1){
-        cmdready   := True
-        autoUpdate := False
+      keyWidth.value match{
+        case 128 =>
+          stateKey := stateKey_tmp
+        case 192 =>
+          switch(selKey){
+            is(0){
+              stateKey(0) := stateKey_tmp(0)
+              stateKey(1) := stateKey_tmp(1)
+              stateKey(2) := stateKey_tmp(2)
+              stateKey(3) := stateKey_tmp(3)
+              cntStage    := cntStage + 1
+            }
+            is(1){
+              stateKey(4) := stateKey_tmp(4)
+              stateKey(5) := stateKey_tmp(5)
+              stateKey(0) := stateKey_tmp(0)
+              stateKey(1) := stateKey_tmp(1)
+              cntStage    := cntStage + 1
+            }
+            is(2){
+              stateKey(2) := stateKey_tmp(2)
+              stateKey(3) := stateKey_tmp(3)
+              stateKey(4) := stateKey_tmp(4)
+              stateKey(5) := stateKey_tmp(5)
+            }
+          }
+        case 256 =>
+          when(cntRound(0) === True){
+            stateKey(0) := stateKey_tmp(0)
+            stateKey(1) := stateKey_tmp(1)
+            stateKey(2) := stateKey_tmp(2)
+            stateKey(3) := stateKey_tmp(3)
+          }otherwise{
+            stateKey(4) := stateKey_tmp(4)
+            stateKey(5) := stateKey_tmp(5)
+            stateKey(6) := stateKey_tmp(6)
+            stateKey(7) := stateKey_tmp(7)
+            cntStage := cntStage + 1
+          }
       }
     }
   }
 
-}
 
+  /** G function */
+  def gFunc(rc: Bits, word: Bits): Bits = {
+    val result = Bits(32 bits)
 
-/**
-  * Key Schedule for a key of 256-bit
-  */
-class KeyScheduleCore256_Std() extends KeyScheduleCore_Std(256 bits){
+    result(31 downto 24) := sBoxMem(word(23 downto 16).asUInt) ^ rc
+    result(23 downto 16) := sBoxMem(word(15 downto  8).asUInt)
+    result(15 downto  8) := sBoxMem(word( 7 downto  0).asUInt)
+    result( 7 downto  0) := sBoxMem(word(31 downto 24).asUInt)
 
-  val cntStage = Reg(UInt(4 bits))
-
-  io.key_i := cntRound(0).mux(
-    False -> stateKey.reverse.asBits()(127 downto 0),
-    True  -> stateKey.reverse.asBits()(255 downto 128)
-  )
-
-
-  /** Init command  */
-  val initKey = new Area{
-    when(io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.INIT && !cmdready && !autoUpdate){
-
-      // initialize the statekey
-      for(i <- 0 until stateKey.length)  stateKey(i) := keyWord(i)
-
-      when(io.cmd.round === 0xF){ // init cmd with round == 0xF => decrypt mode
-        autoUpdate := True
-        cntRound   := 1
-      }otherwise {               // encrypt mode
-        cmdready   := True
-        cntRound   := 1
-      }
-
-      cntStage := 1
-    }
+    return result
   }
 
-  /** Compute the next state of the key */
-  val newKey = new Area{
+  /** H function */
+  def hFunc(word: Bits): Bits = {
+    val result = Bits(32 bits)
 
-    stateKey_tmp.foreach(_ := 0)
+    result( 7 downto  0) := sBoxMem(word( 7 downto  0).asUInt)
+    result(15 downto  8) := sBoxMem(word(15 downto  8).asUInt)
+    result(23 downto 16) := sBoxMem(word(23 downto 16).asUInt)
+    result(31 downto 24) := sBoxMem(word(31 downto 24).asUInt)
 
-    when(cntRound(0) === True){
-      stateKey_tmp(0) := stateKey(0) ^ gFunc(rconMem(cntStage), stateKey(7))
-      stateKey_tmp(1) := stateKey(1) ^ stateKey_tmp(0)
-      stateKey_tmp(2) := stateKey(2) ^ stateKey_tmp(1)
-      stateKey_tmp(3) := stateKey(3) ^ stateKey_tmp(2)
-    }otherwise{
-      stateKey_tmp(4) := stateKey(4) ^ hFunc(stateKey(3))
-      stateKey_tmp(5) := stateKey(5) ^ stateKey_tmp(4)
-      stateKey_tmp(6) := stateKey(6) ^ stateKey_tmp(5)
-      stateKey_tmp(7) := stateKey(7) ^ stateKey_tmp(6)
-    }
-  }
-
-
-  /** Update Cmd + autoUpdate */
-  val updateKey = new Area{
-
-    // Update cmd
-    when((io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.NEXT && !cmdready) && !autoUpdate && !cmdready){
-
-      when(cntRound === io.cmd.round){ //  encrypt mode => update the next key
-        cmdready   := True
-        autoUpdate := False
-
-        when(cntRound(0) === True){
-          stateKey(0) := stateKey_tmp(0)
-          stateKey(1) := stateKey_tmp(1)
-          stateKey(2) := stateKey_tmp(2)
-          stateKey(3) := stateKey_tmp(3)
-        }otherwise{
-          stateKey(4) := stateKey_tmp(4)
-          stateKey(5) := stateKey_tmp(5)
-          stateKey(6) := stateKey_tmp(6)
-          stateKey(7) := stateKey_tmp(7)
-          cntStage := cntStage + 1
-        }
-
-        cntRound := cntRound + 1
-
-      }otherwise{  // decrypt mode => initialize the stateKey and set autoUpdate
-
-        when(io.cmd.round === 1){
-          cmdready   := True
-        }otherwise{
-          autoUpdate := True
-        }
-
-        cntRound := 1
-        cntStage :=  1
-        for(i <- 0 until stateKey.length) stateKey(i) := keyWord(i)
-
-      }
-    }
-
-    // update automatically the key until cntRound == io.cmd.round
-    when(autoUpdate){
-
-      when(cntRound(0) === True){
-        stateKey(0) := stateKey_tmp(0)
-        stateKey(1) := stateKey_tmp(1)
-        stateKey(2) := stateKey_tmp(2)
-        stateKey(3) := stateKey_tmp(3)
-      }otherwise{
-        stateKey(4) := stateKey_tmp(4)
-        stateKey(5) := stateKey_tmp(5)
-        stateKey(6) := stateKey_tmp(6)
-        stateKey(7) := stateKey_tmp(7)
-        cntStage := cntStage + 1
-      }
-
-      cntRound := cntRound + 1
-
-      when(cntRound === io.cmd.round-1){
-        cmdready   := True
-        autoUpdate := False
-      }
-    }
+    return result
   }
 }
