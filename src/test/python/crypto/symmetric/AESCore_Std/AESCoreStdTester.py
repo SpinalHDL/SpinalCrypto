@@ -43,7 +43,7 @@ class AESCoreStdHelper:
 
 
 ###############################################################################
-# Test AES Core
+# Test AES Core 128
 #
 #@cocotb.test()
 def testAESCore128_Std(dut):
@@ -145,12 +145,90 @@ def testAESCore128_Std(dut):
 
     yield Timer(1000)
 
+###############################################################################
+# Test AES Core 192
+#
+@cocotb.test()
+def testAESCore192_Std(dut):
+
+    #########
+    dut.log.info("Cocotb test AES Core 192")
+    from cocotblib.misc import cocotbXHack
+    cocotbXHack()
+
+    helperAES    = AESCoreStdHelper(dut, "io_aes_192")
+    clockDomain  = ClockDomain(helperAES.io.clk, 200, helperAES.io.resetn , RESET_ACTIVE_LEVEL.LOW)
+
+    # Start clock
+    cocotb.fork(clockDomain.start())
+
+    # Init IO and wait the end of the reset
+    helperAES.io.init()
+    yield clockDomain.event_endReset.wait()
+
+    # start monitoring the Valid signal
+    helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
+
+
+    # Vector test (Encryption)
+
+    # Vector 0
+    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
+    key    = 0x000102030405060708090a0b0c0d0e0f1011121314151617
+    cipher = 0xbc3aaab5d97baa7b325d7b8f69cd7ca8 # decrypt vector
+
+
+
+    # Encrpytion
+    helperAES.io.cmd.valid          <= 1
+    helperAES.io.cmd.payload.key    <= key
+    helperAES.io.cmd.payload.block  <= plain
+    helperAES.io.cmd.payload.enc    <= 1  # do an encryption
+
+
+    # Wait the end of the process and read the result
+    yield helperAES.io.rsp.event_valid.wait()
+
+    helperAES.io.cmd.valid <= 0
+
+
+
+
+    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Cipher", hex(rtlCipherBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
+    # DECYPTION
+    helperAES.io.cmd.valid          <= 1
+    helperAES.io.cmd.payload.key    <= key
+    helperAES.io.cmd.payload.block  <= cipher
+    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
+
+
+    # Wait the end of the process and read the result
+    yield helperAES.io.rsp.event_valid.wait()
+
+    helperAES.io.cmd.valid <= 0
+
+
+    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+
+    print("RTL Plain", hex(rtlPlainBlock))
+
+    yield RisingEdge(helperAES.io.clk)
+
+
+
+    yield Timer(1000)
+
 
 
 ###############################################################################
-# Test AES Core
+# Test AES Core 256
 #
-@cocotb.test()
+#@cocotb.test()
 def testAESCore256_Std(dut):
 
     #########
