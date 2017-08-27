@@ -1,5 +1,7 @@
 import binascii
 
+import random
+
 import cocotb
 from cocotb.triggers import Timer, Edge, RisingEdge
 from cocotblib.ClockDomain import ClockDomain, RESET_ACTIVE_LEVEL
@@ -40,6 +42,14 @@ class AESCoreStdHelper:
             self.cmd.payload.enc    <= 0
 
 
+###############################################################################
+# Generate random hex string
+#
+def randHexString(width):
+
+    hexdigits = "0123456789ABCDEF"
+    random_digits = "".join([ hexdigits[random.randint(0,0xF)] for _ in range(width) ])
+    return random_digits
 
 
 ###############################################################################
@@ -47,30 +57,7 @@ class AESCoreStdHelper:
 #
 @cocotb.test()
 def testAESCore128_Std(dut):
-    print("Test pyaes")
 
-    key = "This_key_for_demo_purposes_only!" # 256 bits
-
-    aes        = AESModeOfOperationECB(key)
-    plaintext  = "TextMustBe16Byte"
-    ciphertext = aes.encrypt(plaintext)
-
-    # 'L6\x95\x85\xe4\xd9\xf1\x8a\xfb\xe5\x94X\x80|\x19\xc3'
-    print(repr(ciphertext))
-    print("ciphertext", ciphertext)
-    print(binascii.hexlify(ciphertext))
-
-    # Since there is no state stored in this mode of operation, it
-    # is not necessary to create a new aes object for decryption.
-    #aes = pyaes.AESModeOfOperationECB(key)
-    decrypted = aes.decrypt(ciphertext)
-
-    # True
-    print("decrypted ",  decrypted)
-    print decrypted == plaintext
-
-
-    #########
     dut.log.info("Cocotb test AES Core 128")
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
@@ -89,61 +76,72 @@ def testAESCore128_Std(dut):
     helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
 
 
-    # Vector test (Encryption)
+    # Run patterns
+    for _ in range(0,4):
 
-    # Vector 0
-    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
-    key    = 0x2B7E151628AED2A6ABF7158809CF4F3C
-    cipher = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
+        # Vector test (Encryption)
+        #plain  = "3243f6a8885a308d313198a2e0370734"
+        #key    = "2B7E151628AED2A6ABF7158809CF4F3C"
+        #cipher = "3925841d02dc09fbDC118597196A0b32"
 
-    # Vector 1
-    #plain  = 0x11111111AAAAAAAA55555555DDDDDDDD# encrypt vector
-    #key    = 0x44444444444444444444444444444444
-    #cipher = 0x614afa11507ac929b68138d8b896aefb # decrypt vector
+        # generate random vectors
+        plain     = randHexString(32)
+        key       = randHexString(32)
+        keyByte   = key.decode("hex")
+        plainByte = plain.decode("hex")
 
-    # Encrpytion
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= plain
-    helperAES.io.cmd.payload.enc    <= 1  # do an encryption
+        # Model computation
+        #######################################################################
+        aes128     = AESModeOfOperationECB(keyByte)
+        cipherRef  = aes128.encrypt(plainByte)
 
-
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
-
-    helperAES.io.cmd.valid <= 0
-
-
-    #data = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
-
-    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
-
-    print("RTL Cipher", hex(rtlCipherBlock))
-
-    yield RisingEdge(helperAES.io.clk)
-
-    # DECYPTION
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= cipher
-    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
+        #print("plain      " , plain)
+        #print("key        " , key)
+        #print("cipher ref " , binascii.hexlify(cipherRef))
 
 
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
+        # RTL Encrpytion
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(plain, 16)
+        helperAES.io.cmd.payload.enc    <= 1
 
-    helperAES.io.cmd.valid <= 0
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
+
+        helperAES.io.cmd.valid <= 0
+
+        cipherRTL = int(helperAES.io.rsp.event_valid.data.block)
+
+        #print("RTL Cipher", hex(cipherRTL))
+        assertEquals(int(binascii.hexlify(cipherRef), 16), cipherRTL, "Encryption AES128  data wrong ")
+
+        yield RisingEdge(helperAES.io.clk)
+
+        # RTL DECYPTION
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(binascii.hexlify(cipherRef), 16)
+        helperAES.io.cmd.payload.enc    <= 0
 
 
-    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
 
-    print("RTL Plain", hex(rtlPlainBlock))
+        helperAES.io.cmd.valid <= 0
 
-    yield RisingEdge(helperAES.io.clk)
+        plainRTL = int(helperAES.io.rsp.event_valid.data.block)
+
+        #print("RTL Plain", hex(plainRTL))
+        assertEquals(int(plain, 16), plainRTL, "Decryption AES128 data wrong ")
+
+        yield RisingEdge(helperAES.io.clk)
+
+        yield Timer(10)
 
 
-
-    yield Timer(1000)
 
 ###############################################################################
 # Test AES Core 192
@@ -151,7 +149,6 @@ def testAESCore128_Std(dut):
 @cocotb.test()
 def testAESCore192_Std(dut):
 
-    #########
     dut.log.info("Cocotb test AES Core 192")
     from cocotblib.misc import cocotbXHack
     cocotbXHack()
@@ -170,56 +167,71 @@ def testAESCore192_Std(dut):
     helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
 
 
-    # Vector test (Encryption)
+    # Run patterns
+    for _ in range(0,4):
 
-    # Vector 0
-    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
-    key    = 0x000102030405060708090a0b0c0d0e0f1011121314151617
-    cipher = 0xbc3aaab5d97baa7b325d7b8f69cd7ca8 # decrypt vector
+        # Vector test (Encryption)
+        #plain  = "3243f6a8885a308d313198a2e0370734"
+        #key    = "000102030405060708090a0b0c0d0e0f1011121314151617"
+        #cipher = "bc3aaab5d97baa7b325d7b8f69cd7ca8"
 
-    # Encrpytion
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= plain
-    helperAES.io.cmd.payload.enc    <= 1  # do an encryption
+        # generate random vectors
+        plain     = randHexString(32)
+        key       = randHexString(48)
+        keyByte   = key.decode("hex")
+        plainByte = plain.decode("hex")
 
+        # Model computation
+        #######################################################################
+        aes192     = AESModeOfOperationECB(keyByte)
+        cipherRef  = aes192.encrypt(plainByte)
 
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
+        #print("plain      " , plain)
+        #print("key        " , key)
+        #print("cipher ref " , binascii.hexlify(cipherRef))
 
-    helperAES.io.cmd.valid <= 0
-
-
-
-
-    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
-
-    print("RTL Cipher", hex(rtlCipherBlock))
-
-    yield RisingEdge(helperAES.io.clk)
-
-    # DECYPTION
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= cipher
-    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
+        # TRL Encrpytion
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(plain, 16)
+        helperAES.io.cmd.payload.enc    <= 1
 
 
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
 
-    helperAES.io.cmd.valid <= 0
+        helperAES.io.cmd.valid <= 0
 
+        cipherRTL = int(helperAES.io.rsp.event_valid.data.block)
 
-    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+        #print("RTL Cipher", hex(cipherRTL))
 
-    print("RTL Plain", hex(rtlPlainBlock))
+        assertEquals(int(binascii.hexlify(cipherRef), 16), cipherRTL, "Encryption AES192  data wrong ")
 
-    yield RisingEdge(helperAES.io.clk)
+        yield RisingEdge(helperAES.io.clk)
 
+        # RTL Decryption
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(binascii.hexlify(cipherRef), 16)
+        helperAES.io.cmd.payload.enc    <= 0  # do an decryption
 
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
 
-    yield Timer(1000)
+        helperAES.io.cmd.valid <= 0
+
+        plainRTL = int(helperAES.io.rsp.event_valid.data.block)
+
+        assertEquals(int(plain, 16), plainRTL, "Decryption AES192 data wrong ")
+
+        #print("RTL Plain", hex(plainRTL))
+
+        yield RisingEdge(helperAES.io.clk)
+
+        yield Timer(10)
 
 
 
@@ -248,55 +260,70 @@ def testAESCore256_Std(dut):
     helperAES.io.rsp.startMonitoringValid(helperAES.io.clk)
 
 
-    # Vector test (Encryption)
+    # Run patterns
+    for _ in range(0,4):
 
-    # Vector 0
-    plain  = 0x3243f6a8885a308d313198a2e0370734 # encrypt vector
-    key    = 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
-    cipher = 0x9a198830ff9a4e39ec1501547d4a6b1bL # decrypt vector
+        # Vector test (Encryption)
+        #plain  = "3243f6a8885a308d313198a2e0370734"
+        #key    = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+        #cipher = "9a198830ff9a4e39ec1501547d4a6b1b"
 
-
-
-    # Encrpytion
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= plain
-    helperAES.io.cmd.payload.enc    <= 1  # do an encryption
-
-
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
-
-    helperAES.io.cmd.valid <= 0
+        # generate random vectors
+        plain     = randHexString(32)
+        key       = randHexString(64)
+        keyByte   = key.decode("hex")
+        plainByte = plain.decode("hex")
 
 
-    #data = 0x3925841d02dc09fbDC118597196A0b32 # decrypt vector
+        # Model computation
+        #######################################################################
+        aes256     = AESModeOfOperationECB(keyByte)
+        cipherRef  = aes256.encrypt(plainByte)
 
-    rtlCipherBlock = int(helperAES.io.rsp.event_valid.data.block)
+        #print("plain      " , plain)
+        #print("key        " , key)
+        #print("cipher ref " , binascii.hexlify(cipherRef))
 
-    print("RTL Cipher", hex(rtlCipherBlock))
-
-    yield RisingEdge(helperAES.io.clk)
-
-    # DECYPTION
-    helperAES.io.cmd.valid          <= 1
-    helperAES.io.cmd.payload.key    <= key
-    helperAES.io.cmd.payload.block  <= cipher
-    helperAES.io.cmd.payload.enc    <= 0  # do an decryption
-
-
-    # Wait the end of the process and read the result
-    yield helperAES.io.rsp.event_valid.wait()
-
-    helperAES.io.cmd.valid <= 0
+        # RTL Encrpytion
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(plain, 16)
+        helperAES.io.cmd.payload.enc    <= 1
 
 
-    rtlPlainBlock = int(helperAES.io.rsp.event_valid.data.block)
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
 
-    print("RTL Plain", hex(rtlPlainBlock))
+        helperAES.io.cmd.valid <= 0
 
-    yield RisingEdge(helperAES.io.clk)
+        cipherRTL = int(helperAES.io.rsp.event_valid.data.block)
+
+        assertEquals(int(binascii.hexlify(cipherRef), 16), cipherRTL, "Encryption AES256  data wrong ")
+
+        #print("RTL Cipher", hex(cipherRTL))
+
+        yield RisingEdge(helperAES.io.clk)
+
+        # RTL DECYPTION
+        #######################################################################
+        helperAES.io.cmd.valid          <= 1
+        helperAES.io.cmd.payload.key    <= int(key, 16)
+        helperAES.io.cmd.payload.block  <= int(binascii.hexlify(cipherRef), 16)
+        helperAES.io.cmd.payload.enc    <= 0
 
 
+        # Wait the end of the process and read the result
+        yield helperAES.io.rsp.event_valid.wait()
 
-    yield Timer(1000)
+        helperAES.io.cmd.valid <= 0
+
+        plainRTL = int(helperAES.io.rsp.event_valid.data.block)
+
+        assertEquals(int(plain, 16), plainRTL, "Decryption AES256 data wrong ")
+
+        #print("RTL Plain", hex(plainRTL))
+
+        yield RisingEdge(helperAES.io.clk)
+
+        yield Timer(10)

@@ -1,6 +1,7 @@
 package testbench
 
 import spinal.core._
+import spinal.crypto.symmetric.aes.AESCore_Std
 import spinal.lib._
 import spinal.lib.bus.amba3.apb._
 import spinal.lib.bus.amba4.axi._
@@ -73,6 +74,17 @@ case class APB3_HMAC_MD5() extends Component{
 
 }
 
+case class APB3_AES_128() extends Component{
+  val io = new Bundle{
+    val apb = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
+  }
+
+  val aesCore = new AESCore_Std(128 bits)
+
+  val busCtrl = Apb3SlaveFactory(io.apb)
+  aesCore.io.driveFrom(busCtrl)
+}
+
 
 
 
@@ -129,6 +141,7 @@ class TestBench_APB_1 extends Component{
     val tripleDESCore = APB3_3DESCore()
     val md5Core       = APB3_MD5()
     val hmacMD5       = APB3_HMAC_MD5()
+    val aes128        = APB3_AES_128()
 
 
     apbBridge.io.axi <> Axi4ToAxi4Shared(io.axi)
@@ -140,7 +153,8 @@ class TestBench_APB_1 extends Component{
         desCore.io.apb       -> (0x1000, 1 kB),
         tripleDESCore.io.apb -> (0x2000, 1 kB),
         hmacMD5.io.apb       -> (0x3000, 1 kB),
-        md5Core.io.apb       -> (0x4000, 1 kB)
+        md5Core.io.apb       -> (0x4000, 1 kB),
+        aes128.io.apb        -> (0x5000, 1 kB)
       )
     )
   }

@@ -72,7 +72,6 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
   assert(List(128, 192, 256).contains(keyWidth.value), "AES support only 128/192/256 keys width")
 
-
   val gIO  = SymmetricCryptoBlockGeneric(
     keyWidth   = keyWidth,
     blockWidth = AESCoreSpec.blockWidth,
@@ -81,17 +80,22 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
   val io = slave(new SymmetricCryptoBlockIO(gIO))
 
+  // SBox memory for the the byte substitution
   val sBoxMem    = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))
   val sBoxMemInv = Mem(Bits(8 bits), AESCoreSpec.sBoxInverse.map(B(_, 8 bits)))
+
+  // data state of 128-bit
   val dataState  = Reg(Vec(Bits(8 bits), 16))
-  val cntRound   = Reg(UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits))
+
+  // Count the number of round
   val nbrRound   = AESCoreSpec.nbrRound(keyWidth)
+  val cntRound   = Reg(UInt(log2Up(nbrRound) bits))
 
-  /* Key scheduling */
+  /** Key scheduling */
   val keySchedule = new KeyScheduleCore_Std(keyWidth)
+  val keyValid    = RegInit(False) clearWhen(keySchedule.io.cmd.ready)
+  val keyMode     = RegInit(KeyScheduleCmdMode.INIT)
 
-  val keyValid  = RegInit(False) clearWhen(keySchedule.io.cmd.ready)
-  val keyMode   = RegInit(KeyScheduleCmdMode.INIT)
   keySchedule.io.cmd.valid   := keyValid
   keySchedule.io.cmd.round   := (cntRound + 1).resized
   keySchedule.io.cmd.key     := io.cmd.key
@@ -103,6 +107,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   io.rsp.valid := io.cmd.ready
   io.rsp.block := dataState.reverse.asBits
 
+  /* Sudivide the data and the key into 8 bits */
   val blockByte = io.cmd.block.subdivideIn(8 bits).reverse
   val keyByte   = keySchedule.io.key_i.subdivideIn(8 bits).reverse
 
@@ -112,21 +117,20 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     */
   val sm = new StateMachine {
 
-    val keyAddition_cmd = False
+    val keyAddition_cmd = False       // command for the key addtion operation
 
-    val byteSub_cmd = Stream(NoData)
+    val byteSub_cmd = Stream(NoData)  // Command for the byteSubstitution operation
     byteSub_cmd.valid := False
 
-    val shiftRow_cmd = False
+    val shiftRow_cmd = False         // Command for the shift row operation
 
-    val mixCol_cmd = Stream(NoData)
+    val mixCol_cmd = Stream(NoData)  // Command for the mixColumn operation
     mixCol_cmd.valid := False
 
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-
         when(io.cmd.valid && !io.cmd.ready && !keyValid){
-          cntRound := io.cmd.enc ? U(0) | U(AESCoreSpec.nbrRound(keyWidth) )
+          cntRound := io.cmd.enc ? U(0) | U(nbrRound)
           keyValid := True
           keyMode  := KeyScheduleCmdMode.INIT
         }
@@ -142,10 +146,9 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       whenIsActive{
         when(!keyValid) {
           keyAddition_cmd := True
+          when(io.cmd.enc) { // Encryption
 
-          when(io.cmd.enc) {
-
-            when(cntRound =/= AESCoreSpec.nbrRound(keyWidth)){
+            when(cntRound =/= nbrRound){ // not update the key in the last round
               keyValid := True
               keyMode  := KeyScheduleCmdMode.NEXT
             }
@@ -156,15 +159,16 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
             } otherwise {
               goto(sByteSub)
             }
-          } otherwise {
+
+          } otherwise {     // Decryption
             cntRound := cntRound - 1
 
-            when(cntRound =/= 0x00){
+            when(cntRound =/= 0x00){ // not update the key in the last round
               keyValid := True
               keyMode  := KeyScheduleCmdMode.NEXT
             }
 
-            when(cntRound === nbrRound) {
+            when(cntRound === nbrRound) { // First round don't do the mixColumn
               goto(sShiftRow)
             }.elsewhen(cntRound === 0) {
               smDone := True
@@ -180,12 +184,11 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     val sByteSub: State = new State{
       whenIsActive{
         byteSub_cmd.valid := True
-
         when(byteSub_cmd.ready){
-          when(io.cmd.enc){
+          when(io.cmd.enc){ // Encryption
             cntRound := cntRound + 1
             goto(sShiftRow)
-          }otherwise{
+          }otherwise{      // Decryption
             goto(sKeyAdd)
           }
         }
@@ -195,27 +198,25 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     val sShiftRow: State = new State{
       whenIsActive{
         shiftRow_cmd := True
-          when(io.cmd.enc){
-
-            when(cntRound === nbrRound){
-              goto(sKeyAdd)
-            }otherwise{
-              goto(sMixColumn)
-            }
+        when(io.cmd.enc){ // Encryption
+          when(cntRound === nbrRound){ // Last round don't do the mixColumn
+            goto(sKeyAdd)
           }otherwise{
-            goto(sByteSub)
+            goto(sMixColumn)
           }
+        }otherwise{ // Decryption
+          goto(sByteSub)
+        }
       }
     }
 
     val sMixColumn: State = new State{
       whenIsActive{
         mixCol_cmd.valid := True
-
         when(mixCol_cmd.ready){
-          when(io.cmd.enc){
+          when(io.cmd.enc){ // Encryption
             goto(sKeyAdd)
-          }otherwise{
+          }otherwise{      // Decryption
             goto(sShiftRow)
           }
         }
@@ -225,7 +226,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Key Addition (1 clock)
+    * Key Addition operation (1 clock)
     * newState = currentState XOR key
     */
   val keyAddition = new Area{
@@ -245,7 +246,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Byte substitution (16 clock)
+    * Byte substitution operation (16 clock)
     * 16 identical SBOX
     * newState(i) = SBox(currentState(i))
     */
@@ -269,7 +270,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Shift row (1 clock)
+    * Shift row operation (1 clock)
     * newState(i) = ShiftRow(currentState(i))
     */
   val shiftRow = new Area{
@@ -288,7 +289,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Mix Column (4 clock)
+    * Mix Column operation (4 clock)
     *
     * newState(i) = MixColumn(currentState(i))
     *
@@ -313,12 +314,12 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     when(sm.mixCol_cmd.valid){
 
-      when(io.cmd.enc){
+      when(io.cmd.enc){ // Encryption
         dataState(0 + cntColumn) := mult_02(dataState(0 + cntColumn)) ^ mult_03(dataState(1 + cntColumn)) ^ mult_01(dataState(2 + cntColumn)) ^ mult_01(dataState(3 + cntColumn))
         dataState(1 + cntColumn) := mult_01(dataState(0 + cntColumn)) ^ mult_02(dataState(1 + cntColumn)) ^ mult_03(dataState(2 + cntColumn)) ^ mult_01(dataState(3 + cntColumn))
         dataState(2 + cntColumn) := mult_01(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_02(dataState(2 + cntColumn)) ^ mult_03(dataState(3 + cntColumn))
         dataState(3 + cntColumn) := mult_03(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_01(dataState(2 + cntColumn)) ^ mult_02(dataState(3 + cntColumn))
-      }otherwise{
+      }otherwise{ // Decryption
         dataState(0 + cntColumn) := mult_0E(dataState(0 + cntColumn)) ^ mult_0B(dataState(1 + cntColumn)) ^ mult_0D(dataState(2 + cntColumn)) ^ mult_09(dataState(3 + cntColumn))
         dataState(1 + cntColumn) := mult_09(dataState(0 + cntColumn)) ^ mult_0E(dataState(1 + cntColumn)) ^ mult_0B(dataState(2 + cntColumn)) ^ mult_0D(dataState(3 + cntColumn))
         dataState(2 + cntColumn) := mult_0D(dataState(0 + cntColumn)) ^ mult_09(dataState(1 + cntColumn)) ^ mult_0E(dataState(2 + cntColumn)) ^ mult_0B(dataState(3 + cntColumn))

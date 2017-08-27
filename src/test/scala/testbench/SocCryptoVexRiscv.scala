@@ -316,6 +316,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
     val tripleDESCore = APB3_3DESCore()
     val md5Core       = APB3_MD5()
     val hmacMD5       = APB3_HMAC_MD5()
+    val aes128        = APB3_AES_128()
 
 
 
@@ -328,7 +329,8 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
         desCore.io.apb       -> (0x3000, 1 kB),
         tripleDESCore.io.apb -> (0x4000, 1 kB),
         hmacMD5.io.apb       -> (0x5000, 1 kB),
-        md5Core.io.apb       -> (0x6000, 1 kB)
+        md5Core.io.apb       -> (0x6000, 1 kB),
+        aes128.io.apb        -> (0x7000, 1 kB)
       )
     )
 

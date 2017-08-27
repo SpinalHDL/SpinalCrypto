@@ -34,6 +34,7 @@ object KeyScheduleCmdMode extends SpinalEnum{
   val INIT, NEXT = newElement()
 }
 
+
 /**
   * Key Schedule command
   */
