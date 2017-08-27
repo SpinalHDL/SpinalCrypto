@@ -25,7 +25,10 @@ import spinal.lib.tools._
 import spinal.core._
 
 
-package object crypto {
+package object crypto{
+
+//  import languageFeature.implicitConversions
+//  implicit lazy val implicitConversions = scala.language.implicitConversions
 
 
   /**
@@ -52,7 +55,7 @@ package object crypto {
   /**
     * Convert a string into a polynomial
     */
-  def str2PolynomialGF2(polyStr: String): PolynomialGF2 = {
+  private[crypto] def str2PolynomialGF2(polyStr: String): PolynomialGF2 = {
 
     assert(polyStr.length > 0, "Empty  polynomial")
 

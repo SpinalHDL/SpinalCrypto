@@ -25,6 +25,9 @@ import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
 import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
+import spinal.crypto._
+import spinal.crypto.devtype._
+
 
 /**
   *
@@ -289,7 +292,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
 
   /**
-    * Mix Column operation (4 clock)
+    * Mix Column operation (4 clock) (Galois field multiplication)
     *
     * newState(i) = MixColumn(currentState(i))
     *
@@ -315,15 +318,15 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     when(sm.mixCol_cmd.valid){
 
       when(io.cmd.enc){ // Encryption
-        dataState(0 + cntColumn) := mult_02(dataState(0 + cntColumn)) ^ mult_03(dataState(1 + cntColumn)) ^ mult_01(dataState(2 + cntColumn)) ^ mult_01(dataState(3 + cntColumn))
-        dataState(1 + cntColumn) := mult_01(dataState(0 + cntColumn)) ^ mult_02(dataState(1 + cntColumn)) ^ mult_03(dataState(2 + cntColumn)) ^ mult_01(dataState(3 + cntColumn))
-        dataState(2 + cntColumn) := mult_01(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_02(dataState(2 + cntColumn)) ^ mult_03(dataState(3 + cntColumn))
-        dataState(3 + cntColumn) := mult_03(dataState(0 + cntColumn)) ^ mult_01(dataState(1 + cntColumn)) ^ mult_01(dataState(2 + cntColumn)) ^ mult_02(dataState(3 + cntColumn))
-      }otherwise{ // Decryption
-        dataState(0 + cntColumn) := mult_0E(dataState(0 + cntColumn)) ^ mult_0B(dataState(1 + cntColumn)) ^ mult_0D(dataState(2 + cntColumn)) ^ mult_09(dataState(3 + cntColumn))
-        dataState(1 + cntColumn) := mult_09(dataState(0 + cntColumn)) ^ mult_0E(dataState(1 + cntColumn)) ^ mult_0B(dataState(2 + cntColumn)) ^ mult_0D(dataState(3 + cntColumn))
-        dataState(2 + cntColumn) := mult_0D(dataState(0 + cntColumn)) ^ mult_09(dataState(1 + cntColumn)) ^ mult_0E(dataState(2 + cntColumn)) ^ mult_0B(dataState(3 + cntColumn))
-        dataState(3 + cntColumn) := mult_0B(dataState(0 + cntColumn)) ^ mult_0D(dataState(1 + cntColumn)) ^ mult_09(dataState(2 + cntColumn)) ^ mult_0E(dataState(3 + cntColumn))
+        dataState(0 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x02 ^ GF8(dataState(1 + cntColumn)) * 0x03 ^ GF8(dataState(2 + cntColumn)) * 0x01 ^ GF8(dataState(3 + cntColumn)) * 0x01).toBits()
+        dataState(1 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x02 ^ GF8(dataState(2 + cntColumn)) * 0x03 ^ GF8(dataState(3 + cntColumn)) * 0x01).toBits()
+        dataState(2 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x01 ^ GF8(dataState(2 + cntColumn)) * 0x02 ^ GF8(dataState(3 + cntColumn)) * 0x03).toBits()
+        dataState(3 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x03 ^ GF8(dataState(1 + cntColumn)) * 0x01 ^ GF8(dataState(2 + cntColumn)) * 0x01 ^ GF8(dataState(3 + cntColumn)) * 0x02).toBits()
+      }otherwise{      // Decryption
+        dataState(0 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x0E ^ GF8(dataState(1 + cntColumn)) * 0x0B ^ GF8(dataState(2 + cntColumn)) * 0x0D ^ GF8(dataState(3 + cntColumn)) * 0x09).toBits()
+        dataState(1 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x09 ^ GF8(dataState(1 + cntColumn)) * 0x0E ^ GF8(dataState(2 + cntColumn)) * 0x0B ^ GF8(dataState(3 + cntColumn)) * 0x0D).toBits()
+        dataState(2 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x0D ^ GF8(dataState(1 + cntColumn)) * 0x09 ^ GF8(dataState(2 + cntColumn)) * 0x0E ^ GF8(dataState(3 + cntColumn)) * 0x0B).toBits()
+        dataState(3 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x0B ^ GF8(dataState(1 + cntColumn)) * 0x0D ^ GF8(dataState(2 + cntColumn)) * 0x09 ^ GF8(dataState(3 + cntColumn)) * 0x0E).toBits()
       }
 
       cntColumn := cntColumn + 4
@@ -331,51 +334,5 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     }otherwise{
       cntColumn := 0
     }
-
-    def mult_03(din: Bits): Bits = (din(7) ^ din(6))  ##  (din(5) ^ din(6)) ##  (din(5) ^ din(4)) ## (din(3) ^ din(4) ^ din(7)) ##
-                                   (din(2) ^ din(3) ^ din(7))  ## (din(2) ^ din(1)) ## (din(1) ^ din(7) ^ din(0)) ## (din(7) ^ din(0))
-    def mult_02(din: Bits): Bits = din(6) ## din(5) ## din(4) ## (din(3) ^ din(7)) ## (din(2) ^ din(7)) ## din(1) ## (din(0) ^ din(7)) ## din(7)
-    def mult_01(din: Bits): Bits = din
-
-    def mult_0E(din: Bits): Bits = (din(4) ^ din(5) ^ din(6)) ##
-                                   (din(3) ^ din(4) ^ din(5) ^ din(7)) ##
-                                   (din(2) ^ din(3) ^ din(4) ^ din(6)) ##
-                                   (din(1) ^ din(2) ^ din(3) ^ din(5)) ##
-                                   (din(0) ^ din(1) ^ din(2) ^ din(5) ^ din(6)) ##
-                                   (din(0) ^ din(1) ^ din(6)) ##
-                                   (din(0) ^ din(5)) ##
-                                   (din(5) ^ din(6) ^ din(7))
-
-    def mult_09(din: Bits): Bits = (din(4) ^ din(7)) ##
-                                   (din(3) ^ din(6) ^ din(7)) ##
-                                   (din(2) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(1) ^ din(4) ^ din(5) ^ din(6)) ##
-                                   (din(0) ^ din(3) ^ din(5) ^ din(7)) ##
-                                   (din(2) ^ din(6) ^ din(7)) ##
-                                   (din(1) ^ din(5) ^ din(6)) ##
-                                   (din(0) ^ din(5))
-
-    def mult_0D(din: Bits): Bits = (din(4) ^ din(5) ^ din(7)) ##
-                                   (din(3) ^ din(4) ^ din(6) ^ din(7)) ##
-                                   (din(2) ^ din(3) ^ din(5) ^ din(6)) ##
-                                   (din(1) ^ din(2) ^ din(4) ^ din(5) ^ din(7)) ##
-                                   (din(0) ^ din(1) ^ din(3) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(0) ^ din(2) ^ din(6)) ##
-                                   (din(1) ^ din(5) ^ din(7)) ##
-                                   (din(0) ^ din(5) ^ din(6))
-
-    def mult_0B(din: Bits): Bits = (din(4) ^ din(6) ^ din(7)) ##
-                                   (din(3) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(2) ^ din(4) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(1) ^ din(3) ^ din(4) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(0) ^ din(2) ^ din(3) ^ din(5)) ##
-                                   (din(1) ^ din(2) ^ din(6) ^ din(7)) ##
-                                   (din(0) ^ din(1) ^ din(5) ^ din(6) ^ din(7)) ##
-                                   (din(0) ^ din(5) ^ din(7))
   }
 }
-
-
-
-
-

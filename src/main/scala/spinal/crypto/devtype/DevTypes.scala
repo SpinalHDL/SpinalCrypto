@@ -1,5 +1,4 @@
-package spinal.lib.experimental.devTypes
-
+package spinal.crypto.devtype
 
 import spinal.core._
 
@@ -584,37 +583,8 @@ object DevTypes{
 }
 
 
-/**
-  *
-  */
-object PlayWithNodeNoTree{
-
-
-
-
-
-
-  def main(args: Array[String]): Unit ={
 
 /*
-    val g = (DBool("a") ^ (DBool("b") & DBool("c"))) | DBool("d")
-    println(g.lispyTree)
-    println(g.simplify.lispyTree)
-    val(minTerms, variable) = g.getMinTerms
-    println(QuineMcCluskey(minTerms, Nil, variable.reverse.map(_.toString)))
-*/
-
-    val mul = GaloisField.multiplication(DBits("a", 4 bits), DBits("a", 4 bits), "x^4+x+1")
-    val (minTerms, variable) = mul.simplify.getChildren()(3).getMinTerms
-    println(minTerms, variable)
-    println(QuineMcCluskey(minTerms, Nil, variable.reverse.map(_.toString)))
-    println(mul.toBitsString)
-
-
-  }
-}
-
-
 object Polynomial{
 
   def str2List(p: String): List[Boolean] = {
@@ -641,4 +611,4 @@ object Polynomial{
   }
 }
 
-
+*/

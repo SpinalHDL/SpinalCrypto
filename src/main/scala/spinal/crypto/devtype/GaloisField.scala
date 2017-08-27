@@ -1,6 +1,7 @@
-package spinal.lib.experimental.devTypes
+package spinal.crypto.devtype
 
 import spinal.core._
+import spinal.crypto._
 
 
 object GaloisField{
@@ -25,11 +26,11 @@ object GaloisField{
 
 
   /**
-    * Multiplication between two Galois filed number
+    * Multiplication between two Galois field number
     */
-  def multiplication(operand1: DBits, operand2: DBits, poly: String): DBits = {
+  def multiplication(operand1: DBits, operand2: DBits, poly: PolynomialGF2): DBits = {
 
-    val polynomial = Polynomial.str2List(poly)
+    val polynomial = poly.toBooleanList()
 
     assert(polynomial.length == operand1.getWidth, "Polynomial must be of the same order than operands")
     assert(operand1.getWidth == operand2.getWidth, "The size of the operands are different")
@@ -49,7 +50,7 @@ object GaloisField{
       }
     }
 
-    println(result.simplify.lispyTree)
+    //println(result.simplify.lispyTree)
 
     result
   }
@@ -57,11 +58,10 @@ object GaloisField{
 
 /**
   * Galois field base class
-  * @param value
-  * @param poly
-  * @param field
   */
-abstract class GaloisField(val value: Bits, val poly: String, val field: Int) extends Bundle {
+abstract class GaloisField(val value: Bits, val poly: PolynomialGF2) extends Bundle {
+
+  val field: Int = poly.coefficient.max
 
   assert(value.getWidth == field, s"GF$field support only Bits on $field bits ")
 
@@ -90,14 +90,15 @@ abstract class GaloisField(val value: Bits, val poly: String, val field: Int) ex
 }
 
 
-case class GF4(v: Bits) extends GaloisField(v, "x^4+x+1", 4){
+case class GF4(v: Bits) extends GaloisField(v, new PolynomialGF2(List(4,1,0))){
 
   override type T = GF4
 
   def newGF(v: Bits): GF4 = new GF4(v)
 }
 
-case class GF8(v: Bits) extends GaloisField(v, "x^8+x^4+x^3+x+1", 8){
+//case class GF8(v: Bits) extends GaloisField(v, p"x^8+x^4+x^3+x+1", 8){
+case class GF8(v: Bits) extends GaloisField(v, new PolynomialGF2(List(8,4,3,1,0))){
 
   override type T = GF8
 
