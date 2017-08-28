@@ -27,14 +27,10 @@ import spinal.core._
 
 package object crypto{
 
-//  import languageFeature.implicitConversions
-//  implicit lazy val implicitConversions = scala.language.implicitConversions
-
-
   /**
     * Used to create polynomial as follow p"x^2 + x + 1"
     */
-  implicit class LiteralBuilder(private val sc: StringContext) {
+  implicit class LiteralBuilderCrypto(private val sc: StringContext) {
     def p(args: Any*): PolynomialGF2 = str2PolynomialGF2(getString(args))
 
     private def getString(args: Any*): String = {

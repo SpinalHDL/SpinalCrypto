@@ -25,7 +25,6 @@ import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
 import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
-import spinal.crypto._
 import spinal.crypto.devtype._
 
 
@@ -322,7 +321,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
         dataState(1 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x02 ^ GF8(dataState(2 + cntColumn)) * 0x03 ^ GF8(dataState(3 + cntColumn)) * 0x01).toBits()
         dataState(2 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x01 ^ GF8(dataState(2 + cntColumn)) * 0x02 ^ GF8(dataState(3 + cntColumn)) * 0x03).toBits()
         dataState(3 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x03 ^ GF8(dataState(1 + cntColumn)) * 0x01 ^ GF8(dataState(2 + cntColumn)) * 0x01 ^ GF8(dataState(3 + cntColumn)) * 0x02).toBits()
-      }otherwise{      // Decryption
+      }otherwise{       // Decryption
         dataState(0 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x0E ^ GF8(dataState(1 + cntColumn)) * 0x0B ^ GF8(dataState(2 + cntColumn)) * 0x0D ^ GF8(dataState(3 + cntColumn)) * 0x09).toBits()
         dataState(1 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x09 ^ GF8(dataState(1 + cntColumn)) * 0x0E ^ GF8(dataState(2 + cntColumn)) * 0x0B ^ GF8(dataState(3 + cntColumn)) * 0x0D).toBits()
         dataState(2 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x0D ^ GF8(dataState(1 + cntColumn)) * 0x09 ^ GF8(dataState(2 + cntColumn)) * 0x0E ^ GF8(dataState(3 + cntColumn)) * 0x0B).toBits()

@@ -1,10 +1,32 @@
+/*                                                                           *\
+**        _____ ____  _____   _____    __                                    **
+**       / ___// __ \/  _/ | / /   |  / /   Crypto                           **
+**       \__ \/ /_/ // //  |/ / /| | / /    (c) Dolu, All rights reserved    **
+**      ___/ / ____// // /|  / ___ |/ /___                                   **
+**     /____/_/   /___/_/ |_/_/  |_/_____/                                   **
+**                                                                           **
+**      This library is free software; you can redistribute it and/or        **
+**    modify it under the terms of the GNU Lesser General Public             **
+**    License as published by the Free Software Foundation; either           **
+**    version 3.0 of the License, or (at your option) any later version.     **
+**                                                                           **
+**      This library is distributed in the hope that it will be useful,      **
+**    but WITHOUT ANY WARRANTY; without even the implied warranty of         **
+**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU      **
+**    Lesser General Public License for more details.                        **
+**                                                                           **
+**      You should have received a copy of the GNU Lesser General Public     **
+**    License along with this library.                                       **
+\*                                                                           */
 package spinal.crypto.devtype
 
 import spinal.core._
+import spinal.lib.tools._
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks._
+
 
 /**
   * DNode is the base class of all develop nodes
@@ -302,7 +324,7 @@ abstract class DNode{
     // execute all posibility
     val result = ListBuffer[Int]()
     for(i <- 0 until math.pow(2, variables.size).toInt){
-      val binValue = DevTypes.bigInt2ListBoolean(i, variables.size)
+      val binValue = BigIntToListBoolean(i, variables.size bits)
       val map = variables.zip(binValue).toMap
 
       if(processGraphWithInput(this, map)){
@@ -549,66 +571,12 @@ object DBitsLiteral{
       DBits("Bits", str.length bits).setChildren(str.reverse.map(x => DBoolLiteral(x == '1')).toList)
     case 16 =>
       assert(str.toLowerCase.matches("[a-f0-9]*"), s"String $str must contains only [a-fA-F0-9] character")
-      val listBool = str.reverse.map(x => DevTypes.bigInt2ListBoolean(BigInt(Integer.parseInt(x.toString, 16)),  4)).flatten
+      val listBool = str.reverse.map(x => BigIntToListBoolean(BigInt(Integer.parseInt(x.toString, 16)),  4 bits)).flatten
       DBits("Bits", str.length*4 bits).setChildren(listBool.map(x => DBoolLiteral(x)).toList)
     case _  => throw new Exception(s"Radix not supported $radix")
   }
 
   def apply(value: BigInt, size: BitCount): DBits = {
-    DBits("Bits", size).setChildren(DevTypes.bigInt2ListBoolean(value, size.value).map(x => DBoolLiteral(x)))
+    DBits("Bits", size).setChildren(BigIntToListBoolean(value, size).map(x => DBoolLiteral(x)))
   }
 }
-
-
-object DevTypes{
-
-  def bigInt2ListBoolean(value: BigInt, size: Int): List[Boolean] = {
-
-    def bigInt2ListBool(that: BigInt): List[Boolean] = {
-      if(that == 0)  Nil
-      else List(that % 2 != 0) ::: bigInt2ListBool(that / 2)
-    }
-
-    castListBool(bigInt2ListBool(value), size)
-  }
-
-  /**
-    * Cast a list of a boolean to a given size
-    */
-  def castListBool(l: List[Boolean], size: Int): List[Boolean] = {
-    if (l.length == size)      l
-    else if (l.length > size)  l.drop( l.length - size)
-    else                       l ::: List.fill(size - l.length)(false)
-  }
-}
-
-
-
-/*
-object Polynomial{
-
-  def str2List(p: String): List[Boolean] = {
-    assert(p.length() > 0, "Empty  polynomial")
-
-    // remove all space
-    val strPoly = p.replace(" " , "")
-
-
-    val pp = """x\^([0-9]*)""".r
-    def getCoefficient(str: String): Int = str match{
-      case "x"       => 1
-      case "1"       => 0
-      case pp(value) => value.toInt
-      case _         => throw new Exception(s"Error polynomial syntax : $p")
-    }
-
-    val strSplited = strPoly.split('+')
-    val res = ListBuffer.fill(getCoefficient(strSplited.head))(false)
-    for(c <- strSplited.tail){ res(getCoefficient(c)) = true }
-
-    res.toList
-
-  }
-}
-
-*/
