@@ -25,13 +25,12 @@ import spinal.lib.tools._
 import spinal.core._
 
 
-package object crypto {
-
+package object crypto{
 
   /**
     * Used to create polynomial as follow p"x^2 + x + 1"
     */
-  implicit class LiteralBuilder(private val sc: StringContext) {
+  implicit class LiteralBuilderCrypto(private val sc: StringContext) {
     def p(args: Any*): PolynomialGF2 = str2PolynomialGF2(getString(args))
 
     private def getString(args: Any*): String = {
@@ -52,7 +51,7 @@ package object crypto {
   /**
     * Convert a string into a polynomial
     */
-  def str2PolynomialGF2(polyStr: String): PolynomialGF2 = {
+  private[crypto] def str2PolynomialGF2(polyStr: String): PolynomialGF2 = {
 
     assert(polyStr.length > 0, "Empty  polynomial")
 

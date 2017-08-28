@@ -12,7 +12,7 @@
 |:-------------------------------------------------- |:--------------------------:|:------------------- |
 | DESCore_Std                                        |  :ok:                      |  Not tested on FPGA |
 | TripleDESCore_Std                                  |  :ok:                      |  Not tested on FPGA |
-| AESCore_Std (128/192/256-bit)                      |  :arrows_counterclockwise: |  -                  |
+| AESCore_Std (128/192/256-bit)                      |  :ok:                      |  Not tested on FPGA |
 | Block Cipher mode operation (CBC,ECB,CTR,OFB,CFB)  |  :arrows_counterclockwise: |  -                  |
 | Twofish                                            |  :no_entry_sign:           |  -                  |
 | RC6                                                |  :no_entry_sign:           |  -                  |

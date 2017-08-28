@@ -2,11 +2,11 @@
 
 This repository contains cryptographic Spinal IPs.
 
-
 ## IP available
 
 ### Symmetric
 
+- AESCore_Std (128/192/256-bit)
 - DESCore_Std
 - TripleDESCore_Std
 

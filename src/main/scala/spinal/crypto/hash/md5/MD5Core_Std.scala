@@ -59,7 +59,7 @@ class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
   */
 class MD5Padding_Std(g: HashCoreGeneric) extends Component{
 
-  assert(g.dataWidth != 32, "Currently MD5Core_Std supports only 32 bits")
+  assert(g.dataWidth.value == 32, "Currently MD5Core_Std supports only 32 bits")
 
   val io = new Bundle{
     val core    = slave(HashCoreIO(g))
