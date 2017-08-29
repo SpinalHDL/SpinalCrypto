@@ -29,12 +29,31 @@ import spinal.crypto.devtype._
 
 
 /**
-  *
   * Advanced Encryption Standard (AES)
   *
-  * This design works in encrypt or decrypt with 128, 192 and 256-bit key width
+  * This design works in encrypt and decrypt and use a key of 128, 192 or 256-bit.
   *
-  *****************************************************************************
+  */
+class AESCore_Std(keyWidth: BitCount) extends Component{
+
+  val gIO  = SymmetricCryptoBlockGeneric(
+    keyWidth   = keyWidth,
+    blockWidth = AESCoreSpec.blockWidth,
+    useEncDec  = true
+  )
+
+  val io = slave(SymmetricCryptoBlockIO(gIO))
+
+  val engine      = new AESEngine_Std(keyWidth)
+  val keySchedule = new AESKeyScheduleCore_Std(keyWidth)
+
+  engine.io.engine      <> io
+  engine.io.keySchedule <> keySchedule.io
+}
+
+
+/**
+  * AES engine
   *
   * Encryption :
   *              PlaintText
@@ -70,7 +89,7 @@ import spinal.crypto.devtype._
   *               Plaintext
   *
   */
-class AESCore_Std(keyWidth: BitCount) extends Component{
+class AESEngine_Std(keyWidth: BitCount) extends Component{
 
   assert(List(128, 192, 256).contains(keyWidth.value), "AES support only 128/192/256 keys width")
 
@@ -80,7 +99,10 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     useEncDec  = true
   )
 
-  val io = slave(new SymmetricCryptoBlockIO(gIO))
+  val io = new Bundle{
+    val engine      = slave(SymmetricCryptoBlockIO(gIO))
+    val keySchedule = master(AESKeyScheduleIO_Std(keyWidth))
+  }
 
   // SBox memory for the the byte substitution
   val sBoxMem    = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))
@@ -93,25 +115,23 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   val nbrRound   = AESCoreSpec.nbrRound(keyWidth)
   val cntRound   = Reg(UInt(log2Up(nbrRound) bits))
 
-  /** Key scheduling */
-  val keySchedule = new KeyScheduleCore_Std(keyWidth)
-  val keyValid    = RegInit(False) clearWhen(keySchedule.io.cmd.ready)
-  val keyMode     = RegInit(KeyScheduleCmdMode.INIT)
-
-  keySchedule.io.cmd.valid   := keyValid
-  keySchedule.io.cmd.round   := (cntRound + 1).resized
-  keySchedule.io.cmd.key     := io.cmd.key
-  keySchedule.io.cmd.mode    := keyMode
+  /* Key scheduling default value */
+  val keyValid    = RegInit(False) clearWhen(io.keySchedule.cmd.ready)
+  val keyMode     = RegInit(AESKeyScheduleCmdMode_Std.INIT)
+  io.keySchedule.cmd.valid   := keyValid
+  io.keySchedule.cmd.round   := (cntRound + 1).resized
+  io.keySchedule.cmd.key     := io.engine.cmd.key
+  io.keySchedule.cmd.mode    := keyMode
 
   /* Output default value */
-  val smDone    = False
-  io.cmd.ready := RegNext(smDone) init(False)
-  io.rsp.valid := io.cmd.ready
-  io.rsp.block := dataState.reverse.asBits
+  val smDone           = False
+  io.engine.cmd.ready := RegNext(smDone) init(False)
+  io.engine.rsp.valid := io.engine.cmd.ready
+  io.engine.rsp.block := dataState.reverse.asBits
 
   /* Sudivide the data and the key into 8 bits */
-  val blockByte = io.cmd.block.subdivideIn(8 bits).reverse
-  val keyByte   = keySchedule.io.key_i.subdivideIn(8 bits).reverse
+  val blockByte = io.engine.cmd.block.subdivideIn(8 bits).reverse
+  val keyByte   = io.keySchedule.key_i.subdivideIn(8 bits).reverse
 
 
   /**
@@ -131,13 +151,13 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-        when(io.cmd.valid && !io.cmd.ready && !keyValid){
-          cntRound := io.cmd.enc ? U(0) | U(nbrRound)
+        when(io.engine.cmd.valid && !io.engine.cmd.ready && !keyValid){
+          cntRound := io.engine.cmd.enc ? U(0) | U(nbrRound)
           keyValid := True
-          keyMode  := KeyScheduleCmdMode.INIT
+          keyMode  := AESKeyScheduleCmdMode_Std.INIT
         }
 
-        when(keySchedule.io.cmd.ready){
+        when(io.keySchedule.cmd.ready){
           keyValid := False
           goto(sKeyAdd)
         }
@@ -148,11 +168,11 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       whenIsActive{
         when(!keyValid) {
           keyAddition_cmd := True
-          when(io.cmd.enc) { // Encryption
+          when(io.engine.cmd.enc) { // Encryption
 
             when(cntRound =/= nbrRound){ // not update the key in the last round
               keyValid := True
-              keyMode  := KeyScheduleCmdMode.NEXT
+              keyMode  := AESKeyScheduleCmdMode_Std.NEXT
             }
 
             when(cntRound === nbrRound) {
@@ -167,7 +187,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
             when(cntRound =/= 0x00){ // not update the key in the last round
               keyValid := True
-              keyMode  := KeyScheduleCmdMode.NEXT
+              keyMode  := AESKeyScheduleCmdMode_Std.NEXT
             }
 
             when(cntRound === nbrRound) { // First round don't do the mixColumn
@@ -187,7 +207,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       whenIsActive{
         byteSub_cmd.valid := True
         when(byteSub_cmd.ready){
-          when(io.cmd.enc){ // Encryption
+          when(io.engine.cmd.enc){ // Encryption
             cntRound := cntRound + 1
             goto(sShiftRow)
           }otherwise{      // Decryption
@@ -200,7 +220,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     val sShiftRow: State = new State{
       whenIsActive{
         shiftRow_cmd := True
-        when(io.cmd.enc){ // Encryption
+        when(io.engine.cmd.enc){ // Encryption
           when(cntRound === nbrRound){ // Last round don't do the mixColumn
             goto(sKeyAdd)
           }otherwise{
@@ -216,7 +236,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
       whenIsActive{
         mixCol_cmd.valid := True
         when(mixCol_cmd.ready){
-          when(io.cmd.enc){ // Encryption
+          when(io.engine.cmd.enc){ // Encryption
             goto(sKeyAdd)
           }otherwise{      // Decryption
             goto(sShiftRow)
@@ -234,7 +254,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   val keyAddition = new Area{
 
     when(sm.keyAddition_cmd){
-      when((cntRound === 0 && io.cmd.enc) || (cntRound === (nbrRound) && !io.cmd.enc) ){
+      when((cntRound === 0 && io.engine.cmd.enc) || (cntRound === (nbrRound) && !io.engine.cmd.enc) ){
         for(i <- 0 until dataState.length){
           dataState(i) := blockByte(i) ^ keyByte(i)
         }
@@ -260,7 +280,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     when(sm.byteSub_cmd.valid) {
       cntByte.increment()
 
-      when(io.cmd.enc){
+      when(io.engine.cmd.enc){
         dataState(cntByte) := sBoxMem(dataState(cntByte).asUInt)
       }otherwise{
         dataState(cntByte) := sBoxMemInv(dataState(cntByte).asUInt)
@@ -277,7 +297,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
     */
   val shiftRow = new Area{
     when(sm.shiftRow_cmd) {
-      when(io.cmd.enc){
+      when(io.engine.cmd.enc){
         for ((src, dst) <- AESCoreSpec.shiftRowIndex.zipWithIndex){
           dataState(dst) := dataState(src)
         }
@@ -316,7 +336,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
 
     when(sm.mixCol_cmd.valid){
 
-      when(io.cmd.enc){ // Encryption
+      when(io.engine.cmd.enc){ // Encryption
         dataState(0 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x02 ^ GF8(dataState(1 + cntColumn)) * 0x03 ^ GF8(dataState(2 + cntColumn)) * 0x01 ^ GF8(dataState(3 + cntColumn)) * 0x01).toBits()
         dataState(1 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x02 ^ GF8(dataState(2 + cntColumn)) * 0x03 ^ GF8(dataState(3 + cntColumn)) * 0x01).toBits()
         dataState(2 + cntColumn) := (GF8(dataState(0 + cntColumn)) * 0x01 ^ GF8(dataState(1 + cntColumn)) * 0x01 ^ GF8(dataState(2 + cntColumn)) * 0x02 ^ GF8(dataState(3 + cntColumn)) * 0x03).toBits()

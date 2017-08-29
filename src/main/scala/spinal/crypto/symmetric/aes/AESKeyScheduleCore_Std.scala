@@ -30,7 +30,7 @@ import spinal.lib._
   * INIT : Init the KeySchedule and get the first key
   * NEXT : Generate the next key
   */
-object KeyScheduleCmdMode extends SpinalEnum{
+object AESKeyScheduleCmdMode_Std extends SpinalEnum{
   val INIT, NEXT = newElement()
 }
 
@@ -38,8 +38,8 @@ object KeyScheduleCmdMode extends SpinalEnum{
 /**
   * Key Schedule command
   */
-case class KeyScheduleCmd(keyWidth: BitCount) extends Bundle{
-  val mode  = KeyScheduleCmdMode()
+case class AESKeyScheduleCmd_Std(keyWidth: BitCount) extends Bundle{
+  val mode  = AESKeyScheduleCmdMode_Std()
   val round = UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits)
   val key   = Bits(keyWidth)
 }
@@ -48,9 +48,14 @@ case class KeyScheduleCmd(keyWidth: BitCount) extends Bundle{
 /**
   * Key Schedule IO
   */
-case class KeyScheduleIO_Std(keyWidth: BitCount) extends Bundle{
-  val cmd    = slave(Stream(KeyScheduleCmd(keyWidth)))
-  val key_i  = out Bits(128 bits)
+case class AESKeyScheduleIO_Std(keyWidth: BitCount) extends Bundle with IMasterSlave{
+  val cmd    = Stream(AESKeyScheduleCmd_Std(keyWidth))
+  val key_i  = Bits(128 bits)
+
+  override def asMaster(): Unit = {
+    master(cmd)
+    in(key_i)
+  }
 }
 
 
@@ -59,9 +64,9 @@ case class KeyScheduleIO_Std(keyWidth: BitCount) extends Bundle{
   *
   * Key scheduling pattern http://www.samiam.org/key-schedule.html
   */
-class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
+class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
-  val io = KeyScheduleIO_Std(keyWidth)
+  val io = slave(AESKeyScheduleIO_Std(keyWidth))
 
   // store the current state of the key
   val stateKey     = Reg(Vec(Bits(32 bits), keyWidth.value/32))
@@ -115,7 +120,7 @@ class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
   /** Init command  */
   val initKey = new Area{
-    when(io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.INIT && !cmdready && !autoUpdate){
+    when(io.cmd.valid && io.cmd.mode === AESKeyScheduleCmdMode_Std.INIT && !cmdready && !autoUpdate){
 
       // initialize the statekey
       for(i <- 0 until stateKey.length)  stateKey(i) := keyWord(i)
@@ -189,7 +194,7 @@ class KeyScheduleCore_Std(keyWidth: BitCount) extends Component{
     val storeKey = False
 
     // Update cmd
-    when((io.cmd.valid && io.cmd.mode === KeyScheduleCmdMode.NEXT && !cmdready) && !autoUpdate && !cmdready){
+    when((io.cmd.valid && io.cmd.mode === AESKeyScheduleCmdMode_Std.NEXT && !cmdready) && !autoUpdate && !cmdready){
 
       when(cntRound === io.cmd.round){ //  encrypt mode => update the next key
         cmdready   := True
