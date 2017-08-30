@@ -29,19 +29,22 @@ case object DECRYPT  extends EncryptionMode
 case object ENC_DEC  extends EncryptionMode
 
 
-case class BCMO_Generic(keyWidth   : BitCount,
-                        blockWidth : BitCount,
-                        useEncDec  : Boolean = true){}
+case class BCMO_Generic(
+  keyWidth   : BitCount,
+  blockWidth : BitCount,
+  useEncDec  : Boolean = true,
+  useIV      : Boolean = true
+){}
 
 
-object BCMO_CmdMode extends SpinalEnum{
+object BCMO_CmdMode extends SpinalEnum {
   val INIT, UPDATE = newElement()
 }
 
 case class BCMO_Cmd(g: BCMO_Generic) extends Bundle {
   val key    = Bits(g.keyWidth)
   val block  = Bits(g.blockWidth)
-  val iv     = Bits(g.blockWidth)
+  val iv     = if(g.useIV) Bits(g.blockWidth) else null
   val enc    = if(g.useEncDec) Bool else null
   val mode   = BCMO_CmdMode()
 }
@@ -49,7 +52,6 @@ case class BCMO_Cmd(g: BCMO_Generic) extends Bundle {
 case class BCMO_Rsp(g: BCMO_Generic) extends Bundle {
   val block = Bits(g.blockWidth)
 }
-
 
 case class BCMO_IO(g: BCMO_Generic) extends Bundle with IMasterSlave {
   val cmd  = Stream(BCMO_Cmd(g))
@@ -62,19 +64,54 @@ case class BCMO_IO(g: BCMO_Generic) extends Bundle with IMasterSlave {
 }
 
 
+/**
+  * Electronic CodeBook (ECB)
+  */
+case class ECB(g: SymmetricCryptoBlockGeneric, mode: EncryptionMode) extends Component{
+
+  val io = new Bundle{
+    val bcmo = slave (BCMO_IO(BCMO_Generic(
+      keyWidth   = g.keyWidth,
+      blockWidth = g.blockWidth,
+      useEncDec  = mode == ENC_DEC,
+      useIV      = true)))
+    val core = master(SymmetricCryptoBlockIO(g))
+  }
+
+  io.core.cmd.valid := io.bcmo.cmd.valid
+  io.core.cmd.key   := io.bcmo.cmd.key
+  io.core.cmd.block := io.bcmo.cmd.block
+
+  io.bcmo.cmd.ready := io.core.cmd.ready
+  io.bcmo.rsp.valid := io.core.rsp.valid
+  io.bcmo.rsp.block := io.core.rsp.block
+
+  mode match{
+    case ENCRYPT =>
+      if(io.core.g.useEncDec) io.core.cmd.enc := True
+    case DECRYPT =>
+      if(io.core.g.useEncDec) io.core.cmd.enc := False
+    case ENC_DEC =>
+      if(io.core.g.useEncDec) io.core.cmd.enc := io.bcmo.cmd.enc
+  }
+}
 
 
+/**
+  * Cipher Block Chainings (CBC)
+  */
 case class CBC(g: SymmetricCryptoBlockGeneric, mode: EncryptionMode) extends Component{
 
   val io = new Bundle{
-    val bcmo = slave (BCMO_IO(BCMO_Generic(keyWidth   = g.keyWidth,
-                                           blockWidth = g.blockWidth,
-                                           useEncDec  = mode == ENC_DEC)))
+    val bcmo = slave (BCMO_IO(BCMO_Generic(
+      keyWidth   = g.keyWidth,
+      blockWidth = g.blockWidth,
+      useEncDec  = mode == ENC_DEC,
+      useIV      = true)))
     val core = master(SymmetricCryptoBlockIO(g))
   }
 
   val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_CmdMode.INIT
-  val isUpdate = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_CmdMode.UPDATE
 
   val tmpBlock = Reg(Bits(g.blockWidth))
 
@@ -126,11 +163,45 @@ case class CBC(g: SymmetricCryptoBlockGeneric, mode: EncryptionMode) extends Com
   }
 }
 
+/**
+  * Output Feedback Mode (OFB)
+  */
+case class OFB(g: SymmetricCryptoBlockGeneric) extends Component{
+
+  val io = new Bundle{
+    val bcmo = slave (BCMO_IO(BCMO_Generic(
+      keyWidth   = g.keyWidth,
+      blockWidth = g.blockWidth,
+      useEncDec  = false,
+      useIV      = true)))
+
+    val core = master(SymmetricCryptoBlockIO(g))
+  }
+
+  val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_CmdMode.INIT
+
+  if(g.useEncDec) io.core.cmd.enc := True // For in encryption
+
+  val tmpKey = Reg(Bits(g.blockWidth))
+
+  io.core.cmd.valid := io.bcmo.cmd.valid
+  io.core.cmd.block := (isInit) ? io.bcmo.cmd.iv | tmpKey
+  io.core.cmd.key   := io.bcmo.cmd.key   
+
+  io.bcmo.cmd.ready := io.core.cmd.ready
+  io.bcmo.rsp.valid := io.core.rsp.valid
+  io.bcmo.rsp.block := io.core.rsp.block ^ io.bcmo.cmd.block
+
+  when(io.core.rsp.valid){
+    tmpKey := io.core.rsp.block
+  }
+}
+
+
+
 
 // TODO implement CFB
 case class CFB()
-// TODO implement OFB
-case class OFB()
 // TODO implement CTR
 case class CTR()
 
@@ -142,12 +213,17 @@ object PlayWithBCMO{
 
   class TestCBC() extends Component{
 
-    val io = slave(BCMO_IO(BCMO_Generic(keyWidth   = 64 bits,
+    val io = slave(BCMO_IO(BCMO_Generic(
+      keyWidth   = 64 bits,
       blockWidth = 64 bits,
-      useEncDec  = true)))
+      useEncDec  = false,
+      useIV      = true
+    )))
 
     val desCore = new DESCore_Std()
-    val desModule = CBC(desCore.io.g, ENC_DEC)
+    //val desModule = ECB(desCore.io.g, ENC_DEC)
+    //val desModule = CBC(desCore.io.g, ENC_DEC)
+    val desModule = OFB(desCore.io.g)
     desModule.io.core <> desCore.io
 
     desModule.io.bcmo <> io
