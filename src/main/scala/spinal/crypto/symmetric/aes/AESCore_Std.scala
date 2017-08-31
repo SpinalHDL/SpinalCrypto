@@ -169,16 +169,13 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
         when(!keyValid) {
           keyAddition_cmd := True
           when(io.engine.cmd.enc) { // Encryption
-
-            when(cntRound =/= nbrRound){ // not update the key in the last round
-              keyValid := True
-              keyMode  := AESKeyScheduleCmdMode_Std.NEXT
-            }
-
+            
             when(cntRound === nbrRound) {
               smDone := True
               goto(sIdle)
-            } otherwise {
+            } otherwise {         // not update the key in the last round
+              keyValid := True
+              keyMode  := AESKeyScheduleCmdMode_Std.NEXT
               goto(sByteSub)
             }
 
