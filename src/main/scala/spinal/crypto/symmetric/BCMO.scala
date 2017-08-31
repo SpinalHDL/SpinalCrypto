@@ -198,10 +198,45 @@ case class OFB(g: SymmetricCryptoBlockGeneric) extends Component{
 }
 
 
+/**
+  * Cipher Feedback (CFB)
+  */
+case class CFB(g: SymmetricCryptoBlockGeneric) extends Component{
+
+  val io = new Bundle{
+    val bcmo = slave (BCMO_IO(BCMO_Generic(
+      keyWidth   = g.keyWidth,
+      blockWidth = g.blockWidth,
+      useEncDec  = false,
+      useIV      = true)))
+
+    val core = master(SymmetricCryptoBlockIO(g))
+  }
+
+  val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_CmdMode.INIT
+
+  if(g.useEncDec) io.core.cmd.enc := True // For in encryption
+
+  val tmpKey = Reg(Bits(g.blockWidth))
+  val cipher = Bits(g.blockWidth)
+
+  io.core.cmd.valid := io.bcmo.cmd.valid
+  io.core.cmd.block := (isInit) ? io.bcmo.cmd.iv | tmpKey
+  io.core.cmd.key   := io.bcmo.cmd.key
+
+  io.bcmo.cmd.ready := io.core.cmd.ready
+  io.bcmo.rsp.valid := io.core.rsp.valid
+  io.bcmo.rsp.block := cipher
+
+  cipher := io.core.rsp.block ^ io.bcmo.cmd.block
+
+  when(io.core.rsp.valid){
+    tmpKey := cipher
+  }
+}
 
 
-// TODO implement CFB
-case class CFB()
+
 // TODO implement CTR
 case class CTR()
 
@@ -223,7 +258,8 @@ object PlayWithBCMO{
     val desCore = new DESCore_Std()
     //val desModule = ECB(desCore.io.g, ENC_DEC)
     //val desModule = CBC(desCore.io.g, ENC_DEC)
-    val desModule = OFB(desCore.io.g)
+    //val desModule = OFB(desCore.io.g)
+    val desModule = CFB(desCore.io.g)
     desModule.io.core <> desCore.io
 
     desModule.io.bcmo <> io
