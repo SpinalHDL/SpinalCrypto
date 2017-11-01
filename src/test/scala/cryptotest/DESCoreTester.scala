@@ -52,7 +52,7 @@ class TripleDESCoreStdTester extends Component {
 /**
   * Triple DES cocotb Test
   */
-class TripleDESCoreCocotbBoot extends SpinalTesterCocotbBase {
+class TripleDESCoreStdCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "TripleDESTester"
   override def pythonTestLocation: String = "src/test/python/crypto/symmetric/TripleDESCore_Std"
