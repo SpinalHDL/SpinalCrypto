@@ -121,7 +121,7 @@ object PlayWithAESCore_Std{
 
   def main(args: Array[String]): Unit = {
     SpinalConfig(
-      mode = Verilog,
+      mode = VHDL,
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
