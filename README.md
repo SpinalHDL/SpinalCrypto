@@ -1,6 +1,6 @@
 # SpinalCrytpo
 
-This repository contains cryptographic Spinal IPs.
+This repository contains cryptographic Spinal IPs. This work is currently in progress.  
 
 ## IP available
 
