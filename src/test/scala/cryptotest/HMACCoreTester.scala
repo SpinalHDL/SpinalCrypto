@@ -5,7 +5,7 @@ import spinal.core._
 import spinal.lib._
 
 import spinal.crypto.hash.md5._
-import spinal.crypto.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 
 
 /**
