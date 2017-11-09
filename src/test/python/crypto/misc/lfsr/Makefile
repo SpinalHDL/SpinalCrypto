@@ -1,8 +1,8 @@
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += $(SPINALROOT)/LFSR_Top.v
+VERILOG_SOURCES += $(SPINALROOT)/LFSRTester.v
 
-TOPLEVEL=LFSR_Top
+TOPLEVEL=LFSRTester
 MODULE=LFSR_Tester
 
 include ../../common/Makefile.sim

@@ -133,26 +133,51 @@ object PlayWithAESCore_Std{
 
 
 object PlayWithLFSR{
+
   class LFSRTester() extends Component{
 
     val io = new Bundle{
-      val fib = out Bits(8 bits)
-      val gal = out Bits(8 bits)
+      val fib = new Bundle{
+        val init  = in Bool
+        val seed  = in Bits(8 bits)
+        val inc   = in Bool
+        val value = out Bits(8 bits)
+      }
+      val gal = new Bundle{
+        val init  = in Bool
+        val seed  = in Bits(8 bits)
+        val inc   = in Bool
+        val value = out Bits(8 bits)
+      }
     }
 
-    val fib_reg = Reg(cloneOf(io.fib)) init(1)
-    fib_reg     := LFSR.Fibonacci(fib_reg, LFSR.polynomial_8bits)
-    io.fib      := fib_reg
+    val fib = new Area {
+      val lfsr_reg = Reg(cloneOf(io.fib.value))
+      when(io.fib.init){
+        lfsr_reg := io.fib.seed
+      }
+      when(io.fib.inc){
+        lfsr_reg := LFSR.Fibonacci(lfsr_reg, LFSR.polynomial_8bits)
+      }
+      io.fib.value := lfsr_reg
+    }
 
-    val gal_reg = Reg(cloneOf(io.gal)) init(1)
-    gal_reg     := LFSR.Galois(gal_reg, LFSR.polynomial_8bits)
-    io.gal      := gal_reg
+    val gal = new Area {
+      val lfsr_reg = Reg(cloneOf(io.gal.value))
+      when(io.gal.init){
+        lfsr_reg := io.gal.seed
+      }
+      when(io.gal.inc){
+        lfsr_reg := LFSR.Galois(lfsr_reg, LFSR.polynomial_8bits)
+      }
+      io.gal.value := lfsr_reg
+    }
 
   }
 
   def main(args: Array[String]): Unit = {
     SpinalConfig(
-      mode = VHDL,
+      mode = Verilog,
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
