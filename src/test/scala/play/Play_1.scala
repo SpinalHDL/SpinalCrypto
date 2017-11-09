@@ -3,12 +3,14 @@ package play
 import spinal.core._
 import spinal.lib._
 
+import spinal.crypto._
 import spinal.crypto.hash._
 import spinal.crypto.hash.md5._
 import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 import spinal.crypto.symmetric.SymmetricCryptoBlockIO
 import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 import spinal.crypto.symmetric.aes._
+import spinal.crypto.misc.LFSR
 
 
 
@@ -126,5 +128,34 @@ object PlayWithAESCore_Std{
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
       defaultClockDomainFrequency = FixedFrequency(50 MHz)
     ).generate(new AESCoreStdTester).printPruned
+  }
+}
+
+
+object PlayWithLFSR{
+  class LFSRTester() extends Component{
+
+    val io = new Bundle{
+      val fib = out Bits(8 bits)
+      val gal = out Bits(8 bits)
+    }
+
+    val fib_reg = Reg(cloneOf(io.fib)) init(1)
+    fib_reg     := LFSR.Fibonacci(fib_reg, LFSR.polynomial_8bits)
+    io.fib      := fib_reg
+
+    val gal_reg = Reg(cloneOf(io.gal)) init(1)
+    gal_reg     := LFSR.Galois(gal_reg, LFSR.polynomial_8bits)
+    io.gal      := gal_reg
+
+  }
+
+  def main(args: Array[String]): Unit = {
+    SpinalConfig(
+      mode = VHDL,
+      dumpWave = DumpWaveConfig(depth = 0),
+      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
+      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    ).generate(new LFSRTester).printPruned
   }
 }
