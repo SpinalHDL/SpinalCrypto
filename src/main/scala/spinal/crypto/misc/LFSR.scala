@@ -66,7 +66,7 @@ object LFSR{
   /****************************************************************************
     * LFSR Fibonacci - many-to-one - external xor gates
     *
-    *         a7     a6     a5     a4     a3     a2     a1     a0
+    *         a0     a1    a2     a3     a4     a5     a6     a7
     *        ____   ____   ____   ____   ____   ____   ____   ____
     *   /-->|_f1_|-|_f2_|-|_f3_|-|_f4_|-|_f5_|-|_f6_|-|_f7_|-|_f8_|-
     *   |                              |      |      |             |
@@ -104,9 +104,9 @@ object LFSR{
       assert(taps.max == that.getWidth, s"This tap ${taps.max} is too small or too big compare to data input")
 
       val ret      = cloneOf(that)
-      val feedback = (taps.map(i => that(that.getWidth - i)).reduce(_ ^ _)).dontSimplifyIt().setName("feedback")
+      val feedback = (taps.map(i => that(i - 1)).reduce(_ ^ _))
 
-      ret := feedback ## (that >> 1)
+      ret := (that << 1)(that.high downto 1) ## feedback
 
       ret
     }
@@ -116,10 +116,10 @@ object LFSR{
   /****************************************************************************
     * LFSR Galois - one-to-many - internal xor gates
     *
-    *         a7     a6          a5          a4          a3     a2     a1     a0
-    *        ____   ____        ____        ____        ____   ____   ____   ____
-    *    /->|_f8_|-|_f7_|-XOR->|_f6_|-XOR->|_f5_|-XOR->|_f4_|-|_f3_|-|_f2_|-|_f1_|-
-    *    |_________________|___________|___________|_______________________________|
+    *         a0     a1     a2     a3          a4          a5          a6     a7
+    *        ____   ____   ____   ____        ____        ____        ____   ____
+    *    /->|_f1_|-|_f2_|-|_f3_|-|_f4_|-XOR->|_f5_|-XOR->|_f6_|-XOR->|_f7_|-|_f8_|-
+    *    |_______________________________|___________|___________|_________________|
     *
     *   e.g : val a  = Reg(Bits(8 bits)) init(1)
     *         a := LFSR.Galois(a, p"x^8 + x^6 + x^5 + x^4 + 1")
@@ -154,19 +154,14 @@ object LFSR{
 
       val ret = cloneOf(that)
 
-      val bitsList = new ListBuffer[Bool]()
-
-      for (index <- that.high to 0 by -1){
-        if (index == that.high) {
-          bitsList += that.lsb
-        }else if(taps.contains(index + 1)) {
-          bitsList += that(index + 1) ^ that.lsb
-        }else{
-          bitsList += that(index + 1)
-        }
+      def recurLFSR(index: Int): List[Bool] = index match {
+        case a if a == 0               => that.msb :: recurLFSR(a + 1)
+        case a if a == that.getWidth   => Nil
+        case a if taps.contains(a)     => (that(a - 1) ^ that.msb) :: recurLFSR(a + 1)
+        case _                         => that(index - 1) :: recurLFSR(index + 1)
       }
 
-      ret := Cat(bitsList.reverse)
+      ret := Cat(recurLFSR(0))
 
       ret
     }
