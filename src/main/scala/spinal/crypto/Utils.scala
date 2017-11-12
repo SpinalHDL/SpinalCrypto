@@ -31,6 +31,9 @@ class PolynomialGF2(val coefficient: List[Int]) {
   def ==(that: PolynomialGF2): Boolean = this.coefficient.sorted == that.coefficient.sorted
   def !=(that: PolynomialGF2): Boolean = !(this == that)
 
+  def order: Int = coefficient.max
+
+
   override def toString: String = {
     (for(coef <- coefficient) yield coef match{
       case 0 => "1"
