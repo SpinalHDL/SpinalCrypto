@@ -46,7 +46,7 @@
 
 | Algo                                               |  Status                    | Remark              |
 |:-------------------------------------------------- |:--------------------------:|:------------------- |
-| LFSR (Fibonacci/Galois)                            |  :arrows_counterclockwise: |  -                  |
+| LFSR (Fibonacci/Galois)                            |  :ok:                      |  Not tested on FPGA |
 | TRNG with PLL                                      |  :no_entry_sign:           |  -                  |
 | CRC                                                |  :arrows_counterclockwise: |  -                  |
 
