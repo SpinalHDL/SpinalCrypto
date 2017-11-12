@@ -134,21 +134,21 @@ object PlayWithAESCore_Std{
 
 object PlayWithLFSR{
 
+  case class LFSR_CMD() extends Bundle{
+    val init  = in Bool
+    val seed  = in Bits(8 bits)
+    val inc   = in Bool
+    val value = out Bits(8 bits)
+  }
+
   class LFSRTester() extends Component{
 
     val io = new Bundle{
-      val fib = new Bundle{
-        val init  = in Bool
-        val seed  = in Bits(8 bits)
-        val inc   = in Bool
-        val value = out Bits(8 bits)
-      }
-      val gal = new Bundle{
-        val init  = in Bool
-        val seed  = in Bits(8 bits)
-        val inc   = in Bool
-        val value = out Bits(8 bits)
-      }
+      val fib     = LFSR_CMD()
+      val gal     = LFSR_CMD()
+      val fib_ext = LFSR_CMD()
+      val gal_ext = LFSR_CMD()
+
     }
 
     val fib = new Area {
@@ -162,6 +162,17 @@ object PlayWithLFSR{
       io.fib.value := lfsr_reg
     }
 
+    val fib_ext = new Area {
+      val lfsr_reg = Reg(cloneOf(io.fib_ext.value))
+      when(io.fib_ext.init){
+        lfsr_reg := io.fib_ext.seed
+      }
+      when(io.fib_ext.inc){
+        lfsr_reg := LFSR.Fibonacci(lfsr_reg, LFSR.polynomial_8bits, LFSR.XOR, true)
+      }
+      io.fib_ext.value := lfsr_reg
+    }
+
     val gal = new Area {
       val lfsr_reg = Reg(cloneOf(io.gal.value))
       when(io.gal.init){
@@ -171,6 +182,17 @@ object PlayWithLFSR{
         lfsr_reg := LFSR.Galois(lfsr_reg, LFSR.polynomial_8bits)
       }
       io.gal.value := lfsr_reg
+    }
+
+    val gal_ext = new Area {
+      val lfsr_reg = Reg(cloneOf(io.gal_ext.value))
+      when(io.gal_ext.init){
+        lfsr_reg := io.gal_ext.seed
+      }
+      when(io.gal_ext.inc){
+        lfsr_reg := LFSR.Galois(lfsr_reg, LFSR.polynomial_8bits, LFSR.XOR, true)
+      }
+      io.gal_ext.value := lfsr_reg
     }
 
   }

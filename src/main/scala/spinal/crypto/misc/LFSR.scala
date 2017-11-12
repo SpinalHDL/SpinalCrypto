@@ -26,23 +26,27 @@ import spinal.crypto.PolynomialGF2
 
 import scala.collection.mutable.ListBuffer
 
-// Paper : www.researchgate.net/publication/236109080_FPGA_Implementation_of_8_16_and_32_Bit_LFSR_with_Maximum_Length_Feedback_Polynomial_using_VHDL
-// TODO : fpga4fun lfsrtestbench
-// TODO : mode xor and nxor
-
 
 /******************************************************************************
   * Linear feedback shift register (LFSR)
   *   There are 2 types of LFSR : Fibonacci and Galois
   *
-  * The initial value of the LFSR is called SEED. If the seed is equal to 0,
-  * the LFSR is stuck.
+  * The initial value of the LFSR is called SEED.
+  *   !! XOR mode   => seed = all'0 LFSR is stuck
+  *   !! XNOR mode  => seed = all'1 LFSR is stuck
   *
   * Polynomial transformation to taps :
   *   x^32 + x^30 + x^11 + x^5 + 1 => Taps(32,30,11,5)
   *
+  * Paper     : www.researchgate.net/publication/236109080_FPGA_Implementation_of_8_16_and_32_Bit_LFSR_with_Maximum_Length_Feedback_Polynomial_using_VHDL
+  * TestBench : http://www.fpga4fun.com/Counters3.html
   */
 object LFSR{
+
+  sealed trait LFSR_MODE
+  object XOR  extends LFSR_MODE
+  object XNOR extends LFSR_MODE
+
 
   /**
     * Polynomial for maximum period LFSR length (max period = 2^n-1, n number of shift register)
@@ -78,19 +82,32 @@ object LFSR{
     */
   object Fibonacci{
 
+
     /**
       * Create the LFSR with a feedback polynomial
       *
       * @param that       : Input signal
       * @param polynomial : Feedback polynomial or characteristic polynomial for building the LFSR
       */
-    def apply(that: Bits, polynomial: PolynomialGF2): Bits = {
+    def apply(that: Bits, polynomial: PolynomialGF2): Bits = LFSR.Fibonacci(that, polynomial, LFSR.XOR, false)
+
+
+    /**
+      * Create the LFSR with a feedback polynomial
+      *
+      * @param that          : Input signal
+      * @param polynomial    : Feedback polynomial or characteristic polynomial for building the LFSR
+      * @param mode          : XOR or XNOR
+      * @param extendsPeriod : false => 2^n - 1, true = 2^n
+      */
+    def apply(that: Bits, polynomial: PolynomialGF2, mode: LFSR_MODE, extendsPeriod: Boolean): Bits = {
 
       assert(polynomial.coefficient.min == 0 && polynomial.coefficient.length > 1 , s"This is not a valid polynomial for the LFSR $polynomial")
       assert(that.getWidth == polynomial.order,  "Polynomial order must have the same length than the data input")
 
-      LFSR.Fibonacci(that, polynomial.coefficient.filter(_ != 0))
+      LFSR.Fibonacci(that, polynomial.coefficient.filter(_ != 0), mode, extendsPeriod)
     }
+
 
     /**
       * Create the LFSR with a sequence of taps
@@ -98,18 +115,47 @@ object LFSR{
       * @param that   : Input signal
       * @param taps   : Taps for building the LFSR
       */
-    def apply(that: Bits, taps: Seq[Int]): Bits = {
+    def apply(that: Bits, taps: Seq[Int]): Bits = LFSR.Fibonacci(that, taps, LFSR.XOR, false)
+
+
+    /**
+      * Create the LFSR with a sequence of taps
+      *
+      * @param that          : Input signal
+      * @param taps          : Taps for building the LFSR
+      * @param mode          : XOR or XNOR
+      * @param extendsPeriod : false => 2^n - 1, true => 2^n
+      */
+    def apply(that: Bits, taps: Seq[Int], mode: LFSR_MODE, extendsPeriod: Boolean): Bits = {
 
       assert(taps.min != 0, s"This tap ${taps.min} is not valid")
       assert(taps.max == that.getWidth, s"This tap ${taps.max} is too small or too big compare to data input")
 
       val ret      = cloneOf(that)
-      val feedback = (taps.map(i => that(i - 1)).reduce(_ ^ _))
+      val feedback = taps.map(i => that(i - 1)).reduce(_ ^ _)
 
-      ret := (that << 1)(that.high downto 1) ## feedback
+      if(extendsPeriod){
+        val isEqual = isEqualToX(that, mode)
+        ret := (that << 1)(that.high downto 1) ## operator(feedback ^ isEqual, mode)
+
+      }else{
+        ret := (that << 1)(that.high downto 1) ## operator(feedback, mode)
+      }
 
       ret
     }
+  }
+
+  /** Select between XOR and XNOR */
+  private def operator(that: Bool, mode: LFSR_MODE): Bool = mode match {
+    case LFSR.XNOR => !that
+    case LFSR.XOR  => that
+  }
+
+  /** Extends period of the LFSR */
+  private def isEqualToX(that: Bits, mode: LFSR_MODE): Bool = mode match {
+    case LFSR.XNOR => that(that.high - 1 downto 0).asBools.reduce(_ && _) /// === all 1's
+    case LFSR.XOR  => !that(that.high - 1 downto 0).asBools.reduce(_ || _) /// === all 0's
   }
 
 
@@ -133,12 +179,22 @@ object LFSR{
       * @param that       : Input signal
       * @param polynomial : Feedback polynomial or characteristic polynomial for building the LFSR
       */
-    def apply(that: Bits, polynomial: PolynomialGF2): Bits = {
+    def apply(that: Bits, polynomial: PolynomialGF2): Bits = LFSR.Galois(that, polynomial, LFSR.XOR, false)
+
+    /**
+      * Create the LFSR with a feedback polynomial
+      *
+      * @param that          : Input signal
+      * @param polynomial    : Feedback polynomial or characteristic polynomial for building the LFSR
+      * @param mode          : XOR or XNOR
+      * @param extendsPeriod : false => 2^n - 1, true = 2^n
+      */
+    def apply(that: Bits, polynomial: PolynomialGF2, mode: LFSR_MODE, extendsPeriod: Boolean): Bits = {
 
       assert(that.getWidth == polynomial.order,  "Polynomial order must have the same length than the data in")
       assert(polynomial.coefficient.min == 0 && polynomial.coefficient.length > 1 , s"This is not a valid polynomial for the LFSR $polynomial")
 
-      LFSR.Galois(that, polynomial.coefficient.filter(_ != 0))
+      LFSR.Galois(that, polynomial.coefficient.filter(_ != 0), mode, extendsPeriod)
     }
 
     /**
@@ -147,17 +203,30 @@ object LFSR{
       * @param that   : Input signal
       * @param taps   : Taps for building the LFSR
       */
-    def apply(that: Bits, taps: Seq[Int]): Bits = {
+    def apply(that: Bits, taps: Seq[Int]): Bits = LFSR.Galois(that, taps, LFSR.XOR, false)
+
+    /**
+      * Create the LFSR with a sequence of taps
+      *
+      * @param that          : Input signal
+      * @param taps          : Taps for building the LFSR
+      * @param mode          : XOR or XNOR
+      * @param extendsPeriod : false => 2^n - 1, true = 2^n
+      */
+    def apply(that: Bits, taps: Seq[Int], mode: LFSR_MODE, extendsPeriod: Boolean): Bits = {
 
       assert(taps.min != 0, s"This tap ${taps.min} is not valid")
       assert(taps.max == that.getWidth, s"This tap ${taps.max} is too small or too big compare to data input")
 
       val ret = cloneOf(that)
 
+      val isEqual  = isEqualToX(that, mode)
+      val feedback = if(extendsPeriod) that.msb ^ isEqual else that.msb
+
       def recurLFSR(index: Int): List[Bool] = index match {
-        case a if a == 0               => that.msb :: recurLFSR(a + 1)
+        case a if a == 0               => feedback :: recurLFSR(a + 1)
         case a if a == that.getWidth   => Nil
-        case a if taps.contains(a)     => (that(a - 1) ^ that.msb) :: recurLFSR(a + 1)
+        case a if taps.contains(a)     => operator(that(a - 1) ^ feedback, mode) :: recurLFSR(a + 1)
         case _                         => that(index - 1) :: recurLFSR(index + 1)
       }
 

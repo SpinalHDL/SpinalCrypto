@@ -4,7 +4,6 @@ from cocotb.triggers import RisingEdge
 from cocotblib.misc import assertEquals, randInt
 
 from cocotblib.ClockDomain import ClockDomain, RESET_ACTIVE_LEVEL
-from crypto.misc.lfsr.LFSR import *
 
 
 
@@ -28,6 +27,10 @@ def test_fibonacci(dut):
     dut.io_fib_init      <= 0
     dut.io_fib_seed      <= 0
 
+    dut.io_fib_ext_inc       <= 0
+    dut.io_fib_ext_init      <= 0
+    dut.io_fib_ext_seed      <= 0
+
     yield RisingEdge(dut.clk)
     yield RisingEdge(dut.clk)
 
@@ -37,34 +40,53 @@ def test_fibonacci(dut):
     dut.io_fib_init <= 1
     dut.io_fib_seed <= 1
 
+    dut.io_fib_ext_init <= 1
+    dut.io_fib_ext_seed <= 1
+
     yield RisingEdge(dut.clk)
 
     dut.io_fib_init <= 0
+    dut.io_fib_ext_init <= 0
 
     yield RisingEdge(dut.clk)
 
-    listReg = []
+    listReg    = []
+    listRegExt = []
 
     yield RisingEdge(dut.clk)
 
     dut.io_fib_inc <= 1
+    dut.io_fib_ext_inc <= 1
 
-    for _ in range(0, 2**orderPolynomial-1):
+    for i in range(0, 2**orderPolynomial):
 
         yield RisingEdge(dut.clk)
 
-        binValue = int(dut.io_fib_value)
+        binValue    = int(dut.io_fib_value)
+        binValueExt = int(dut.io_fib_ext_value)
 
-        if binValue in listReg:
-            raise TestFailure("This value has been already generated !!")
+        if i < 2**orderPolynomial - 1:
 
-        listReg.append(binValue)
+            if binValue in listReg:
+                raise TestFailure("This value has been already generated (extendsPeriod = false)!!")
+
+            listReg.append(binValue)
+
+        if binValueExt in listRegExt:
+            raise TestFailure("This value has been already generated (extendsPeriod = true)!!")
+
+
+        listRegExt.append(binValueExt)
 
         #print('{0:07b}'.format(binValue), hex(binValue))
+        #print('{0:07b}'.format(binValueExt), hex(binValueExt))
 
 
     if len(listReg) != 2**orderPolynomial-1:
-        raise TestFailure("The maximum length of the LFSR has been not reached")
+        raise TestFailure("The maximum length of the LFSR has been not reached (extendsPeriod = false)")
+
+    if len(listRegExt) != 2**orderPolynomial:
+        raise TestFailure("The maximum length of the LFSR has been not reached (extendsPeriod = true)")
 
     dut.io_fib_inc <= 0
 
@@ -95,6 +117,10 @@ def test_galois(dut):
     dut.io_gal_init      <= 0
     dut.io_gal_seed      <= 0
 
+    dut.io_gal_ext_inc       <= 0
+    dut.io_gal_ext_init      <= 0
+    dut.io_gal_ext_seed      <= 0
+
     yield RisingEdge(dut.clk)
     yield RisingEdge(dut.clk)
 
@@ -102,37 +128,53 @@ def test_galois(dut):
     widthData = 16
     initValue = randInt(0, 2**widthData)
     dut.io_gal_init <= 1
-    dut.io_gal_seed <= 255
+    dut.io_gal_seed <= 1
+    dut.io_gal_ext_init <= 1
+    dut.io_gal_ext_seed <= 1
 
     yield RisingEdge(dut.clk)
 
     dut.io_gal_init <= 0
+    dut.io_gal_ext_init <= 0
 
     yield RisingEdge(dut.clk)
 
     listReg = []
+    listRegExt = []
 
     yield RisingEdge(dut.clk)
 
     dut.io_gal_inc <= 1
+    dut.io_gal_ext_inc <= 1
 
 
-    for _ in range(0, 2**orderPolynomial-1):
+    for i in range(0, 2**orderPolynomial):
 
         yield RisingEdge(dut.clk)
 
-        binValue = int(dut.io_gal_value)
+        binValue    = int(dut.io_gal_value)
+        binValueExt = int(dut.io_gal_ext_value)
 
-        if binValue in listReg:
-            raise TestFailure("This value has been already generated !!")
+        if i < 2**orderPolynomial - 1 :
+            if binValue in listReg:
+                raise TestFailure("This value has been already generated (extendsPeriod = false)!!")
 
-        listReg.append(binValue)
+            listReg.append(binValue)
+
+        if binValueExt in listRegExt:
+            raise TestFailure("This value has been already generated (extendsPeriod = true)!!")
+
+        listRegExt.append(binValueExt)
 
         #print('{0:07b}'.format(binValue), hex(binValue))
+        #print('{0:07b}'.format(binValueExt), hex(binValueExt))
 
 
     if len(listReg) != 2**orderPolynomial-1:
-        raise TestFailure("The maximum length of the LFSR has been not reached")
+        raise TestFailure("The maximum length of the LFSR has been not reached (extendsPeriod = false)!!")
+
+    if len(listRegExt) != 2**orderPolynomial:
+        raise TestFailure("The maximum length of the LFSR has been not reached (extendsPeriod = true)!!")
 
     dut.io_gal_inc <= 0
 

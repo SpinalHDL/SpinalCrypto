@@ -20,6 +20,10 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 
 - HMACCore_Std (tested with MD5)
 
+### Misc
+
+- LFSR (Galois & Fibonacci)
+
 
 ## Documentation
 
