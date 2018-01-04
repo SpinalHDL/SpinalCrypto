@@ -339,10 +339,10 @@ class MD5Engine_Std extends Component{
     val blockD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
 
     /* Block signals */
-    val sblockA = B(0, MD5CoreSpec.subBlockWidth)
-    val sblockB = B(0, MD5CoreSpec.subBlockWidth)
-    val sblockC = B(0, MD5CoreSpec.subBlockWidth)
-    val sblockD = B(0, MD5CoreSpec.subBlockWidth)
+    val sblockA = Bits(MD5CoreSpec.subBlockWidth)
+    val sblockB = Bits(MD5CoreSpec.subBlockWidth)
+    val sblockC = Bits(MD5CoreSpec.subBlockWidth)
+    val sblockD = Bits(MD5CoreSpec.subBlockWidth)
 
     // mux to select among the three function F, G, H, I
     val selFunc = B(0, 2 bits)

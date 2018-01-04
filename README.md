@@ -1,6 +1,6 @@
 # SpinalCrytpo
 
-This repository contains cryptographic Spinal IPs.
+This repository contains cryptographic Spinal IPs. This work is currently in progress.  
 
 ## IP available
 
@@ -19,6 +19,10 @@ This repository contains cryptographic Spinal IPs.
 ### MAC
 
 - HMACCore_Std (tested with MD5)
+
+### Misc
+
+- LFSR (Galois & Fibonacci)
 
 
 ## Documentation
