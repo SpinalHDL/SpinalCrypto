@@ -85,6 +85,9 @@ def testDESCore(dut):
         key    = randBits(64)
         data   = randBits(64)
 
+        print("key random ", hex(key))
+        print("data random", hex(data))
+
         # Encrpytion
         helperDES.io.cmd.valid          <= 1
         helperDES.io.cmd.payload.key    <= key
@@ -97,7 +100,7 @@ def testDESCore(dut):
 
         rtlEncryptedBlock = int(helperDES.io.rsp.event_valid.data.block)
 
-        #print("RTL encrypted", hex(rtlEncryptedBlock))
+        print("RTL encrypted", hex(rtlEncryptedBlock))
 
         helperDES.io.cmd.valid         <= 0
 
@@ -115,7 +118,7 @@ def testDESCore(dut):
 
         rtlDecryptedBlock = int(helperDES.io.rsp.event_valid.data.block)
 
-        #print("RTL decrypted", hex(rtlDecryptedBlock))
+        print("RTL decrypted", hex(rtlDecryptedBlock))
 
         helperDES.io.cmd.valid         <= 0
 
@@ -126,7 +129,7 @@ def testDESCore(dut):
         refEncryptedOutput = (k.encrypt(int_2_String(data))).encode('hex')[:16]
 
 
-        # print("Ref encrypted ", refEncryptedOutput)
+        print("Ref encrypted ", refEncryptedOutput)
 
         # compare result
         assertEquals(int(refEncryptedOutput, 16), rtlEncryptedBlock, "Encryption data wrong ")

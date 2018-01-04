@@ -37,11 +37,12 @@ bin/
 *.vcd
 !tester/src/test/resources/*.vhd
 
-
-
 #Test
 *.pyc
 *.xml
 *.vcd
 *.vvp
 
+#Simu
+simWorkspace
+tmp

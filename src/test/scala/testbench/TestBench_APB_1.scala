@@ -105,9 +105,7 @@ class TestBench_APB_1 extends Component{
                               useLast      = true,
                               useResp      = true,
                               useProt      = false,
-                              useStrb      = true,
-                              useUser      = false,
-                              userWidth    = -1)
+                              useStrb      = true)
 
   val io = new Bundle{
     val axiClk    = in Bool

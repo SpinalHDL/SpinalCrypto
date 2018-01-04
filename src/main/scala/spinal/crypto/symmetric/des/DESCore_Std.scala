@@ -65,8 +65,47 @@ class DESCore_Std() extends Component{
 
   val roundNbr    = UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)
   val lastRound   = io.cmd.enc ? (roundNbr === (DESCoreSpec.nbrRound-2)) | (roundNbr === 2)
-  val init        = io.cmd.valid.rise(False)
-  val nextRound   = Reg(Bool) init(False) setWhen(init) clearWhen(lastRound)
+
+
+  /**
+    * State machine
+    */
+  val sm = new Area{
+
+    object DESCoreState extends SpinalEnum{
+      val sInit, sProcessing, sRegister, sResult = newElement()
+    }
+
+    import DESCoreState._
+
+    val state        = RegInit(sInit)
+    val isInit       = False
+    val isProcessing = False
+    val isResult     = False
+
+    switch(state){
+      is(sInit){
+        isInit := True
+        when(io.cmd.valid){
+          state := sProcessing
+        }
+      }
+      is(sProcessing){
+        isProcessing := True
+        when(lastRound){
+          state  := sRegister
+        }
+      }
+      is(sRegister){
+        state  := sResult
+      }
+      default{ // Result
+        isResult := True
+        state    := sInit
+      }
+    }
+
+  }
 
   /**
     * Count the number of round
@@ -76,11 +115,11 @@ class DESCore_Std() extends Component{
   val ctnRound = new Area{
     val round = Reg(UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)) init(0)
 
-    when(init){
+    when(sm.isInit){
       round := io.cmd.enc ? U(0) | DESCoreSpec.nbrRound
     }
 
-    when(nextRound){
+    when(sm.isProcessing){
       round := io.cmd.enc ? (round + 1) | (round - 1)
     }
   }
@@ -129,7 +168,7 @@ class DESCore_Std() extends Component{
     val shiftKey   = Reg(Bits(DESCoreSpec.keyWidth))
 
     // parity drop : 64bits -> 56 bits
-    when(init){ shiftKey := DESCore_Std.compression(DESCoreSpec.pc_1, io.cmd.key) }
+    when(sm.isInit){ shiftKey := DESCore_Std.compression(DESCoreSpec.pc_1, io.cmd.key) }
 
     // rotate the key (left for encryption and right for decryption)(key is divided into two groups of 28 bits)
     val shiftRes   = Bits(DESCoreSpec.keyWidth)
@@ -154,7 +193,7 @@ class DESCore_Std() extends Component{
     }
 
     // update key shift
-    when(nextRound){ shiftKey := shiftRes }
+    when(sm.isProcessing){ shiftKey := shiftRes }
 
     // compression : (56bits -> 48 bits)
     val keyRound = DESCore_Std.compression(DESCoreSpec.pc_2, shiftRes)
@@ -233,8 +272,8 @@ class DESCore_Std() extends Component{
 
     val outBlock = inBlock(31 downto 0) ## (inBlock(63 downto 32) ^ funcDES.rResult)
 
-    when(init){ inBlock := initialBlockPermutation.perm }
-    when(nextRound){ inBlock := outBlock }
+    when(sm.isInit){ inBlock := initialBlockPermutation.perm }
+    when(sm.isProcessing){ inBlock := outBlock }
   }
 
   funcDES.rightRound  := feistelNetwork.inBlock(31 downto 0)
@@ -252,9 +291,8 @@ class DESCore_Std() extends Component{
   /*
    * Update the output
    */
-  val rspValid  = RegNext(lastRound) init(False)
-  io.rsp.block := finalBlockPermutation.perm
-  io.rsp.valid := rspValid
+  io.rsp.block := RegNext(finalBlockPermutation.perm)
+  io.rsp.valid := sm.isResult
 
-  io.cmd.ready := rspValid
+  io.cmd.ready := sm.isResult
 }
