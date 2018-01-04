@@ -3,38 +3,8 @@ package cryptotest
 import spinal.core._
 import spinal.lib._
 
-import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
+import spinal.crypto.symmetric.des.{TripleDESCore_Std}
 import spinal.crypto.symmetric._
-
-
-
-/**
-  * DESBlock component
-  */
-class DESCoreStdTester extends Component {
-
-  val des = new DESCore_Std()
-
-  val io  = slave(new SymmetricCryptoBlockIO(des.gIO))
-
-  des.io <> io
-}
-
-
-/**
-  * DES Block cocotb Test
-  */
-class DESCoreStdCocotbBoot extends SpinalTesterCocotbBase {
-
-  override def getName: String = "DESTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/DESCore_Std"
-  override def createToplevel: Component = new DESCoreStdTester
-  override def backendConfig(config: SpinalConfig): SpinalConfig = {
-    config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))
-  }
-}
-
 
 
 /**

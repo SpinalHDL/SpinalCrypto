@@ -40,6 +40,7 @@ class HMACCoreStdHelper:
             self.cmd.payload.fragment_msg  <= 0
             self.cmd.payload.fragment_size <= 0
             self.cmd.payload.fragment_key  <= 0
+            self.init   <= 0
 
 
 ###############################################################################
@@ -130,7 +131,6 @@ def testHMACCore_MD5(dut):
         helperHMAC.io.init <= 0
         yield RisingEdge(helperHMAC.io.clk)
 
-
         while (hexMsg != None) :
 
             if len(hexMsg) > 8 :
@@ -150,6 +150,8 @@ def testHMACCore_MD5(dut):
             helperHMAC.io.cmd.payload.fragment_key  <= int(endianess(hexKey), 16)
             helperHMAC.io.cmd.payload.fragment_size <= sizeLast
             helperHMAC.io.cmd.payload.last          <= isLast
+
+            yield RisingEdge(helperHMAC.io.clk)
 
             if isLast == 1:
                 yield helperHMAC.io.rsp.event_valid.wait()

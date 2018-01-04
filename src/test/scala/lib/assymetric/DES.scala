@@ -2,7 +2,7 @@ package lib.assymetric
 
 import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
-import javax.crypto.{Cipher, KeyGenerator, SecretKey}
+import javax.crypto.{Cipher, KeyGenerator}
 
 
 
@@ -34,7 +34,7 @@ object DES {
 
     //sensitive information
     //val text = "No body can see me".getBytes()
-    val blockByte = block.toByteArray.takeRight(8)
+    val blockByte = block.toByteArray
     val text = blockByte.length match{
       case 8              => blockByte
       case s:Int if s > 8 => blockByte.takeRight(8)

@@ -165,7 +165,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
               addPaddingNextWord := False
             }otherwise{
               when(indexWord =/= 0){
-                block(indexWord) := 0
+                block(indexWord) := B(0).resized
               }
             }
 

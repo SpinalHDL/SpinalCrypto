@@ -2,7 +2,7 @@ package cryptotest
 
 import lib.assymetric.DES
 import org.scalatest.FunSuite
-import spinal.core._
+
 import spinal.sim._
 import spinal.core.sim._
 import spinal.crypto.symmetric.des.DESCore_Std
@@ -11,7 +11,7 @@ import scala.util.Random
 
 
 
-class SpinalSimDESCoreSTDTester extends FunSuite {
+class SpinalSimDESCoreStdTester extends FunSuite {
 
 
   def bigIntToHex(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
@@ -23,7 +23,7 @@ class SpinalSimDESCoreSTDTester extends FunSuite {
   /**
     * Test 1
     */
-  test("DESCoreSTD_notReleaseValid"){
+  test("DESCoreStd_notReleaseValid"){
 
     compiledRTL.doSim { dut =>
 
@@ -79,7 +79,7 @@ class SpinalSimDESCoreSTDTester extends FunSuite {
   /**
     * Test 2
     */
-  test("DESCoreSTD_releaseValid"){
+  test("DESCoreStd_releaseValid"){
 
     compiledRTL.doSim { dut =>
 
