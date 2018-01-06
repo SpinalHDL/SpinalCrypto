@@ -2,6 +2,7 @@ package cryptotest
 
 import lib.assymetric.DES
 import org.scalatest.FunSuite
+import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 
 import spinal.sim._
 import spinal.core.sim._
@@ -17,7 +18,7 @@ class SpinalSimDESCoreStdTester extends FunSuite {
   def bigIntToHex(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
 
   // RTL to simulate
-  val compiledRTL = SimConfig.compile(new DESCore_Std())
+  val compiledRTL = SimConfig.withWave(2).compile(new DESCore_Std())
 
 
   /**
@@ -25,117 +26,49 @@ class SpinalSimDESCoreStdTester extends FunSuite {
     */
   test("DESCoreStd_notReleaseValid"){
 
-    compiledRTL.doSim { dut =>
+    compiledRTL.doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
-      dut.io.cmd.valid #= false
+      // initialize value
+      SymmetricCryptoBlockIOSim.initializeIO(dut.io)
 
       dut.clockDomain.waitActiveEdge()
 
       Suspendable.repeat(10){
 
-        // Generate random input
-        val plain = BigInt(64, Random)
-        val key   = BigInt(64, Random)
-
-        // Encryption
-        dut.io.cmd.valid #= true
-        dut.io.cmd.block #= plain
-        dut.io.cmd.enc   #= true
-        dut.io.cmd.key   #= key
-
-        dut.clockDomain.waitActiveEdge()
-
-        waitUntil(dut.io.rsp.valid.toBoolean == true)
-
-
-        val rtlCipher = dut.io.rsp.block.toBigInt
-        val refCipher = DES.encryptBlock(key, plain)
-
-        assert(BigInt(rtlCipher.toByteArray.takeRight(8)) == refCipher, s"Wrong Cipher RTL ${bigIntToHex(rtlCipher)} !=  REF ${bigIntToHex(refCipher)}")
-
-        dut.clockDomain.waitActiveEdge()
-
-        // Decryption
-        dut.io.cmd.valid #= true
-        dut.io.cmd.block #= rtlCipher
-        dut.io.cmd.enc   #= false
-        dut.io.cmd.key   #= key
-
-        dut.clockDomain.waitActiveEdge()
-
-        waitUntil(dut.io.rsp.valid.toBoolean == true)
-
-        val rtlPlain = dut.io.rsp.block.toBigInt
-        assert(rtlPlain == plain, s"Wrong Plain RTL ${bigIntToHex(rtlPlain)} !=  REF ${bigIntToHex(plain)}")
-
-        dut.clockDomain.waitActiveEdge()
+        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = true )(DES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = false)(DES.block(verbose = false))
 
       }
+
+      // Release the valid signal at the end of the simulation
+      dut.io.cmd.valid #= false
+
+      dut.clockDomain.waitActiveEdge()
     }
   }
+
 
   /**
     * Test 2
     */
   test("DESCoreStd_releaseValid"){
 
-    compiledRTL.doSim { dut =>
+    compiledRTL.doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
-      dut.io.cmd.valid #= false
+      // initialize value
+      SymmetricCryptoBlockIOSim.initializeIO(dut.io)
 
       dut.clockDomain.waitActiveEdge()
 
       Suspendable.repeat(10){
 
-        // Generate random number
-        val plain = BigInt(64, Random)
-        val key   = BigInt(64, Random)
+        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = true )(DES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = false)(DES.block(verbose = false))
 
-
-        // Encryption
-        dut.io.cmd.valid #= true
-        dut.io.cmd.block #= plain
-        dut.io.cmd.enc   #= true
-        dut.io.cmd.key   #= key
-
-        dut.clockDomain.waitActiveEdge()
-
-        waitUntil(dut.io.rsp.valid.toBoolean == true)
-
-        val rtlCipher = dut.io.rsp.block.toBigInt
-        val refCipher = DES.encryptBlock(key, plain)
-
-        assert(BigInt(rtlCipher.toByteArray.takeRight(8)) == refCipher, s"Wrong Cipher RTL ${bigIntToHex(rtlCipher)} !=  REF ${bigIntToHex(refCipher)}")
-
-        dut.clockDomain.waitActiveEdge()
-
-        dut.io.cmd.valid #= false
-
-        dut.clockDomain.waitActiveEdge()
-
-        // Decryption
-        dut.io.cmd.valid #= true
-        dut.io.cmd.block #= rtlCipher
-        dut.io.cmd.enc   #= false
-        dut.io.cmd.key   #= key
-
-        dut.clockDomain.waitActiveEdge()
-
-        waitUntil(dut.io.rsp.valid.toBoolean == true)
-
-        val rtlPlain = dut.io.rsp.block.toBigInt
-
-        assert(rtlPlain == plain, s"Wrong Plain RTL ${bigIntToHex(rtlPlain)} !=  REF ${bigIntToHex(plain)}")
-
-        dut.clockDomain.waitActiveEdge()
-
-        dut.io.cmd.valid #= false
-
-        dut.clockDomain.waitActiveEdge()
       }
     }
   }
