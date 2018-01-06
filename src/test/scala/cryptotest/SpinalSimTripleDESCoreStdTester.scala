@@ -1,30 +1,28 @@
 package cryptotest
 
 import org.scalatest.FunSuite
-import ref.assymetric.DES
+import ref.assymetric.TripleDES
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 
 import spinal.sim._
 import spinal.core.sim._
-import spinal.crypto.symmetric.des.DESCore_Std
-
-import scala.util.Random
+import spinal.crypto.symmetric.des.TripleDESCore_Std
 
 
 
-class SpinalSimDESCoreStdTester extends FunSuite {
+class SpinalSimTripleDESCoreStdTester extends FunSuite {
 
 
   def bigIntToHex(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
 
   // RTL to simulate
-  val compiledRTL = SimConfig.compile(new DESCore_Std())
+  val compiledRTL = SimConfig.compile(new TripleDESCore_Std())
 
 
   /**
     * Test 1
     */
-  test("DESCoreStd_notReleaseValid"){
+  test("TripleDESCoreStd_notReleaseValid"){
 
     compiledRTL.doSim{ dut =>
 
@@ -37,8 +35,8 @@ class SpinalSimDESCoreStdTester extends FunSuite {
 
       Suspendable.repeat(10){
 
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = true )(DES.block(verbose = false))
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = false)(DES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = true )(TripleDES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = false)(TripleDES.block(verbose = false))
 
       }
 
@@ -53,7 +51,7 @@ class SpinalSimDESCoreStdTester extends FunSuite {
   /**
     * Test 2
     */
-  test("DESCoreStd_releaseValid"){
+  test("TripleDESCoreStd_releaseValid"){
 
     compiledRTL.doSim{ dut =>
 
@@ -66,8 +64,8 @@ class SpinalSimDESCoreStdTester extends FunSuite {
 
       Suspendable.repeat(10){
 
-        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = true )(DES.block(verbose = false))
-        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = false)(DES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = true )(TripleDES.block(verbose = false))
+        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = false)(TripleDES.block(verbose = false))
 
       }
     }

@@ -1,14 +1,10 @@
-package lib.assymetric
+package ref.assymetric
 
-import java.util.Base64
 import javax.crypto.spec.SecretKeySpec
-import javax.crypto.{Cipher, KeyGenerator}
+import javax.crypto.Cipher
 
 
 
-/**
-  * Created by snoopy on 03.01.18.
-  */
 object DES {
 
   /**
