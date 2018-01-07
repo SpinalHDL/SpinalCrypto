@@ -22,13 +22,13 @@ class HMACCoreStdTester() extends Component{
   hmac.io.hashCore <> md5.io
 }
 
-class HMACCoreStdCocotbBoot extends SpinalTesterCocotbBase {
-
-  override def getName: String = "HMACCoreStdTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/mac/HMACCore_Std"
-  override def createToplevel: Component = new HMACCoreStdTester
-  override def backendConfig(config: SpinalConfig): SpinalConfig = {
-    config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))
-  }
-}
+//class HMACCoreStdCocotbBoot extends SpinalTesterCocotbBase {
+//
+//  override def getName: String = "HMACCoreStdTester"
+//  override def pythonTestLocation: String = "src/test/python/crypto/mac/HMACCore_Std"
+//  override def createToplevel: Component = new HMACCoreStdTester
+//  override def backendConfig(config: SpinalConfig): SpinalConfig = {
+//    config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
+//      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))
+//  }
+//}

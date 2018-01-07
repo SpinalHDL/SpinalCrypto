@@ -1,7 +1,7 @@
 package cryptotest
 
 import org.scalatest.FunSuite
-import ref.assymetric.TripleDES
+import ref.symmetric.TripleDES
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 
 import spinal.sim._

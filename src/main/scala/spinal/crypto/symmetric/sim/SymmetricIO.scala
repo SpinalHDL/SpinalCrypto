@@ -44,7 +44,7 @@ object SymmetricCryptoBlockIOSim {
     val refBlock_out = refCrypto(key, block_in, enc)
 
     // Check result
-    assert(BigInt(rtlBlock_out.toByteArray.takeRight(8)) == refBlock_out, s"Wrong result RTL ${bigIntToHex(rtlBlock_out)} !=  REF ${bigIntToHex(refBlock_out)}")
+    assert(BigInt(rtlBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) == refBlock_out, s"Wrong result RTL ${bigIntToHex(rtlBlock_out)} !=  REF ${bigIntToHex(refBlock_out)}")
 
     clockDomain.waitActiveEdge()
 
@@ -79,7 +79,7 @@ object SymmetricCryptoBlockIOSim {
     val refBlock_out = refCrypto(key, block_in, enc)
 
     // Check result
-    assert(BigInt(rtlBlock_out.toByteArray.takeRight(8)) == refBlock_out, s"Wrong result RTL ${bigIntToHex(rtlBlock_out)} !=  REF ${bigIntToHex(refBlock_out)}")
+    assert(BigInt(rtlBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) == refBlock_out, s"Wrong result RTL ${bigIntToHex(rtlBlock_out)} !=  REF ${bigIntToHex(refBlock_out)}")
 
     clockDomain.waitActiveEdge()
   }

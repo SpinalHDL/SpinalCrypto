@@ -51,7 +51,7 @@ def endianessWord(x):
 def endianess(x):
 
     tmp = [ endianessWord(x[i*8 : 8+i*8]) for i in range(0,len(x)/2)]
-
+    2
     return "".join(tmp)
 
 ###############################################################################
@@ -145,7 +145,7 @@ def testMD5CoreStd(dut):
 
         assertEquals(int(rtlHash,16), int(modelHash, 16), "Wrong MD5 hash value computed ")
 
-        #print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
+        print("hash-model: ", int(rtlHash, 16) == int(modelHash, 16)  , " :" , rtlHash, " - ", modelHash , " -- : ", tmpMsg)
 
         yield Timer(50000)
 
