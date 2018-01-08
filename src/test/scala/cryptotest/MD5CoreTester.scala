@@ -29,27 +29,3 @@ class MD5EngineStdCocotbBoot extends SpinalTesterCocotbBase {
   }
 }
 
-
-/**
-  * MD5 Core standard tester
-  */
-class MD5CoreStdTester extends Component{
-
-  val md5 = new MD5Core_Std()
-
-  val io = slave(HashCoreIO(md5.g))
-
-  md5.io <> io
-}
-
-class MD5CoreStdCocotbBoot extends SpinalTesterCocotbBase {
-
-  override def getName: String = "MD5CoreStdTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/hash/MD5Core_Std"
-  override def createToplevel: Component = new MD5CoreStdTester
-  override def backendConfig(config: SpinalConfig): SpinalConfig = {
-    config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
-      defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW))
-  }
-}
-

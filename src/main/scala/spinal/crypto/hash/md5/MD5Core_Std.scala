@@ -409,7 +409,7 @@ class MD5Engine_Std extends Component{
       iterativeRound.i := iterativeRound.i + 1
     }
 
-    when(isProcessing){
+    when(isProcessing & !io.init){
 
       iterativeRound.i := iterativeRound.i + 1
 
