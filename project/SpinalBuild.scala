@@ -10,22 +10,25 @@ object SpinalBuild extends Build {
     id = "SpinalHDL-crypto",
     base = file("crypto"),
     settings = defaultSettings  ++  Seq(
-      name := "SpinalHDL Crypto",
+      name    := "SpinalHDL Crypto",
+      version := SpinalVersion.crypto,
       libraryDependencies += "com.github.spinalhdl" % "spinalhdl-core_2.11" % "1.1.2",
-      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11" % "1.1.2",
-      version := SpinalVersion.crypto
+      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11" % "1.1.2"
     )
   )
 
 
-  lazy val test = Project(
+  lazy val crypto_tester = Project(
     id = "SpinalHDL-Crypto-Tester",
     base = file("tester"),
     settings = defaultSettings ++ Seq(
-      name := "SpinalHDL Crypto Tester",
+      name         := "SpinalHDL Crypto Tester",
+      version      := SpinalVersion.tester,
+      publishTo    := None,
+      publish      := {},
+      publishLocal := {},
       libraryDependencies += "com.github.spinalhdl" % "vexriscv_2.11" % "latest.release",
-      libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1",
-      version := SpinalVersion.tester
+      libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1"
     )
   ) dependsOn (crypto)
 
@@ -38,7 +41,7 @@ object SpinalBuild extends Build {
     //SpinalSim
     addCompilerPlugin("org.scala-lang.plugins" % "scala-continuations-plugin_2.11.6" % "1.0.2"),
     libraryDependencies += "org.scala-lang.plugins" %% "scala-continuations-library" % "1.0.2",
-    scalacOptions += "-P:continuations:enable",
+    scalacOptions       += "-P:continuations:enable",
     fork := true
   )
 
