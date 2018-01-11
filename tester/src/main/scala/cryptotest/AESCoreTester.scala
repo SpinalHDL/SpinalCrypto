@@ -34,7 +34,7 @@ class AESCoreStdTester() extends Component{
 class AESCoreStdCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "AESCoreStTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/symmetric/AESCore_Std"
+  override def pythonTestLocation: String = "tester/src/python/crypto/symmetric/AESCore_Std"
   override def createToplevel: Component = new AESCoreStdTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),

@@ -147,5 +147,3 @@ class TripleDESCore_Std() extends Component{
   io.cmd.ready := cmdReady
 }
 
-
-

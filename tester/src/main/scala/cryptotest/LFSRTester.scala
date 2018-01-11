@@ -77,7 +77,7 @@ class LFSRTester() extends Component{
 class LFSRTesterCocotbBoot extends SpinalTesterCocotbBase {
 
   override def getName: String = "LFSRTester"
-  override def pythonTestLocation: String = "src/test/python/crypto/misc/lfsr"
+  override def pythonTestLocation: String = "tester/src/python/crypto/misc/lfsr"
   override def createToplevel: Component = new LFSRTester
   override def backendConfig(config: SpinalConfig): SpinalConfig = {
     config.copy(defaultClockDomainFrequency  = FixedFrequency(50 MHz),
