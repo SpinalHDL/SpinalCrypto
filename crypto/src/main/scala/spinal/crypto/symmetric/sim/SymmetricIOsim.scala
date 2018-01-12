@@ -44,7 +44,7 @@ object SymmetricCryptoBlockIOSim {
     val refBlock_out = refCrypto(key, block_in, enc)
 
     // Check result
-    assert(BigInt(rtlBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) == refBlock_out, s"Wrong result RTL ${BigIntToHexString(rtlBlock_out)} !=  REF ${BigIntToHexString(refBlock_out)}")
+    assert(BigInt(rtlBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) == BigInt(refBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) , s"Wrong result RTL ${BigIntToHexString(rtlBlock_out)} !=  REF ${BigIntToHexString(refBlock_out)}")
 
   }
 
