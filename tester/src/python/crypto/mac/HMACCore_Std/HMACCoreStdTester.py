@@ -40,7 +40,7 @@ class HMACCoreStdHelper:
             self.cmd.payload.fragment_msg  <= 0
             self.cmd.payload.fragment_size <= 0
             self.cmd.payload.fragment_key  <= 0
-            self.init   <= 0
+            self.init <= 0
 
 
 ###############################################################################
@@ -131,6 +131,7 @@ def testHMACCore_MD5(dut):
         helperHMAC.io.init <= 0
         yield RisingEdge(helperHMAC.io.clk)
 
+
         while (hexMsg != None) :
 
             if len(hexMsg) > 8 :
@@ -144,12 +145,12 @@ def testHMACCore_MD5(dut):
                 sizeLast = (len(hexMsg)/2) - 1
                 hexMsg   = None
 
-
             helperHMAC.io.cmd.valid                 <= 1
             helperHMAC.io.cmd.payload.fragment_msg  <= int(block, 16)
             helperHMAC.io.cmd.payload.fragment_key  <= int(endianess(hexKey), 16)
             helperHMAC.io.cmd.payload.fragment_size <= sizeLast
             helperHMAC.io.cmd.payload.last          <= isLast
+
 
             yield RisingEdge(helperHMAC.io.clk)
 
@@ -171,9 +172,8 @@ def testHMACCore_MD5(dut):
         print("hmac : ", rtlhmac, modelHmac, int(rtlhmac, 16) == int(modelHmac, 16))
         print()
 
-      #  assertEquals(int(rtlhmac, 16), int(modelHmac, 16), "Wrong hmac hash value computed ")
+        #  assertEquals(int(rtlhmac, 16), int(modelHmac, 16), "Wrong hmac hash value computed ")
 
 
     yield Timer(50000)
-
 

@@ -12,9 +12,6 @@ import spinal.crypto.symmetric.des.TripleDESCore_Std
 
 class SpinalSimTripleDESCoreStdTester extends FunSuite {
 
-
-  def bigIntToHex(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
-
   // RTL to simulate
   val compiledRTL = SimConfig.compile(new TripleDESCore_Std())
 

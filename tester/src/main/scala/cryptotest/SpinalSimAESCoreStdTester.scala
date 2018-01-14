@@ -12,10 +12,6 @@ import spinal.core.sim._
 
 class SpinalSimAESCoreStdTester extends FunSuite {
 
-
-  def bigIntToHex(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
-
-
   val ref_key_192     = List(
     BigInt("6ABBBC50D08AFC199FBC016526C4283B8FEC6D2B885FC561", 16),
     BigInt("A2ED76AFC3F9D4E7681E713F93B61BD155D1A2D7DE357BDD", 16),
