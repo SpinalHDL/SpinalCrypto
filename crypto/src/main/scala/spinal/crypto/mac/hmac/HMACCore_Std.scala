@@ -160,7 +160,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
 
   assert(g.keyWidth == g.gHash.hashBlockWidth, "For the moment, the key must have the same width than the hash block")
 
-  val io = new Bundle{
+  val io = new Bundle {
     val hashCore = master(HashCoreIO(g.gHash))
     val hmacCore = slave(HMACCoreStdIO(g))
   }
@@ -185,8 +185,8 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
   io.hmacCore.cmd.ready := False
 
 
-  val keySymbol  = io.hmacCore.cmd.key.subdivideIn(g.gHash.dataWidth)(cntSymbol)
-  val hashSymbol = hashTmp.subdivideIn(g.gHash.dataWidth)(cntSymbol(log2Up(symbolInHash)-1 downto 0))
+  val keySymbol  = io.hmacCore.cmd.key.subdivideIn(g.gHash.dataWidth).reverse(cntSymbol)
+  val hashSymbol = hashTmp.subdivideIn(g.gHash.dataWidth).reverse(cntSymbol(log2Up(symbolInHash)-1 downto 0))
 
 
   /**
@@ -201,13 +201,15 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       when(io.hmacCore.init){
         cntSymbol := 0
         isIpad    := True
-        io.hashCore.init := True
-        goto(sLoadKey)
+        goto(sIdle)
       }
     }
 
     val sIdle: State = new State with EntryPoint{
-      whenIsActive{ /* Do nothing */}
+      whenIsActive{
+        io.hashCore.init := True
+        goto(sLoadKey)
+      }
     }
 
     val sLoadKey: State = new State{
@@ -241,8 +243,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
 
           when(io.hmacCore.cmd.last){
             hashTmp := io.hashCore.rsp.digest
-            io.hashCore.init := True
-            goto(sLoadKey)
+            goto(sIdle)
           }otherwise{
             io.hmacCore.cmd.ready := True
           }
@@ -254,7 +255,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       whenIsActive{
         io.hashCore.cmd.msg   := hashSymbol
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
-        io.hashCore.cmd.last  := cntSymbol === (symbolInHash-1)
+        io.hashCore.cmd.last  := cntSymbol === (symbolInHash - 1)
         io.hashCore.cmd.size  := (default -> true)
 
         when(io.hashCore.cmd.ready){

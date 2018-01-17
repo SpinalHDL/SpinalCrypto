@@ -97,7 +97,8 @@ object PlayWithHMACCore_Std_MD5Core_Std{
       mode = Verilog,
       dumpWave = DumpWaveConfig(depth = 0),
       defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
-      defaultClockDomainFrequency = FixedFrequency(50 MHz)
+      defaultClockDomainFrequency = FixedFrequency(50 MHz),
+      mergeAsyncProcess = false
     ).generate(new HMACCoreStdTester).printPruned
   }
 }

@@ -72,7 +72,7 @@ object BigIntToHexString{
   */
 object Endianness{
   def apply(input: Array[Byte]): Array[Byte] = {
-    assert(input.length % 4 == 0)
+    assert(input.length % 4 == 0, s"Endianess input is not a multiple of 4 (current length ${input.length}) ")
     return input.grouped(4).flatMap(_.reverse.toList).toArray
   }
 }
