@@ -32,7 +32,7 @@ import scala.math.{pow, sin}
 /**
   * MD5Core Specification
   */
-object MD5CoreSpec{
+object MD5CoreSpec {
 
   /** Size of a message block */
   def blockWidth    = 512 bits
@@ -46,10 +46,7 @@ object MD5CoreSpec{
   def cntBitWidth   = 64 bits
 
 
-  def initBlockA = B"x67452301"
-  def initBlockB = B"xEFCDAB89"
-  def initBlockC = B"x98BADCFE"
-  def initBlockD = B"x10325476"
+  def initBlock  = Vec(B"x67452301", B"xEFCDAB89", B"x98BADCFE", B"x10325476")
 
 
   def funcF(b: Bits, c: Bits, d: Bits): Bits = (b & c) | (~b & d)

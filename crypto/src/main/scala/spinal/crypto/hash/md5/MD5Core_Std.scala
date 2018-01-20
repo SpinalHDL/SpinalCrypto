@@ -292,10 +292,7 @@ class MD5Engine_Std extends Component{
 
   val io = slave(MD5EngineStdIO())
 
-  val ivA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-  val ivB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-  val ivC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-  val ivD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+  val iv    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 
   val memT  = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
   val memK  = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
@@ -341,25 +338,17 @@ class MD5Engine_Std extends Component{
     val endIteration = i === 63
 
     /* Register block */
-    val blockA   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-    val blockB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-    val blockC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-    val blockD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
-
-//    val block    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
+    val block    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 
     /* Block signals */
-    val sblockA = Bits(MD5CoreSpec.subBlockWidth)
-    val sblockB = Bits(MD5CoreSpec.subBlockWidth)
-    val sblockC = Bits(MD5CoreSpec.subBlockWidth)
-    val sblockD = Bits(MD5CoreSpec.subBlockWidth)
+    val sBlock  = Vec(Bits(MD5CoreSpec.subBlockWidth), 4)
 
     // mux to select among the three function F, G, H, I
     val selFunc = B(0, 2 bits)
-    val funcResult = selFunc.mux(B"00" -> MD5CoreSpec.funcF(blockB, blockC, blockD),
-                                 B"01" -> MD5CoreSpec.funcG(blockB, blockC, blockD),
-                                 B"10" -> MD5CoreSpec.funcH(blockB, blockC, blockD),
-                                 B"11" -> MD5CoreSpec.funcI(blockB, blockC, blockD))
+    val funcResult = selFunc.mux(B"00" -> MD5CoreSpec.funcF(block(1), block(2), block(3)),
+                                 B"01" -> MD5CoreSpec.funcG(block(1), block(2), block(3)),
+                                 B"10" -> MD5CoreSpec.funcH(block(1), block(2), block(3)),
+                                 B"11" -> MD5CoreSpec.funcI(block(1), block(2), block(3)))
 
     // Cut the message block into 32 bits
     val k = memK(i)
@@ -369,29 +358,26 @@ class MD5Engine_Std extends Component{
     val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memS(index)(i(1 downto 0)) ))
 
     // Compute the new value of the B block
-    val newBlockB = (funcResult.asUInt + blockA.asUInt + wordBlock.asUInt + memT(i)).rotateLeft(shiftValue) + blockB.asUInt
+    val newBlockB = (funcResult.asUInt + block(0).asUInt + wordBlock.asUInt + memT(i)).rotateLeft(shiftValue) + block(1).asUInt
 
 
     // last round => add the initial vector to the current block
     when(endIteration){
-      sblockA := (blockD.asUInt + ivA.asUInt).asBits
-      sblockB := (newBlockB     + ivB.asUInt).asBits
-      sblockC := (blockB.asUInt + ivC.asUInt).asBits
-      sblockD := (blockC.asUInt + ivD.asUInt).asBits
+      sBlock(0) := (block(3).asUInt + iv(0).asUInt).asBits
+      sBlock(1) := (newBlockB       + iv(1).asUInt).asBits
+      sBlock(2) := (block(1).asUInt + iv(2).asUInt).asBits
+      sBlock(3) := (block(2).asUInt + iv(3).asUInt).asBits
     }otherwise{
       // Update the new value of block A, B, C, D
-      sblockA := blockD
-      sblockB := newBlockB.asBits
-      sblockC := blockB
-      sblockD := blockC
+      sBlock(0) := block(3)
+      sBlock(1) := newBlockB.asBits
+      sBlock(2) := block(1)
+      sBlock(3) := block(2)
     }
 
     // Register signal block
     when(io.cmd.valid){
-      blockA  := sblockA
-      blockB  := sblockB
-      blockC  := sblockC
-      blockD  := sblockD
+      block := sBlock
     }
   }
 
@@ -404,18 +390,12 @@ class MD5Engine_Std extends Component{
     val isProcessing = Reg(Bool)
 
     when(io.init){
-      iterativeRound.blockA := MD5CoreSpec.initBlockA
-      iterativeRound.blockB := MD5CoreSpec.initBlockB
-      iterativeRound.blockC := MD5CoreSpec.initBlockC
-      iterativeRound.blockD := MD5CoreSpec.initBlockD
+      iterativeRound.block  := MD5CoreSpec.initBlock
       iterativeRound.i      := 0
       isProcessing          := False
     }.elsewhen(io.cmd.valid && !isProcessing && !io.cmd.ready){
       isProcessing := True
-      ivA := iterativeRound.blockA
-      ivB := iterativeRound.blockB
-      ivC := iterativeRound.blockC
-      ivD := iterativeRound.blockD
+      iv := iterativeRound.block
       iterativeRound.i := iterativeRound.i + 1
     }
 
@@ -442,7 +422,7 @@ class MD5Engine_Std extends Component{
   /*
    * Drive the output signals
    */
-  io.rsp.digest := iterativeRound.sblockA ## iterativeRound.sblockB ## iterativeRound.sblockC ## iterativeRound.sblockD
+  io.rsp.digest := Cat(iterativeRound.sBlock.reverse)
   io.rsp.valid  := iterativeRound.endIteration
   io.cmd.ready  := iterativeRound.endIteration
 }
