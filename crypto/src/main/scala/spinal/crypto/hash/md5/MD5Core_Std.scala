@@ -41,9 +41,11 @@ import spinal.crypto.hash._
   */
 class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
 
-  val g =  HashCoreGeneric(dataWidth      = dataWidth,
-                           hashWidth      = MD5CoreSpec.hashWidth,
-                           hashBlockWidth = MD5CoreSpec.blockWidth)
+  val g =  HashCoreGeneric(
+    dataWidth      = dataWidth,
+    hashWidth      = MD5CoreSpec.hashWidth,
+    hashBlockWidth = MD5CoreSpec.blockWidth
+  )
 
   val io = slave(HashCoreIO(g))
 
@@ -330,6 +332,7 @@ class MD5Engine_Std extends Component{
     *         ___|___ ___|___ ___|___ ___|___
     *        |   A'  |   B'  |   C'  |   D'  |
     *         ------- ------- ------- -------
+    * Note : A=0, B=1, C=2, D=3
     */
   val iterativeRound = new Area{
 
@@ -342,6 +345,8 @@ class MD5Engine_Std extends Component{
     val blockB   = Reg(Bits(MD5CoreSpec.subBlockWidth))
     val blockC   = Reg(Bits(MD5CoreSpec.subBlockWidth))
     val blockD   = Reg(Bits(MD5CoreSpec.subBlockWidth))
+
+//    val block    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 
     /* Block signals */
     val sblockA = Bits(MD5CoreSpec.subBlockWidth)

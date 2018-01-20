@@ -32,14 +32,15 @@ import spinal.lib.bus.misc.BusSlaveFactory
 
 /**
   * Symmetric Crypto block generiics
-  * @param keyWidth Key width
+  * @param keyWidth   Key width
   * @param blockWidth Block width
-  * @param useEncDec Create a signal for the encryption/decryption
+  * @param useEncDec  Create a signal for the encryption/decryption
   */
 case class SymmetricCryptoBlockGeneric(
-              keyWidth  : BitCount,
-              blockWidth: BitCount,
-              useEncDec : Boolean = true) {}
+  keyWidth   : BitCount,
+  blockWidth : BitCount,
+  useEncDec  : Boolean = true
+){}
 
 
 /**
@@ -64,6 +65,7 @@ case class SymmetricCryptoBlockRsp(g: SymmetricCryptoBlockGeneric) extends Bundl
   * Interface used by a symmetric block algo
   */
 case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle with IMasterSlave {
+
   val cmd  = Stream(SymmetricCryptoBlockCmd(g))
   val rsp  = Flow(SymmetricCryptoBlockRsp(g))
 
@@ -85,7 +87,7 @@ case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle
     busCtrl.driveMultiWord(cmd.block, addr)
     addr += (widthOf(cmd.block)/32)*4
 
-    busCtrl.drive(cmd.enc, addr) // TODO if cmd.enc is null ????
+    if(g.useEncDec) busCtrl.drive(cmd.enc, addr)
     addr += 4
 
     val validReg = busCtrl.drive(cmd.valid, addr) init(False)

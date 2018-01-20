@@ -58,9 +58,11 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBloc
   */
 class TripleDESCore_Std() extends Component{
 
-  val gIO  = SymmetricCryptoBlockGeneric(keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
-                                         blockWidth = DESCoreSpec.blockWidth,
-                                         useEncDec  = true)
+  val gIO  = SymmetricCryptoBlockGeneric(
+    keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
+    blockWidth = DESCoreSpec.blockWidth,
+    useEncDec  = true
+  )
 
   val io = slave(new SymmetricCryptoBlockIO(gIO))
 
@@ -71,7 +73,7 @@ class TripleDESCore_Std() extends Component{
   /**
     * Triple DES state machine
     */
-  val sm3DES = new StateMachine{
+  val sm3DES = new StateMachine {
 
     val desCmdValid = False
     val desEncDec   = False
@@ -79,7 +81,7 @@ class TripleDESCore_Std() extends Component{
     val inSel       = False
     val cmdReady    = False
 
-    val sIdle: State = new State with EntryPoint{
+    val sIdle: State = new State with EntryPoint {
       whenIsActive{
         when(io.cmd.valid && !io.cmd.ready){
           goto(sStage1)
@@ -87,7 +89,7 @@ class TripleDESCore_Std() extends Component{
       }
     }
 
-    val sStage1: State = new State{
+    val sStage1: State = new State {
       whenIsActive{
         desEncDec   := io.cmd.enc
         desCmdValid := True
@@ -101,7 +103,7 @@ class TripleDESCore_Std() extends Component{
       }
     }
 
-    val sStage2: State = new State{
+    val sStage2: State = new State {
       whenIsActive{
         inSel       := True
         desEncDec   := !io.cmd.enc

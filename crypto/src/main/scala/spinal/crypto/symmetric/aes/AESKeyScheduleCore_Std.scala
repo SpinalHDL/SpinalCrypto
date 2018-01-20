@@ -74,8 +74,8 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
   val io = slave(AESKeyScheduleIO_Std(keyWidth))
 
   // store the current state of the key
-  val stateKey     = Reg(Vec(Bits(32 bits), keyWidth.value/32))
-  val stateKey_tmp = Vec(Bits(32 bits),     keyWidth.value/32)
+  val stateKey     = Reg(Vec(Bits(32 bits), keyWidth.value / 32))
+  val stateKey_tmp = Vec(Bits(32 bits),     keyWidth.value / 32)
 
   // Count internally the number of round
   val cntRound = Reg(UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits))
@@ -91,8 +91,8 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
   val autoUpdate = RegInit(False)
 
   // cmd ready register
-  val cmdready    = RegInit(False)
-  io.cmd.ready    := cmdready
+  val cmdready  = RegInit(False)
+  io.cmd.ready := cmdready
 
   // generate a pulse on the cmd.ready
   when(cmdready){ cmdready := False }
@@ -112,7 +112,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
     case 192 =>
       io.key_i := selKey.mux(
         0  -> stateKey.reverse.asBits()(191 downto 64),
-        1  -> stateKey.reverse.asBits()(63 downto   0) ## stateKey.reverse.asBits()(191 downto 128),
+        1  -> stateKey.reverse.asBits()( 63 downto  0) ## stateKey.reverse.asBits()(191 downto 128),
         2  -> stateKey.reverse.asBits()(127 downto  0),
         3  -> B(0, 128 bits)
       )
@@ -218,7 +218,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
         cntRound := 1
         cntStage := 1
         selKey   := 0
-        for(i <- 0 until stateKey.length) stateKey(i) := keyWord(i)
+        (stateKey, keyWord).zipped.map(_ := _)
       }
     }
 
@@ -278,7 +278,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
             stateKey(5) := stateKey_tmp(5)
             stateKey(6) := stateKey_tmp(6)
             stateKey(7) := stateKey_tmp(7)
-            cntStage := cntStage + 1
+            cntStage    := cntStage + 1
           }
       }
     }
