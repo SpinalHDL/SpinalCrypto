@@ -41,6 +41,7 @@ object BCMO_Std_CmdMode extends SpinalEnum {
   val INIT, UPDATE = newElement()
 }
 
+
 case class BCMO_Std_Cmd(g: BCMO_Std_Generic) extends Bundle {
   val key    = Bits(g.keyWidth bits)
   val block  = Bits(g.blockWidth bits)
@@ -49,11 +50,14 @@ case class BCMO_Std_Cmd(g: BCMO_Std_Generic) extends Bundle {
   val mode   = BCMO_Std_CmdMode()
 }
 
+
 case class BCMO_Std_Rsp(g: BCMO_Std_Generic) extends Bundle {
   val block = Bits(g.blockWidth bits)
 }
 
+
 case class BCMO_Std_IO(g: BCMO_Std_Generic) extends Bundle with IMasterSlave {
+
   val cmd  = Stream(BCMO_Std_Cmd(g))
   val rsp  = Flow(BCMO_Std_Rsp(g))
 
@@ -81,7 +85,7 @@ case class ECB_Std(g: SymmetricCryptoBlockGeneric, mode: EncryptionMode) extends
       keyWidth   = g.keyWidth.value,
       blockWidth = g.blockWidth.value,
       useEncDec  = mode == ENC_DEC,
-      ivWidth    = g.blockWidth.value
+      ivWidth    = -1
     )))
     val core = master(SymmetricCryptoBlockIO(g))
   }
@@ -328,8 +332,14 @@ class CTR_Std(g: SymmetricCryptoBlockGeneric, ivWidth: Int,  f_inc : Bits => Bit
 }
 
 object CTR_Std{
-  def apply(g: SymmetricCryptoBlockGeneric, ivWidth: Int, mode: EncryptionMode, initCounter: BigInt = 0): CTR_Std = new CTR_Std(g, ivWidth, x => (x.asUInt + 1).asBits, initCounter, mode)
-  def apply(g: SymmetricCryptoBlockGeneric, ivWidth: Int, mode: EncryptionMode,  f_inc : Bits => Bits, initCounter: BigInt) = new CTR_Std(g, ivWidth, f_inc, initCounter, mode)
+
+  def apply(g: SymmetricCryptoBlockGeneric, ivWidth: Int, mode: EncryptionMode, initCounter: BigInt = 0): CTR_Std ={
+    new CTR_Std(g, ivWidth, x => (x.asUInt + 1).asBits, initCounter, mode)
+  }
+
+  def apply(g: SymmetricCryptoBlockGeneric, ivWidth: Int, mode: EncryptionMode, f_inc : Bits => Bits, initCounter: BigInt): CTR_Std = {
+    new CTR_Std(g, ivWidth, f_inc, initCounter, mode)
+  }
 }
 
 

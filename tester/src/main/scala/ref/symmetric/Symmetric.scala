@@ -1,7 +1,11 @@
 package ref.symmetric
 
-import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
+import javax.crypto.{Cipher, KeyGenerator}
+import javax.crypto.spec.{IvParameterSpec, SecretKeySpec}
+
+import spinal.crypto.{BigIntToHexString, CastByteArray}
+
+import scala.util.Random
 
 
 /**
@@ -29,6 +33,32 @@ object DES {
         keySize   = 8,
         algoName  = "DES",
         chainning = "ECB",
+        padding   = "NoPadding",
+        enc       = false,
+        verbose   = verbose)
+    }
+  }
+
+  def blockWithChaining(verbose: Boolean)(key: BigInt, block: BigInt, blockWidth: Int, enc: Boolean, chaining: String) = {
+    if(enc) {
+      Symmetric.block(
+        key       = key,
+        block     = block,
+        blockSize = blockWidth,
+        keySize   = 8,
+        algoName  = "DES",
+        chainning = chaining,
+        padding   = "NoPadding",
+        enc       = true,
+        verbose   = verbose)
+    } else {
+      Symmetric.block(
+        key       = key,
+        block     = block,
+        blockSize = blockWidth,
+        keySize   = 8,
+        algoName  = "DES",
+        chainning = chaining,
         padding   = "NoPadding",
         enc       = false,
         verbose   = verbose)
@@ -81,7 +111,7 @@ object Symmetric {
   def block(key: BigInt, block: BigInt, blockSize:Int, keySize:Int, algoName: String, chainning: String, padding: String, enc: Boolean, verbose: Boolean = false ): BigInt = {
 
     // Cast the input key
-    val keyAlgo = new SecretKeySpec(castByteArray(key.toByteArray, keySize), algoName)
+    val keyAlgo = new SecretKeySpec(CastByteArray(key.toByteArray, keySize), algoName)
 
     // Create the cipher
     val algorithm = Cipher.getInstance(s"$algoName/$chainning/$padding")
@@ -90,7 +120,8 @@ object Symmetric {
     algorithm.init(if(enc) Cipher.ENCRYPT_MODE else Cipher.DECRYPT_MODE, keyAlgo)
 
     // cast input block
-    val block_in = castByteArray(block.toByteArray, blockSize)
+    val block_in = CastByteArray(block.toByteArray, blockSize)
+
 
     // Encrypt the text
     val block_out = algorithm.doFinal(block_in)
@@ -105,23 +136,32 @@ object Symmetric {
     return BigInt(block_out.take(blockSize))
   }
 
-
-  /**
-    * Cast the input array to x byte
-    */
-  private def castByteArray(input: Array[Byte], castSize: Int): Array[Byte] = {
-    if(input.length == castSize){
-      input
-    }else if(input.length > castSize){
-      input.takeRight(castSize)
-    }else{
-      Array.fill[Byte](castSize - input.length)(0x00) ++ input
-    }
-  }
-
 }
 
 
-object PlayWithSymmetricRef{
+object PlayWithSymmetricRef extends App {
+//
+//  val c   = Cipher.getInstance("DES/CBC/NoPadding");
+////  val key = kg.generateKey()
+//  val key = new SecretKeySpec(CastByteArray(BigInt(0x111).toByteArray, 8), "DES")
+//
+//  c.init(Cipher.ENCRYPT_MODE, key)
+//  val input = "Stand and unfold".getBytes()
+//  val encrypted = c.doFinal(input)
+////  val iv = c.getIV()
+//  val iv = CastByteArray(BigInt(0x111).toByteArray, 8)
+//
+//  val dps = new IvParameterSpec(iv)
+//  println(BigIntToHexString(BigInt(dps.getIV())))
+//  c.init(Cipher.DECRYPT_MODE, key, dps)
+//  val output = c.doFinal(encrypted)
+//  println(BigIntToHexString(BigInt(output)))
+//
+////
+////  val key_          = BigInt(64, Random)
+////  val blockIn_      = BigInt(64 * 3, Random)
+////  val enc_          = Random.nextBoolean()
+////  val ref_blockOut_ = DES.blockWithChaining(true)(key_, blockIn_, (64 * 3) / 8,  enc_, "CBC")
+
 
 }
