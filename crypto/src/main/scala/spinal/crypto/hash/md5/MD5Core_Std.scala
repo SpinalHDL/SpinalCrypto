@@ -370,10 +370,7 @@ class MD5Engine_Std extends Component{
       sBlock(3) := (block(2).asUInt + iv(3).asUInt).asBits
     }otherwise{
       // Update the new value of block A, B, C, D
-      sBlock(0) := block(3)
-      sBlock(1) := newBlockB.asBits
-      sBlock(2) := block(1)
-      sBlock(3) := block(2)
+      sBlock  := Vec(block(3), newBlockB.asBits, block(1), block(2))
     }
 
     // Register signal block

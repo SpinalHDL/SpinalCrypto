@@ -18,7 +18,8 @@ case class CryptoCPUConfig(
     axiFrequency : HertzNumber,
     onChipRamSize: BigInt,
     sdramLayout  : SdramLayout,
-    sdramTimings : SdramTimings
+    sdramTimings : SdramTimings,
+    enableUart   : Boolean
 )
 
 object CryptoCPUConfig{
@@ -26,7 +27,8 @@ object CryptoCPUConfig{
       axiFrequency   = 50 MHz,
       onChipRamSize  = 4 kB,
       sdramLayout    = IS42x320D.layout,
-      sdramTimings   = IS42x320D.timingGrade7
+      sdramTimings   = IS42x320D.timingGrade7,
+      enableUart     = true
   )
 }
 
@@ -130,13 +132,13 @@ object CryptoVexRiscvConfig{
 
 
 
-class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
+class SocCryptoVexRiscv(config: CryptoCPUConfig)(apbSlaves: (() => ApbCryptoComponent)*) extends Component {
 
   import config._
   val debug = true
   val interruptCount = 4
 
-  val io = new Bundle{
+  val io = new Bundle {
 
     //Clocks / reset
     val asyncReset = in Bool
@@ -148,9 +150,8 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
 
     //Peripherals IO
     val gpioA         = master(TriStateArray(32 bits))
-    val uart          = master(Uart())
+    val uart          = if(config.enableUart) master(Uart()) else null
 
-    val timerExternal = in(PinsecTimerCtrlExternal())
     val coreInterrupt = in Bool
   }
 
@@ -166,7 +167,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
     val coreResetUnbuffered = False
 
     //Implement an counter to keep the reset axiResetOrder high 64 cycles
-    // Also this counter will automaticly do a reset when the system boot.
+    // Also this counter will automaticaly do a reset when the system boot.
     val axiResetCounter = Reg(UInt(6 bits)) init(0)
     when(axiResetCounter =/= U(axiResetCounter.range -> true)){
       axiResetCounter := axiResetCounter + 1
@@ -214,32 +215,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
     )
 
 
-    val apbBridge = Axi4SharedToApb3Bridge(
-      addressWidth = 20,
-      dataWidth    = 32,
-      idWidth      = 4
-    )
-
-    val gpioACtrl = Apb3Gpio(
-      gpioWidth = 32
-    )
-
-    val timerCtrl = PinsecTimerCtrl()
-
-    val uartCtrlConfig = UartCtrlMemoryMappedConfig(
-      uartCtrlConfig = UartCtrlGenerics(
-        dataWidthMax      = 8,
-        clockDividerWidth = 20,
-        preSamplingSize   = 1,
-        samplingSize      = 5,
-        postSamplingSize  = 2
-      ),
-      txFifoDepth = 16,
-      rxFifoDepth = 16
-    )
-    val uartCtrl = Apb3UartCtrl(uartCtrlConfig)
-
-
+    val apbBridge = new AxiShared2Apb_TB(AxiShared2Apb_TB.defaultConfig.copy(addUartSlave = enableUart))(apbSlaves:_*)
 
     val core = new ClockingArea(coreClockDomain){
 
@@ -254,7 +230,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
         case plugin : DBusCachedPlugin => dBus = plugin.dBus.toAxi4Shared(true)
         case plugin : CsrPlugin        => {
           plugin.externalInterrupt := BufferCC(io.coreInterrupt)
-          plugin.timerInterrupt := timerCtrl.io.interrupt
+          plugin.timerInterrupt := False// timerCtrl.io.interrupt
         }
         case plugin : DebugPlugin      => {
           resetCtrl.coreResetUnbuffered setWhen(plugin.io.resetOut)
@@ -270,16 +246,16 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
     axiCrossbar.addSlaves(
       ram.io.axi       -> (0x00000000L,   onChipRamSize),
       sdramCtrl.io.axi -> (0x40000000L,   sdramLayout.capacity),
-      apbBridge.io.axi -> (0xF0000000L,   1 MB)
+      apbBridge.io.axiShared -> (0xF0000000L,   1 MB)
     )
 
     axiCrossbar.addConnections(
       core.iBus       -> List(ram.io.axi, sdramCtrl.io.axi),
-      core.dBus       -> List(ram.io.axi, sdramCtrl.io.axi, apbBridge.io.axi)
+      core.dBus       -> List(ram.io.axi, sdramCtrl.io.axi, apbBridge.io.axiShared)
     )
 
 
-    axiCrossbar.addPipelining(apbBridge.io.axi)((crossbar,bridge) => {
+    axiCrossbar.addPipelining(apbBridge.io.axiShared)((crossbar,bridge) => {
       crossbar.sharedCmd.halfPipe() >> bridge.sharedCmd
       crossbar.writeData.halfPipe() >> bridge.writeData
       crossbar.writeRsp             << bridge.writeRsp
@@ -310,46 +286,13 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig) extends Component{
 
     axiCrossbar.build()
 
-
-
-    val desCore       = Apb3_DESCore()
-    val tripleDESCore = APB3_3DESCore()
-    val md5Core       = APB3_MD5()
-    val hmacMD5       = APB3_HMAC_MD5()
-    val aes128        = APB3_AES_128()
-
-
-
-    val apbDecoder = Apb3Decoder(
-      master = apbBridge.io.apb,
-      slaves = List(
-        gpioACtrl.io.apb     -> (0x0000, 1 kB),
-        uartCtrl.io.apb      -> (0x1000, 1 kB),
-        timerCtrl.io.apb     -> (0x2000, 1 kB),
-        desCore.io.apb       -> (0x3000, 1 kB),
-        tripleDESCore.io.apb -> (0x4000, 1 kB),
-        hmacMD5.io.apb       -> (0x5000, 1 kB),
-        md5Core.io.apb       -> (0x6000, 1 kB),
-        aes128.io.apb        -> (0x7000, 1 kB)
-      )
-    )
-
     io.jtag <> core.debugBus.fromJtag()
   }
 
-  io.gpioA          <> axi.gpioACtrl.io.gpio
-  io.timerExternal  <> axi.timerCtrl.io.external
-  io.uart           <> axi.uartCtrl.io.uart
+  io.gpioA          <>  axi.apbBridge.io.gpioA 
+
+  if(config.enableUart) io.uart <> axi.apbBridge.io.uart
+
   io.sdram          <> axi.sdramCtrl.io.sdram
 }
 
-//DE1-SoC
-object CryptoSoc{
-  def main(args: Array[String]) {
-    val config = SpinalConfig()
-    config.generateVerilog({
-      val toplevel = new SocCryptoVexRiscv(CryptoCPUConfig.de1_soc)
-      toplevel
-    })
-  }
-}
