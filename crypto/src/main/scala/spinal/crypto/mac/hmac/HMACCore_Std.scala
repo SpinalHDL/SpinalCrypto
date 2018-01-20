@@ -204,13 +204,21 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
 
     always{
       when(io.hmacCore.init){
-        cntSymbol := 0
-        isIpad    := True
         goto(sIdle)
       }
     }
 
     val sIdle: State = new State with EntryPoint{
+      whenIsActive{
+        when(io.hmacCore.cmd.valid){
+          cntSymbol := 0
+          isIpad    := True
+          goto(sInit)
+        }
+      }
+    }
+
+    val sInit: State = new State {
       whenIsActive{
         io.hashCore.init := True
         goto(sLoadKey)
@@ -248,7 +256,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
 
           when(io.hmacCore.cmd.last){
             hashTmp := io.hashCore.rsp.digest
-            goto(sIdle)
+            goto(sInit)
           }otherwise{
             io.hmacCore.cmd.ready := True
           }

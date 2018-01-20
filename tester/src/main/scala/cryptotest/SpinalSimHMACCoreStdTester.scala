@@ -3,18 +3,16 @@ package cryptotest
 
 import org.scalatest.FunSuite
 import ref.mac.HMAC
-
 import spinal.core._
-import spinal.crypto.{BigIntToHexString, Endianness, CastByteArray}
+import spinal.crypto.{BigIntToHexString, CastByteArray, Endianness}
 import spinal.crypto.hash.md5.MD5Core_Std
-import spinal.crypto.mac.hmac.{HMACCoreStdIO, HMACCoreStdGeneric, HMACCore_Std}
-
+import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
 import spinal.lib.slave
-
 import spinal.sim._
 import spinal.core.sim._
 
 import scala.util.Random
+import scala.util.continuations.cpsParam
 
 
 class HMACCoreStd_MD5_Tester() extends Component {
@@ -60,8 +58,9 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
         var msgStr = (List.fill(lenMsg)(Random.nextPrintableChar()).mkString(""))
         val keyStr = (List.fill(64)(Random.nextPrintableChar()).mkString(""))
 
-//        var msgStr = """RYWc/tA]1iG)lj3xlszyvbg+'4.y'wttA+:O`TsOh(yOo3v{j!.n4$Q+kW1$@'@=J%L%G')Nx#@D:SZ0/I!g91d?v1w$bWV|dE;{zKdMy(91WTX.w-r_6-6OHB}60EcVQWNfmzeQ!ebPep~`8Y`bM&BabXGiF;xHD4Imb+}#(x"RhB[JcTWA|LTu-r4(TYD%ul*M~B{*_~k0!KsJ'0iJk_aZ=^~og.1(J7,)|716bIoT;WU=vxw=8^OZhX9up1dS>@[NIgcj%-)o1W%10.$9aZUC_0bk^9~KL%<XyOu8$seiS8D27DlKs+RWjEs=EH1@xlOlL&F9Z]N_~o3b4~63q,ODo=YHC_o*4D.3#1KmX7p`qm{M:H?fVxUgCbx$3E@#[7_Vjf0_L:,-MJw)s')3&@5vfeQC|P13k?#^P<`m#vvXSD`4C6SmybZ@c$h&tir#-j(?DBuvKYrblBQQ5q#ScTcB%#_$[5Bckce@T8R}:r1XPs~48o#(+;yk;gH%ue^qitYRqN|yeI0Y9J#aVc`j~i~X"$oGhA9,l_^dAaxn}4>NufMKGlnl]|u3QNzbx?Nk;-^;c9)3XunL0+H1wF&"%<TA|v%=LM&(>vsMA|24NKFHTfXW/O"4Br4N-BJIO6tf-,{y^tX[pqHzzD&~^kH8d+E@M>a<tXgw3'xN3}zLn`Q?>y,TV'.`w|X.$E[vqGZ=D@2sXQ!tXXt.U$#5%C|B.5uk*)IuNP4Vi|e{r.l7o"CCpxtn>!v{pcXES*cL_Zx)J#MF{tfzteg[S]D%`$!6>arw1ADnI|6vo+&7kq$1oulz,~TM8H[]Rl71.^|QcTr%W"B"AIIrb1Wr|f[w_;1&2$+p)I[kFMo~@Ft#hHIs!XbA<-:,pH+(P1G|0>L7R<5awF"""
-//        val keyStr = """0,m,U/s_^QYBFOWyy=dIpde<)s#13u/&7S:Xn[Y`Eu}<.|?<&DnTk#0q_R5-:,L*"""
+//        var msgStr = """RYWc/tA]1iG"""
+//        val keyStr = """0,m,U/s_^}<.|?<&DnTk#0q_R5-:,L*"""
+
         val msgStrOrginal = msgStr
 
 
@@ -115,9 +114,10 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
             dut.clockDomain.waitActiveEdge()
           }
 
+          // randomize the release of teh cmd.valid
           dut.io.cmd.valid #= false
-
           dut.clockDomain.waitActiveEdge()
+
 
           index -= 1
           msgStr = msgStr.drop(byteSizeMsg)
@@ -127,5 +127,4 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
       }
     }
   }
-
 }

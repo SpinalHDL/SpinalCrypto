@@ -300,7 +300,8 @@ class MD5Engine_Std extends Component{
   val memS  = List(Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(0,  4).map(U(_, 5 bits))),
                    Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(4,  8).map(U(_, 5 bits))),
                    Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(8, 12).map(U(_, 5 bits))),
-                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(12,16).map(U(_, 5 bits))))
+                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(12,16).map(U(_, 5 bits)))
+  )
 
   /**
     * Iterative round:
@@ -338,7 +339,7 @@ class MD5Engine_Std extends Component{
     val endIteration = i === 63
 
     /* Register block */
-    val block    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
+    val block   = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 
     /* Block signals */
     val sBlock  = Vec(Bits(MD5CoreSpec.subBlockWidth), 4)
