@@ -2,10 +2,13 @@
 
 This repository contains cryptographic Spinal IPs. This work is currently in progress.  
 
+
 ## IP available
+
 
 ### Symmetric
 
+- Block Cipher Mode of Operation (BCMO) (ECB, CBC, CFB, OFB)
 - AESCore_Std (128/192/256-bit)
 - DESCore_Std
 - TripleDESCore_Std

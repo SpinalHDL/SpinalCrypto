@@ -3,9 +3,10 @@ package cryptotest
 import org.scalatest._
 import spinal.crypto._
 
+
 class PolynomialTester extends FunSuite {
 
-  test("Polynomial creation is working") {
+  test("Polynomial creation") {
 
     val p1 = p"x^3 + x^2 + x + 1"
     assert(p1.coefficient == List(3,2,1,0), s"String polynomial Error $p1")

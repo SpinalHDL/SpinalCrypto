@@ -23,7 +23,7 @@ object Generate_TB extends App {
   val spinalConfig = SpinalConfig(
     mode = VHDL,
     defaultConfigForClockDomains = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW),
-    defaultClockDomainFrequency = FixedFrequency(50 MHz)
+    defaultClockDomainFrequency  = FixedFrequency(50 MHz)
   )
 
 

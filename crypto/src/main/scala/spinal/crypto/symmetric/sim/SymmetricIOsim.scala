@@ -37,7 +37,9 @@ import scala.util.Random
 
 object SymmetricCryptoBlockIOSim {
 
-
+  /**
+    * Initialize the IO with random value
+    */
   def initializeIO(dut: SymmetricCryptoBlockIO): Unit@suspendable ={
     dut.cmd.valid #= false
     dut.cmd.block.randomize()
@@ -45,10 +47,11 @@ object SymmetricCryptoBlockIOSim {
     if(dut.g.useEncDec) dut.cmd.enc.randomize()
   }
 
+
   /**
     * Symmetric Crypto Block IO simulation
     */
-  def sim(dut: SymmetricCryptoBlockIO, clockDomain: ClockDomain, enc: Boolean, blockIn: BigInt = null, keyIn: BigInt = null)(refCrypto: (BigInt, BigInt, Boolean) => BigInt ): Unit@suspendable ={
+  def doSim(dut: SymmetricCryptoBlockIO, clockDomain: ClockDomain, enc: Boolean, blockIn: BigInt = null, keyIn: BigInt = null)(refCrypto: (BigInt, BigInt, Boolean) => BigInt ): Unit@suspendable ={
 
     // Generate random input
     val block_in = if(blockIn == null) BigInt(dut.cmd.block.getWidth, Random) else blockIn
@@ -71,32 +74,14 @@ object SymmetricCryptoBlockIOSim {
     // Check result
     assert(BigInt(rtlBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) == BigInt(refBlock_out.toByteArray.takeRight(dut.cmd.block.getWidth / 8)) , s"Wrong result RTL ${BigIntToHexString(rtlBlock_out)} !=  REF ${BigIntToHexString(refBlock_out)}")
 
-  }
 
-
-  /**
-    * Between each operation the signal cmd_valid is release
-    */
-  def simWithValidReleased(dut: SymmetricCryptoBlockIO, clockDomain: ClockDomain, enc: Boolean, blockIn: BigInt = null, keyIn: BigInt = null)(refCrypto: (BigInt, BigInt, Boolean) => BigInt ): Unit@suspendable ={
-
-    sim(dut, clockDomain, enc, blockIn, keyIn)(refCrypto)
-
-    // release the command valid between each transaction
+    // release the command valid between each transaction randomly
     clockDomain.waitActiveEdge()
 
-    initializeIO(dut)
+    if(Random.nextBoolean()){
+      initializeIO(dut)
 
-    clockDomain.waitActiveEdge()
-  }
-
-
-  /**
-    * Between each operation the signal cmd_valid is not release
-    */
-  def simWithValidNotRelease(dut: SymmetricCryptoBlockIO, clockDomain: ClockDomain, enc: Boolean, blockIn: BigInt = null, keyIn: BigInt = null)(refCrypto: (BigInt, BigInt, Boolean) => BigInt ): Unit@suspendable ={
-
-    sim(dut, clockDomain, enc, blockIn, keyIn)(refCrypto)
-
-    clockDomain.waitActiveEdge()
+      clockDomain.waitActiveEdge()
+    }
   }
 }

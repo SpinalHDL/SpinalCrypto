@@ -4,13 +4,14 @@ import org.scalatest.FunSuite
 import ref.symmetric.AES
 import spinal.crypto.symmetric.aes.AESCore_Std
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
-
 import spinal.core._
 import spinal.sim._
 import spinal.core.sim._
 
+import scala.util.Random
 
-class SpinalSimAESCoreStdTester extends FunSuite {
+
+class SpinalSimAESCoreTester extends FunSuite {
 
   val ref_key_192     = List(
     BigInt("6ABBBC50D08AFC199FBC016526C4283B8FEC6D2B885FC561", 16),
@@ -103,17 +104,12 @@ class SpinalSimAESCoreStdTester extends FunSuite {
     BigInt("aeb6ccd3c3e1bb91b4620bd72e2faca2", 16)
   )
 
-  // RTL to simulate
-  val compiledRTL_128 = SimConfig.compile(new AESCore_Std(128 bits))
-  val compiledRTL_192 = SimConfig.compile(new AESCore_Std(192 bits))
-  val compiledRTL_256 = SimConfig.compile(new AESCore_Std(256 bits))
-
   /**
-    * Test 1 - 128 bits
+    * Test - AESCore_Std (128-bit)
     */
-  test("AESCoreStd_128_notReleaseValid"){
+  test("AESCoreStd_128"){
 
-    compiledRTL_128.doSim{ dut =>
+    SimConfig.compile(new AESCore_Std(128 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -122,11 +118,9 @@ class SpinalSimAESCoreStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(2){
+      Suspendable.repeat(20){
 
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = true )(AES.block(128, verbose = false))
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(dut.io, dut.clockDomain, enc = false)(AES.block(128, verbose = false))
-
+        SymmetricCryptoBlockIOSim.doSim(dut.io, dut.clockDomain, enc = Random.nextBoolean() )(AES.block(128, verbose = false))
       }
 
       // Release the valid signal at the end of the simulation
@@ -136,36 +130,14 @@ class SpinalSimAESCoreStdTester extends FunSuite {
     }
   }
 
-  /**
-    * Test 2 - 128 bits
-    */
-  test("AESCoreStd_128_releaseValid"){
-
-    compiledRTL_128.doSim{ dut =>
-
-      dut.clockDomain.forkStimulus(2)
-
-      // initialize value
-      SymmetricCryptoBlockIOSim.initializeIO(dut.io)
-
-      dut.clockDomain.waitActiveEdge()
-
-      Suspendable.repeat(2){
-
-        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = true )(AES.block(128, verbose = false))
-        SymmetricCryptoBlockIOSim.simWithValidReleased(dut.io, dut.clockDomain, enc = false)(AES.block(128, verbose = false))
-
-      }
-    }
-  }
 
 
   /**
-    * Test 3 : 192 bits
+    * Test - AESCore_Std (192-bit)
     */
-  test("AESCoreStd_192_releaseValid"){
+  test("AESCoreStd_192"){
 
-    compiledRTL_192.doSim{ dut =>
+    SimConfig.compile(new AESCore_Std(192 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -182,15 +154,14 @@ class SpinalSimAESCoreStdTester extends FunSuite {
         val plain  = ref_plain_192(index)
         val cipher = ref_cipher_192(index)
 
-
-        SymmetricCryptoBlockIOSim.simWithValidReleased(
+        SymmetricCryptoBlockIOSim.doSim(
           dut         = dut.io,
           clockDomain = dut.clockDomain,
           enc         = true,
           blockIn     = plain,
           keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => cipher)
 
-        SymmetricCryptoBlockIOSim.simWithValidReleased(
+        SymmetricCryptoBlockIOSim.doSim(
           dut         = dut.io,
           clockDomain = dut.clockDomain,
           enc         = false,
@@ -199,58 +170,24 @@ class SpinalSimAESCoreStdTester extends FunSuite {
 
         index += 1
       }
-    }
-  }
 
 
-  /**
-    * Test 4 : 192 bits
-    */
-  test("AESCoreStd_192_notReleaseValid"){
-
-    compiledRTL_192.doSim{ dut =>
-
-      dut.clockDomain.forkStimulus(2)
-
-      // initialize value
-      SymmetricCryptoBlockIOSim.initializeIO(dut.io)
+      // Release the valid signal at the end of the simulation
+      dut.io.cmd.valid #= false
 
       dut.clockDomain.waitActiveEdge()
-
-      var index = 0
-
-      while(index != ref_key_192.length){
-
-        val key    = ref_key_192(index)
-        val plain  = ref_plain_192(index)
-        val cipher = ref_cipher_192(index)
-
-
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(
-          dut         = dut.io,
-          clockDomain = dut.clockDomain,
-          enc         = true,
-          blockIn     = plain,
-          keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => cipher)
-
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(
-          dut         = dut.io,
-          clockDomain = dut.clockDomain,
-          enc         = false,
-          blockIn     = cipher,
-          keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => plain)
-
-        index += 1
-      }
     }
   }
 
-  /**
-    * Test 5 : 256 bits
-    */
-  test("AESCoreStd_256_releaseValid"){
 
-    compiledRTL_256.doSim{ dut =>
+
+
+  /**
+    * Test - AESCore_Std (256-bit)
+    */
+  test("AESCoreStd_256"){
+
+    SimConfig.compile(new AESCore_Std(256 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -267,15 +204,14 @@ class SpinalSimAESCoreStdTester extends FunSuite {
         val plain  = ref_plain_256(index)
         val cipher = ref_cipher_256(index)
 
-
-        SymmetricCryptoBlockIOSim.simWithValidReleased(
+        SymmetricCryptoBlockIOSim.doSim(
           dut         = dut.io,
           clockDomain = dut.clockDomain,
           enc         = true,
           blockIn     = plain,
           keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => cipher)
 
-        SymmetricCryptoBlockIOSim.simWithValidReleased(
+        SymmetricCryptoBlockIOSim.doSim(
           dut         = dut.io,
           clockDomain = dut.clockDomain,
           enc         = false,
@@ -284,48 +220,11 @@ class SpinalSimAESCoreStdTester extends FunSuite {
 
         index += 1
       }
-    }
-  }
 
-  /**
-    * Test 6 : 256 bits
-    */
-  test("AESCoreStd_256_notReleaseValid"){
-
-    compiledRTL_256.doSim{ dut =>
-
-      dut.clockDomain.forkStimulus(2)
-
-      // initialize value
-      SymmetricCryptoBlockIOSim.initializeIO(dut.io)
+      // Release the valid signal at the end of the simulation
+      dut.io.cmd.valid #= false
 
       dut.clockDomain.waitActiveEdge()
-
-      var index = 0
-
-      while(index != ref_key_256.length){
-
-        val key    = ref_key_256(index)
-        val plain  = ref_plain_256(index)
-        val cipher = ref_cipher_256(index)
-
-
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(
-          dut         = dut.io,
-          clockDomain = dut.clockDomain,
-          enc         = true,
-          blockIn     = plain,
-          keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => cipher)
-
-        SymmetricCryptoBlockIOSim.simWithValidNotRelease(
-          dut         = dut.io,
-          clockDomain = dut.clockDomain,
-          enc         = false,
-          blockIn     = cipher,
-          keyIn       = key)((a: BigInt, b: BigInt, c:Boolean) => plain)
-
-        index += 1
-      }
     }
   }
 }
