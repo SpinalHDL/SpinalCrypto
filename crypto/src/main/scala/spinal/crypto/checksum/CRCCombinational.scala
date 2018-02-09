@@ -1,24 +1,20 @@
-package spinal.crypto.misc
-
-
-import spinal.crypto.misc.CRC.BitOrder
-import scala.collection.mutable.ListBuffer
+package spinal.crypto.checksum
 
 import spinal.core._
 import spinal.lib._
 
+import scala.collection.mutable.ListBuffer
 
-object CRC{
 
-  trait CRC_POLYNOMIAL{ def polynomial : String}
-  case object CRC_32 extends CRC_POLYNOMIAL{ def polynomial = "100000100110000010001110110110111" } // x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+1
-  case object CRC_16 extends CRC_POLYNOMIAL{ def polynomial = "11000000000000101" } // x^16+x^15+x^2+1
-  case object CRC_8  extends CRC_POLYNOMIAL{ def polynomial = "100000111" }  //x^8 + x^2 + x^1 + 1
 
-  trait BitOrder { def lsb : Boolean }
-  case object LSB extends BitOrder { def lsb = true }
-  case object MSB extends BitOrder { def lsb = false }
-}
+trait CRC_POLYNOMIAL{ def polynomial : String}
+case object CRC_32 extends CRC_POLYNOMIAL{ def polynomial = "100000100110000010001110110110111" } // x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+1
+case object CRC_16 extends CRC_POLYNOMIAL{ def polynomial = "11000000000000101" } // x^16+x^15+x^2+1
+case object CRC_8  extends CRC_POLYNOMIAL{ def polynomial = "100000111" }  //x^8 + x^2 + x^1 + 1
+
+trait BitOrder { def lsb : Boolean }
+case object LSB extends BitOrder { def lsb = true }
+case object MSB extends BitOrder { def lsb = false }
 
 
 //TODO Add init value of the crc register ....
@@ -35,7 +31,7 @@ object CRC{
 case class CRCCombinationalGeneric (crcPolynomial : String,
                                     dataWidth     : BitCount,
                                     initVector    : Bits,
-                                    firstBit      : BitOrder = CRC.LSB
+                                    firstBit      : BitOrder = LSB
                                    ){
 
   val crcWidth = (crcPolynomial.size - 1) bits
@@ -55,7 +51,8 @@ case class CRCCombinationalCmd(g:CRCCombinationalGeneric) extends Bundle{
 
 class CRCCombinational(g:CRCCombinationalGeneric) extends Component{
 
-  import spinal.crypto.misc.{CRCCombinationalCmdMode => CmdMode}
+
+  import CRCCombinationalCmdMode._
 
   val io = new Bundle{
     val cmd = slave  Flow(CRCCombinationalCmd(g))
@@ -65,11 +62,11 @@ class CRCCombinational(g:CRCCombinationalGeneric) extends Component{
   val crcReg   = Reg(Bits(g.crcWidth))
   val rspValid = False
 
-  when(io.cmd.valid && io.cmd.mode === CmdMode.INIT){
+  when(io.cmd.valid && io.cmd.mode === INIT){
     crcReg.setAll() // := B(0, g.crcWidth) //  g.initVector
   }
 
-  when(io.cmd.valid && io.cmd.mode === CmdMode.UPDATE){
+  when(io.cmd.valid && io.cmd.mode === UPDATE){
     crcReg   := CRCCombinationalCore(io.cmd.data, crcReg, g.crcPolynomial, g.crcWidth.value)
     rspValid := True
   }
@@ -167,7 +164,7 @@ object CRCCombinationalCore {
 
 object FakeCRCTest{
   def main(args: Array[String]) {
-    val polynomila = CRC.CRC_8.polynomial
+    val polynomila = CRC_32.polynomial
     CRCCombinationalCore.lfsrCRCGenerator(polynomila, 8)
   }
 }
