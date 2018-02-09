@@ -27,7 +27,7 @@ package spinal.crypto.symmetric.des
 
 import spinal.core._
 import spinal.lib._
-import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
+import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlockIO}
 
 
 /**
@@ -46,7 +46,7 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBloc
   */
 class DESCore_Std() extends Component {
 
-  val gIO  = SymmetricCryptoBlockGeneric(
+  val gIO  = SymmetricCryptoBlockConfig(
     keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
     blockWidth  = DESCoreSpec.blockWidth,
     useEncDec   = true
@@ -63,7 +63,7 @@ class DESCore_Std() extends Component {
     */
   val sm = new Area{
 
-    object DESCoreState extends SpinalEnum{
+    object DESCoreState extends SpinalEnum {
       val sInit, sProcessing, sRegister, sResult = newElement()
     }
 
@@ -103,7 +103,7 @@ class DESCore_Std() extends Component {
     *   - Encryption 0 -> 15
     *   - Decryption 16 -> 1
     */
-  val ctnRound = new Area{
+  val ctnRound = new Area {
     val round = Reg(UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)) init(0)
 
     when(sm.isInit){
@@ -154,7 +154,7 @@ class DESCore_Std() extends Component {
     * For decryption :
     *     Replace the Shift left by a shift right
     */
-  val keyScheduling = new Area{
+  val keyScheduling = new Area {
 
     val shiftKey   = Reg(Bits(DESCoreSpec.keyWidth))
 
@@ -211,7 +211,7 @@ class DESCore_Std() extends Component {
     *                |
     *             Out 32 bits
     */
-  val funcDES = new Area{
+  val funcDES = new Area {
 
     // list of SBox ROM 1 to 8
     val sBox     = List(Mem(Bits(4 bits), DESCoreSpec.sBox_8.map(B(_, 4 bits))),
@@ -254,7 +254,7 @@ class DESCore_Std() extends Component {
     *   |   Li          |      Ri        | (2 x 32 bits) (outBlock)
     *    --------------------------------
     */
-  val feistelNetwork = new Area{
+  val feistelNetwork = new Area {
 
     val inBlock  = Reg(Bits(DESCoreSpec.blockWidth))
 

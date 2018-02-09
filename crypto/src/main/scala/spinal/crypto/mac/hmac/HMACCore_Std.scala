@@ -29,7 +29,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.fsm._
-import spinal.crypto.hash.{HashCoreGeneric, HashCoreIO}
+import spinal.crypto.hash.{HashCoreConfig, HashCoreIO}
 
 
 /**
@@ -44,36 +44,38 @@ object HMACCoreSpec{
 /**
   * HMAC Configuration
   */
-case class HMACCoreStdGeneric(keyWidth: BitCount,
-                              gHash   : HashCoreGeneric)
+case class HMACCoreStdConfig (
+  keyWidth : BitCount,
+  gHash    : HashCoreConfig
+)
 
 
 /**
   * HMAC Cmd
   */
-case class HMACCoreStdCmd(g: HMACCoreStdGeneric) extends Bundle{
-  val key  = Bits(g.keyWidth)
-  val msg  = Bits(g.gHash.dataWidth)
-  val size = UInt(log2Up(g.gHash.dataWidth.value / 8) bits)
+case class HMACCoreStdCmd(config: HMACCoreStdConfig) extends Bundle {
+  val key  = Bits(config.keyWidth)
+  val msg  = Bits(config.gHash.dataWidth)
+  val size = UInt(log2Up(config.gHash.dataWidth.value / 8) bits)
 }
 
 
 /**
   * HMAC Rsp
   */
-case class HMACCoreStdRsp(g: HMACCoreStdGeneric) extends Bundle{
-  val hmac = Bits(g.gHash.hashWidth)
+case class HMACCoreStdRsp(config: HMACCoreStdConfig) extends Bundle {
+  val hmac = Bits(config.gHash.hashWidth)
 }
 
 
 /**
   * HMAC IO
   */
-case class HMACCoreStdIO(g: HMACCoreStdGeneric) extends Bundle with IMasterSlave{
+case class HMACCoreStdIO(config: HMACCoreStdConfig) extends Bundle with IMasterSlave {
 
   val init = Bool
-  val cmd  = Stream(Fragment(HMACCoreStdCmd(g)))
-  val rsp  = Flow(HMACCoreStdRsp(g))
+  val cmd  = Stream(Fragment(HMACCoreStdCmd(config)))
+  val rsp  = Flow(HMACCoreStdRsp(config))
 
   override def asMaster(): Unit = {
     master(cmd)
@@ -161,19 +163,19 @@ case class HMACCoreStdIO(g: HMACCoreStdGeneric) extends Bundle with IMasterSlave
   *     - Key == hash block => Use the key as it is
   *     - key  > hash block => Hash the key and then pad with 0x00 up to hash block
   */
-class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
+class HMACCore_Std(val config: HMACCoreStdConfig) extends Component {
 
-  assert(g.keyWidth == g.gHash.hashBlockWidth, "For the moment, the key must have the same width than the hash block")
+  assert(config.keyWidth == config.gHash.hashBlockWidth, "For the moment, the key must have the same width than the hash block")
 
   val io = new Bundle {
-    val hashCore = master(HashCoreIO(g.gHash))
-    val hmacCore = slave(HMACCoreStdIO(g))
+    val hashCore = master(HashCoreIO(config.gHash))
+    val hmacCore = slave(HMACCoreStdIO(config))
   }
 
-  val symbolInBlock = (g.gHash.hashBlockWidth / g.gHash.dataWidth).value
-  val symbolInHash  = (g.gHash.hashWidth / g.gHash.dataWidth).value
+  val symbolInBlock = (config.gHash.hashBlockWidth / config.gHash.dataWidth).value
+  val symbolInHash  = (config.gHash.hashWidth / config.gHash.dataWidth).value
 
-  val hashTmp   = Reg(Bits(g.gHash.hashWidth))
+  val hashTmp   = Reg(Bits(config.gHash.hashWidth))
   val cntSymbol = Reg(UInt(log2Up(symbolInBlock) bits))
 
   /*
@@ -190,17 +192,17 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
   io.hmacCore.cmd.ready := False
 
 
-  val keySymbol  = io.hmacCore.cmd.key.subdivideIn(g.gHash.dataWidth).reverse(cntSymbol)
-  val hashSymbol = hashTmp.subdivideIn(g.gHash.dataWidth).reverse(cntSymbol(log2Up(symbolInHash)-1 downto 0))
+  val keySymbol  = io.hmacCore.cmd.key.subdivideIn(config.gHash.dataWidth).reverse(cntSymbol)
+  val hashSymbol = hashTmp.subdivideIn(config.gHash.dataWidth).reverse(cntSymbol(log2Up(symbolInHash)-1 downto 0))
 
 
   /**
     * State machine of the HMAC
     */
-  val sm = new StateMachine{
+  val sm = new StateMachine {
 
     val isIpad = Reg(Bool)
-    val xPad   = isIpad ? HMACCoreSpec.ipad(g.gHash.dataWidth) | HMACCoreSpec.opad(g.gHash.dataWidth)
+    val xPad   = isIpad ? HMACCoreSpec.ipad(config.gHash.dataWidth) | HMACCoreSpec.opad(config.gHash.dataWidth)
 
     always{
       when(io.hmacCore.init){
@@ -208,7 +210,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       }
     }
 
-    val sIdle: State = new State with EntryPoint{
+    val sIdle: State = new State with EntryPoint {
       whenIsActive{
         when(io.hmacCore.cmd.valid){
           cntSymbol := 0
@@ -225,7 +227,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       }
     }
 
-    val sLoadKey: State = new State{
+    val sLoadKey: State = new State {
       whenIsActive{
         io.hashCore.cmd.msg   := keySymbol ^ xPad
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
@@ -244,7 +246,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       }
     }
 
-    val sLoadMsg: State = new State{
+    val sLoadMsg: State = new State {
       whenIsActive{
         io.hashCore.cmd.msg   := io.hmacCore.cmd.msg
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid
@@ -264,7 +266,7 @@ class HMACCore_Std(val g: HMACCoreStdGeneric) extends Component {
       }
     }
 
-    val sLoadHash: State = new State{
+    val sLoadHash: State = new State {
       whenIsActive{
         io.hashCore.cmd.msg   := hashSymbol
         io.hashCore.cmd.valid := io.hmacCore.cmd.valid

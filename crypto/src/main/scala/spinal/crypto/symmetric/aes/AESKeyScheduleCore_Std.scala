@@ -35,7 +35,7 @@ import spinal.lib._
   * INIT : Init the KeySchedule and get the first key
   * NEXT : Generate the next key
   */
-object AESKeyScheduleCmdMode_Std extends SpinalEnum{
+object AESKeyScheduleCmdMode_Std extends SpinalEnum {
   val INIT, NEXT = newElement()
 }
 
@@ -43,7 +43,7 @@ object AESKeyScheduleCmdMode_Std extends SpinalEnum{
 /**
   * Key Schedule command
   */
-case class AESKeyScheduleCmd_Std(keyWidth: BitCount) extends Bundle{
+case class AESKeyScheduleCmd_Std(keyWidth: BitCount) extends Bundle {
   val mode  = AESKeyScheduleCmdMode_Std()
   val round = UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits)
   val key   = Bits(keyWidth)
@@ -53,7 +53,7 @@ case class AESKeyScheduleCmd_Std(keyWidth: BitCount) extends Bundle{
 /**
   * Key Schedule IO
   */
-case class AESKeyScheduleIO_Std(keyWidth: BitCount) extends Bundle with IMasterSlave{
+case class AESKeyScheduleIO_Std(keyWidth: BitCount) extends Bundle with IMasterSlave {
   val cmd    = Stream(AESKeyScheduleCmd_Std(keyWidth))
   val key_i  = Bits(128 bits)
 
@@ -69,7 +69,7 @@ case class AESKeyScheduleIO_Std(keyWidth: BitCount) extends Bundle with IMasterS
   *
   * Key scheduling pattern http://www.samiam.org/key-schedule.html
   */
-class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
+class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component {
 
   val io = slave(AESKeyScheduleIO_Std(keyWidth))
 
@@ -106,7 +106,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
 
   /** Drive key_i */
-  keyWidth.value match{
+  keyWidth.value match {
     case 128 =>
       io.key_i := stateKey.reverse.asBits()
     case 192 =>
@@ -124,7 +124,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
   }
 
   /** Init command  */
-  val initKey = new Area{
+  val initKey = new Area {
     when(io.cmd.valid && io.cmd.mode === AESKeyScheduleCmdMode_Std.INIT && !cmdready && !autoUpdate){
 
       // initialize the statekey
@@ -145,9 +145,9 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
 
   /** Compute the next state of the key */
-  val newKey = new Area{
+  val newKey = new Area {
 
-    keyWidth.value match{
+    keyWidth.value match {
       case 128 =>
         stateKey_tmp(0) := stateKey(0)     ^ gFunc(rconMem(cntRound), stateKey(3))
         stateKey_tmp(1) := stateKey_tmp(0) ^ stateKey(1)
@@ -194,7 +194,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
 
 
   /** Update Cmd + autoUpdate */
-  val updateKey = new Area{
+  val updateKey = new Area {
 
     val storeKey = False
 
@@ -241,7 +241,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component{
         selKey := 0
       }
 
-      keyWidth.value match{
+      keyWidth.value match {
         case 128 =>
           stateKey := stateKey_tmp
         case 192 =>

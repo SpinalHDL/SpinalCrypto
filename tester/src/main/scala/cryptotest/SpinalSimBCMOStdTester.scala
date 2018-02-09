@@ -17,7 +17,7 @@ import scala.util.Random
 class DES_ECB_Tester() extends Component{
 
   val io = new Bundle{
-    val ecb = slave(BCMO_Std_IO(BCMO_Std_Generic(
+    val ecb = slave(BCMO_Std_IO(BCMO_Std_Config(
       keyWidth   = 64,
       blockWidth = 64,
       useEncDec  = true,
@@ -26,7 +26,7 @@ class DES_ECB_Tester() extends Component{
   }
 
   val core = new DESCore_Std()
-  val chaining = ECB_Std(core.io.g, ENC_DEC)
+  val chaining = ECB_Std(core.io.config, ENC_DEC)
   chaining.io.core <> core.io
   chaining.io.bcmo <> io.ecb
 }
@@ -35,7 +35,7 @@ class DES_ECB_Tester() extends Component{
 class DES_CBC_Tester() extends Component{
 
   val io = new Bundle{
-    val ecb = slave(BCMO_Std_IO(BCMO_Std_Generic(
+    val ecb = slave(BCMO_Std_IO(BCMO_Std_Config(
       keyWidth   = 64,
       blockWidth = 64,
       useEncDec  = true,
@@ -44,7 +44,7 @@ class DES_CBC_Tester() extends Component{
   }
 
   val core = new DESCore_Std()
-  val chaining = CBC_Std(core.io.g, ENC_DEC)
+  val chaining = CBC_Std(core.io.config, ENC_DEC)
   chaining.io.core <> core.io
   chaining.io.bcmo <> io.ecb
 }
@@ -53,7 +53,7 @@ class DES_CBC_Tester() extends Component{
 class DES_OFB_Tester() extends Component{
 
   val io = new Bundle{
-    val ecb = slave(BCMO_Std_IO(BCMO_Std_Generic(
+    val ecb = slave(BCMO_Std_IO(BCMO_Std_Config(
       keyWidth   = 64,
       blockWidth = 64,
       useEncDec  = true,
@@ -62,7 +62,7 @@ class DES_OFB_Tester() extends Component{
   }
 
   val core = new DESCore_Std()
-  val chaining = OFB_Std(core.io.g, ENC_DEC, ENCRYPT)
+  val chaining = OFB_Std(core.io.config, ENC_DEC, ENCRYPT)
   chaining.io.core <> core.io
   chaining.io.bcmo <> io.ecb
 }
@@ -70,7 +70,7 @@ class DES_OFB_Tester() extends Component{
 class DES_CFB_Tester() extends Component{
 
   val io = new Bundle{
-    val ecb = slave(BCMO_Std_IO(BCMO_Std_Generic(
+    val ecb = slave(BCMO_Std_IO(BCMO_Std_Config(
       keyWidth   = 64,
       blockWidth = 64,
       useEncDec  = true,
@@ -79,7 +79,7 @@ class DES_CFB_Tester() extends Component{
   }
 
   val core = new DESCore_Std()
-  val chaining = CFB_Std(core.io.g, ENC_DEC, ENCRYPT)
+  val chaining = CFB_Std(core.io.config, ENC_DEC, ENCRYPT)
   chaining.io.core <> core.io
   chaining.io.bcmo <> io.ecb
 }

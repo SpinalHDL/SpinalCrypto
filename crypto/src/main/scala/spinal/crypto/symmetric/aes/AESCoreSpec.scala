@@ -32,7 +32,7 @@ object AESCoreSpec {
 
   def blockWidth  = 128 bits
 
-  def nbrRound(keySize: BitCount): Int = keySize.value match{
+  def nbrRound(keySize: BitCount): Int = keySize.value match {
     case 128 => 10
     case 192 => 12
     case 256 => 14

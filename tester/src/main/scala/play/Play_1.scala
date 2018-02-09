@@ -6,7 +6,7 @@ import spinal.lib._
 import spinal.crypto._
 import spinal.crypto.hash._
 import spinal.crypto.hash.md5._
-import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.mac.hmac.{HMACCoreStdConfig, HMACCoreStdIO, HMACCore_Std}
 import spinal.crypto.symmetric.SymmetricCryptoBlockIO
 import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 import spinal.crypto.symmetric.aes._
@@ -64,7 +64,7 @@ object PlayWithMD5Core_Std{
 
     val md5 = new MD5Core_Std()
 
-    val io = slave(HashCoreIO(md5.g))
+    val io = slave(HashCoreIO(md5.config))
 
     md5.io <> io
   }
@@ -84,9 +84,9 @@ object PlayWithHMACCore_Std_MD5Core_Std{
   class HMACCoreStdTester() extends Component{
 
     val md5  = new MD5Core_Std()
-    val hmac = new HMACCore_Std(HMACCoreStdGeneric(md5.g.hashBlockWidth, md5.g))
+    val hmac = new HMACCore_Std(HMACCoreStdConfig(md5.config.hashBlockWidth, md5.config))
 
-    val io = slave(HMACCoreStdIO(hmac.g))
+    val io = slave(HMACCoreStdIO(hmac.config))
 
     hmac.io.hmacCore <> io
     hmac.io.hashCore <> md5.io

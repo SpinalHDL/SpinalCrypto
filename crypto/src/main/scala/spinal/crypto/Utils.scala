@@ -67,7 +67,7 @@ class PolynomialGF2(val coefficient: List[Int]) {
 /**
   * Transform a BigInt value into a hexadecimal string
   */
-object BigIntToHexString{
+object BigIntToHexString {
   def apply(value: BigInt): String = s"0x${value.toByteArray.map(b => f"${b}%02X").mkString("")}"
 }
 
@@ -75,7 +75,7 @@ object BigIntToHexString{
 /**
   * Change endianness on Array[Byte]
   */
-object Endianness{
+object Endianness {
   def apply(input: Array[Byte]): Array[Byte] = {
     assert(input.length % 4 == 0, s"Endianess input is not a multiple of 4 (current length ${input.length}) ")
     return input.grouped(4).flatMap(_.reverse.toList).toArray
@@ -85,7 +85,7 @@ object Endianness{
 /**
   * Cast a Byte Array
   */
-object CastByteArray{
+object CastByteArray {
   def apply(input: Array[Byte], castSize: Int): Array[Byte] = {
     if (input.length == castSize) {
       input

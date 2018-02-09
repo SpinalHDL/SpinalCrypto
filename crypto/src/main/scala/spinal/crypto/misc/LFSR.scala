@@ -85,7 +85,7 @@ object LFSR{
     *         a := LFSR.Fibonacci(a, p"x^8 + x^6 + x^5 + x^4 + 1")
     *         a := LFSR.Fibonacci(a, Seq(8,6,5,4))
     */
-  object Fibonacci{
+  object Fibonacci {
 
 
     /**
@@ -176,7 +176,7 @@ object LFSR{
     *         a := LFSR.Galois(a, p"x^8 + x^6 + x^5 + x^4 + 1")
     *         a := LFSR.Galois(a, Seq(8,6,5,4))
     */
-  object Galois{
+  object Galois {
 
     /**
       * Create the LFSR with a feedback polynomial

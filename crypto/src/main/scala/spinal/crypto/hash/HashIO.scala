@@ -33,36 +33,38 @@ import spinal.lib.bus.misc.BusSlaveFactory
 /**
   * Hash Core configuration
   */
-case class HashCoreGeneric(dataWidth     : BitCount,
-                           hashWidth     : BitCount,
-                           hashBlockWidth: BitCount)
+case class HashCoreConfig (
+  dataWidth      : BitCount,
+  hashWidth      : BitCount,
+  hashBlockWidth : BitCount
+)
 
 
 /**
   * Hash Core command
   */
-case class HashCoreCmd(g: HashCoreGeneric) extends Bundle{
-  val msg  = Bits(g.dataWidth)
-  val size = UInt(log2Up(g.dataWidth.value / 8) bits)
+case class HashCoreCmd(config: HashCoreConfig) extends Bundle {
+  val msg  = Bits(config.dataWidth)
+  val size = UInt(log2Up(config.dataWidth.value / 8) bits)
 }
 
 
 /**
   * Hash Core response
   */
-case class HashCoreRsp(g: HashCoreGeneric) extends Bundle{
-  val digest = Bits(g.hashWidth)
+case class HashCoreRsp(config: HashCoreConfig) extends Bundle {
+  val digest = Bits(config.hashWidth)
 }
 
 
 /**
   * Hash Core IO
   */
-case class HashCoreIO(g: HashCoreGeneric) extends Bundle with IMasterSlave{
+case class HashCoreIO(config: HashCoreConfig) extends Bundle with IMasterSlave {
 
   val init = in Bool
-  val cmd  = Stream(Fragment(HashCoreCmd(g)))
-  val rsp  = Flow(HashCoreRsp(g))
+  val cmd  = Stream(Fragment(HashCoreCmd(config)))
+  val rsp  = Flow(HashCoreRsp(config))
 
   override def asMaster() = {
     out(init)
