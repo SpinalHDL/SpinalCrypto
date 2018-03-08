@@ -1,40 +1,52 @@
+/*                                                                           *\
+**        _____ ____  _____   _____    __                                    **
+**       / ___// __ \/  _/ | / /   |  / /   Crypto                           **
+**       \__ \/ /_/ // //  |/ / /| | / /    (c) Dolu, All rights reserved    **
+**      ___/ / ____// // /|  / ___ |/ /___                                   **
+**     /____/_/   /___/_/ |_/_/  |_/_____/                                   **
+**                                                                           **
+**      This library is free software; you can redistribute it and/or        **
+**    modify it under the terms of the GNU Lesser General Public             **
+**    License as published by the Free Software Foundation; either           **
+**    version 3.0 of the License, or (at your option) any later version.     **
+**                                                                           **
+**      This library is distributed in the hope that it will be useful,      **
+**    but WITHOUT ANY WARRANTY; without even the implied warranty of         **
+**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU      **
+**    Lesser General Public License for more details.                        **
+**                                                                           **
+**      You should have received a copy of the GNU Lesser General Public     **
+**    License along with this library.                                       **
+\*                                                                           */
 package spinal.crypto.checksum
 
 import spinal.core._
 import spinal.lib._
+import spinal.crypto._
 
 import scala.collection.mutable.ListBuffer
 
+/**
+  * CRC combinational
+  *
+  * Doc :
+  *   - http://www.sigmatone.com/utilities/crc_generator/crc_generator.htm
+  *   - http://www.sunshine2k.de/articles/coding/crc/understanding_crc.html
+  *   - http://crccalc.com/
+  */
 
 
-trait CRC_POLYNOMIAL{ def polynomial : String}
-case object CRC_32 extends CRC_POLYNOMIAL{ def polynomial = "100000100110000010001110110110111" } // x^32+x^26+x^23+x^22+x^16+x^12+x^11+x^10+x^8+x^7+x^5+x^4+x^2+x^1+1
-case object CRC_16 extends CRC_POLYNOMIAL{ def polynomial = "11000000000000101" } // x^16+x^15+x^2+1
-case object CRC_8  extends CRC_POLYNOMIAL{ def polynomial = "100000111" }  //x^8 + x^2 + x^1 + 1
-
-trait BitOrder { def lsb : Boolean }
-case object LSB extends BitOrder { def lsb = true }
-case object MSB extends BitOrder { def lsb = false }
-
-
-//TODO Add init value of the crc register ....
-// TODO add MSB or LSB first data
-// TODO some doc ... http://www.sigmatone.com/utilities/crc_generator/crc_generator.htm
 /**
   * Generic
   *
-  * @param crcPolynomial : String representing the equation
+  * @param crcConfig : String representing the equation
   * @param dataWidth     : Bus data width
-  * @param initVector    : Init crc value
-  * @param firstBit      : First serial bit LSB or MSB
   */
-case class CRCCombinationalGeneric (crcPolynomial : String,
-                                    dataWidth     : BitCount,
-                                    initVector    : Bits,
-                                    firstBit      : BitOrder = LSB
-                                   ){
-
-  val crcWidth = (crcPolynomial.size - 1) bits
+case class CRCCombinationalGeneric (
+  crcConfig : CRCPolynomial,
+  dataWidth : BitCount
+){
+  val crcWidth = crcConfig.polynomial.order bits
 }
 
 
@@ -49,30 +61,45 @@ case class CRCCombinationalCmd(g:CRCCombinationalGeneric) extends Bundle{
 }
 
 
-class CRCCombinational(g:CRCCombinationalGeneric) extends Component{
+case class CRCCombinationalIO(g: CRCCombinationalGeneric) extends Bundle{
+  val cmd = slave Flow(CRCCombinationalCmd(g))
+  val crc = out Bits(g.crcWidth)
+}
 
+
+/**
+  * CRC Combinational component
+  */
+class CRCCombinational(g: CRCCombinationalGeneric) extends Component{
+
+  assert(g.dataWidth.value % 8 == 0, "Currently support only datawidth multiple of 8")
+  assert(g.crcConfig.polynomial.order % 8 == 0, "Currently support only polynomial degree multiple of 8")
 
   import CRCCombinationalCmdMode._
 
-  val io = new Bundle{
-    val cmd = slave  Flow(CRCCombinationalCmd(g))
-    val rsp = master Flow(Bits(g.dataWidth))
-  }
+  val io = CRCCombinationalIO(g)
 
-  val crcReg   = Reg(Bits(g.crcWidth))
-  val rspValid = False
+  // Input operation
+  val crc_reg  = Reg(cloneOf(io.crc))
+  val dataIn   = if(g.crcConfig.inputReflected) Reverse(io.cmd.data)  else EndiannessSwap(io.cmd.data)
 
+  // Compute the CRC
+  val next_crc = CRCCombinationalCore(dataIn, crc_reg, g.crcConfig.polynomial)
+
+  // Init
   when(io.cmd.valid && io.cmd.mode === INIT){
-    crcReg.setAll() // := B(0, g.crcWidth) //  g.initVector
+    crc_reg := B(g.crcConfig.initValue, io.crc.getWidth bits)
   }
 
+  // Update
   when(io.cmd.valid && io.cmd.mode === UPDATE){
-    crcReg   := CRCCombinationalCore(io.cmd.data, crcReg, g.crcPolynomial, g.crcWidth.value)
-    rspValid := True
+    crc_reg := next_crc
   }
 
-  io.rsp.valid   := rspValid
-  io.rsp.payload := ~Reverse(crcReg)
+  // Output operation
+  val result_reflected = if(g.crcConfig.outputReflected) Reverse(crc_reg) else crc_reg
+
+  io.crc := result_reflected ^ B(g.crcConfig.finalXor, crc_reg.getWidth bits)
 }
 
 
@@ -81,15 +108,31 @@ class CRCCombinational(g:CRCCombinationalGeneric) extends Component{
   */
 object CRCCombinationalCore {
 
-  def apply(data:Bits, crc:Bits, polynomial:String, dataWidth:Int ) : Bits ={
+
+  case class Register(name: String, index: Int){
+    def ==(that: Register): Boolean = {
+      return this.name == that.name && this.index == that.index
+    }
+
+    override def toString: String = s"${name}(${index})"
+  }
+
+  /**
+    * Creaete a CRC combinational core
+    * @param data       : data input of the crc
+    * @param crc        : current crc value
+    * @param polynomial : CRC polynomial
+    * @return newCRC
+    */
+  def apply(data: Bits, crc: Bits, polynomial: PolynomialGF2) : Bits ={
 
     val newCRC = cloneOf(crc)
     val dataR  = EndiannessSwap(data)
 
     val listXor = lfsrCRCGenerator(polynomial, data.getWidth)
 
-    for(i <- 0 until data.getWidth){
-      newCRC(i) := listXor(i).map(t => if (t._1 == "D") dataR(t._2) else crc(t._2)).reduce(_ ^ _)
+    for(i <- 0 until crc.getWidth){
+      newCRC(i) := listXor(i).map(t => if (t.name == "D") dataR(t.index) else crc(t.index)).reduce(_ ^ _)
     }
 
     newCRC
@@ -105,66 +148,66 @@ object CRCCombinationalCore {
     *
     * e.g : x^3+x+1
     *
-    *          /-------------------------------------------XOR<-- D0,D1,D2
+    *          /-------------------------------------------XOR<-- D2,D1,D0
     *          |   ____     |      ____              ____   |
     *          \->|_C0_|---XOR--->|_C1_|------------|_C2_|--/
-    *      0:       c0              c1                c2         D0,D1,D2
-    *      1:      c2^d0         c0^c2^d0             c1         D1,D2
-    *      2:      c1^d1        c2^d0^c1^d1        c0^c2^d0      D2
-    *      3:   c0^c2^d0^d2   c1^d1^c0^c2^d0^d2   c2^d0^c1^d1    -
+    *      0:       c0              c1                c2         D2,D1,D0
+    *      1:      c2^d2         c0^c2^d2             c1         D1,D0
+    *      2:      c1^d1        c2^d2^c1^d1        c0^c2^d2      D0
+    *      3:   c0^c2^d2^d0   c1^d1^c0^c2^d2^d0   c2^d2^c1^d1    -
     *
-    *      crc(0) = c0^c2^d0^d2
-    *      crc(1) = c1^d1^c0^c2^d0^d2
-    *      crc(2) = c2^d0^c1^d1
+    *      crc(0) = c0^c2^d2^d0
+    *      crc(1) = c1^d1^c0^c2^d2^d0
+    *      crc(2) = c2^d2^c1^d1
     */
-  // TODo put thisi function as private
-  def lfsrCRCGenerator(polynomial:String, dataWidth:Int):List[List[(String,Int)]]={
+  def lfsrCRCGenerator(polynomial: PolynomialGF2, dataWidth: Int):List[List[Register]]={
 
-    assert(dataWidth < polynomial.size, "dataWidth can't be bigger than the polynomial length")
+    assert(dataWidth <= polynomial.order, "dataWidth can't be bigger than the polynomial length")
 
-    val listPolynomial = polynomial.toList
+    val listPolynomial = polynomial.toBooleanList()
+    val lenLFSR        = polynomial.order  // nbr of register used by the LFSR
 
-    val lenLFSR = polynomial.size - 1 // nbr of register used by the LFSR
-
-    // initialize the lfsr register
-    var lfsr = (for(i <- 0 until lenLFSR) yield List("C"+i)).toList
+    // initialize the LFSR register
+    var lfsr = (for(i <- 0 until lenLFSR) yield List(Register("C", i))).toList
 
     // execute the LFSR dataWidth number of time
     for(j <- 0 until dataWidth) {
-      val result = new ListBuffer[List[String]]()
-      for (i <- 0 until lenLFSR) {
-        if (i == 0) {
-          result += lfsr(lenLFSR-1) ::: List("D" + j)
-        } else if (listPolynomial(lenLFSR - i) == '0') {
+
+      val result = new ListBuffer[List[Register]]()
+      result += lfsr(lenLFSR - 1) ::: List(Register("D", dataWidth - 1 - j))
+
+      for (i <- 1 until lenLFSR) {
+        if (listPolynomial(lenLFSR - i) == false) {
           result += lfsr(i - 1)
         } else {
-          result += lfsr(i - 1) ::: lfsr(lenLFSR - 1) ::: List("D" + j)
+          result += lfsr(i - 1) ::: lfsr(lenLFSR - 1) ::: List(Register("D", dataWidth - 1  - j))
         }
       }
+
       lfsr = result.toList
     }
 
-    // Simplify (odd number => replace by one occurence, even number => remove all occurence)
-    val finalRes = new ListBuffer[List[(String,Int)]]()
+    // Simplify (odd number => replace by one occurrence, even number => remove all occurrence)
+    val finalRes = new ListBuffer[List[Register]]()
     for(lt <- lfsr){
-      val listD = (for(i <- 0 until lenLFSR if (lt.count(_ == "D" + i ) % 2  == 1)) yield ("D",i)).toList
-      val listC = (for(i <- 0 until lenLFSR if (lt.count(_ == "C" + i ) % 2  == 1)) yield ("C",i)).toList
+      val listD = (for(i <- 0 until lenLFSR if (lt.count(_ == Register("D", i)) % 2  == 1)) yield Register("D", i)).toList
+      val listC = (for(i <- 0 until lenLFSR if (lt.count(_ == Register("C", i)) % 2  == 1)) yield Register("C", i)).toList
       finalRes += (listD ++ listC)
     }
-
-    println("--------")
-    //println(finalRes)
-    finalRes.foreach(println(_))
-    println("--------")
 
     finalRes.toList
   }
 }
 
 
-object FakeCRCTest{
-  def main(args: Array[String]) {
-    val polynomila = CRC_32.polynomial
-    CRCCombinationalCore.lfsrCRCGenerator(polynomila, 8)
-  }
+
+
+
+
+object PlayWithCRC extends App {
+  import java.util.zip.CRC32
+  val crc=new CRC32
+
+  crc.update("AAAA".getBytes)
+  println(crc.getValue.toHexString)  //> 414fa339
 }
