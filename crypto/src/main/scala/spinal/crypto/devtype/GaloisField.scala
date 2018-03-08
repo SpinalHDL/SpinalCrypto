@@ -46,7 +46,7 @@ object GaloisField{
     *                 Output
     */
   private def xtimes(data: DBits, polynomial: List[Boolean]): DBits = {
-    (data |<< 1) ^ DBits(polynomial, data.msb)
+    (data |<< 1) ^ DBits(polynomial.reverse.init, data.msb)
   }
 
 
@@ -57,7 +57,7 @@ object GaloisField{
 
     val polynomial = poly.toBooleanList()
 
-    assert(polynomial.length == operand1.getWidth, "Polynomial must be of the same order than operands")
+    assert(polynomial.length == operand1.getWidth + 1, "Polynomial must be of the same order than operands")
     assert(operand1.getWidth == operand2.getWidth, "The size of the operands are different")
 
     var tmp    = operand1

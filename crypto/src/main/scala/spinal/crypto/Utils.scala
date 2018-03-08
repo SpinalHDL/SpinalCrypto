@@ -49,17 +49,16 @@ class PolynomialGF2(val coefficient: List[Int]) {
 
   /**
     * Return a list of boolean representing the polynomial
-    * p"x^4+x+1" => List(true, true, false, false)
     */
   def toBooleanList(): List[Boolean] = {
 
     val listBuffer = ListBuffer[Boolean]()
 
-    for(i <- 0 until coefficient.max){
+    for(i <- 0 to coefficient.max){
       listBuffer.append(coefficient.contains(i))
     }
 
-    return listBuffer.toList
+    return listBuffer.toList.reverse
   }
 }
 
