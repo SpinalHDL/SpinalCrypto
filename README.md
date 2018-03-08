@@ -24,7 +24,7 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 - HMACCore_Std (tested with MD5)
 
 
-## Checksum
+### Checksum
 
 - CRC (CRC8, CRC16, CRC32)
 
