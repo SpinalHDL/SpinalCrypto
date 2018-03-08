@@ -23,18 +23,19 @@ package spinal.crypto.symmetric
 import spinal.core.{assert, _}
 import spinal.lib._
 
+
 sealed trait EncryptionMode
 case object ENCRYPT  extends EncryptionMode
 case object DECRYPT  extends EncryptionMode
 case object ENC_DEC  extends EncryptionMode
 
 
-case class BCMO_Std_Generic(
+case class BCMO_Std_Config(
   keyWidth   : Int,
   blockWidth : Int,
   useEncDec  : Boolean = true,
   ivWidth    : Int = -1
-){}
+)
 
 
 object BCMO_Std_CmdMode extends SpinalEnum {
@@ -42,24 +43,24 @@ object BCMO_Std_CmdMode extends SpinalEnum {
 }
 
 
-case class BCMO_Std_Cmd(g: BCMO_Std_Generic) extends Bundle {
-  val key    = Bits(g.keyWidth bits)
-  val block  = Bits(g.blockWidth bits)
-  val iv     = if(g.ivWidth != -1) Bits(g.ivWidth bits) else null
-  val enc    = if(g.useEncDec) Bool else null
+case class BCMO_Std_Cmd(config: BCMO_Std_Config) extends Bundle {
+  val key    = Bits(config.keyWidth bits)
+  val block  = Bits(config.blockWidth bits)
+  val iv     = if(config.ivWidth != -1) Bits(config.ivWidth bits) else null
+  val enc    = if(config.useEncDec) Bool else null
   val mode   = BCMO_Std_CmdMode()
 }
 
 
-case class BCMO_Std_Rsp(g: BCMO_Std_Generic) extends Bundle {
-  val block = Bits(g.blockWidth bits)
+case class BCMO_Std_Rsp(config: BCMO_Std_Config) extends Bundle {
+  val block = Bits(config.blockWidth bits)
 }
 
 
-case class BCMO_Std_IO(g: BCMO_Std_Generic) extends Bundle with IMasterSlave {
+case class BCMO_Std_IO(config: BCMO_Std_Config) extends Bundle with IMasterSlave {
 
-  val cmd  = Stream(BCMO_Std_Cmd(g))
-  val rsp  = Flow(BCMO_Std_Rsp(g))
+  val cmd  = Stream(BCMO_Std_Cmd(config))
+  val rsp  = Flow(BCMO_Std_Rsp(config))
 
   override def asMaster(): Unit = {
     master(cmd)
@@ -78,16 +79,16 @@ case class BCMO_Std_IO(g: BCMO_Std_Generic) extends Bundle with IMasterSlave {
   *              |                    |
   *          Ciphertext           Ciphertext
   */
-case class ECB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode) extends Component{
+case class ECB_Std(config: SymmetricCryptoBlockConfig, chainningMode: EncryptionMode) extends Component {
 
   val io = new Bundle{
-    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Generic(
-      keyWidth   = g.keyWidth.value,
-      blockWidth = g.blockWidth.value,
+    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Config(
+      keyWidth   = config.keyWidth.value,
+      blockWidth = config.blockWidth.value,
       useEncDec  = chainningMode == ENC_DEC,
       ivWidth    = -1
     )))
-    val core = master(SymmetricCryptoBlockIO(g))
+    val core = master(SymmetricCryptoBlockIO(config))
   }
 
   io.core.cmd.valid := io.bcmo.cmd.valid
@@ -102,11 +103,11 @@ case class ECB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode
     case ENCRYPT => True
     case DECRYPT => False
     case ENC_DEC =>
-      assert(io.core.g.useEncDec, "This core doesn't support encryption/decryption mode")
+      assert(io.core.config.useEncDec, "This core doesn't support encryption/decryption mode")
       io.bcmo.cmd.enc
   }
 
-  if(io.core.g.useEncDec) io.core.cmd.enc := isEnc
+  if(io.core.config.useEncDec) io.core.cmd.enc := isEnc
 }
 
 
@@ -122,20 +123,20 @@ case class ECB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode
   *              |-------/           |------- ...
   *          Ciphertext          Ciphertext
   */
-case class CBC_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode) extends Component{
+case class CBC_Std(config: SymmetricCryptoBlockConfig, chainningMode: EncryptionMode) extends Component {
 
   val io = new Bundle{
-    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Generic(
-      keyWidth   = g.keyWidth.value,
-      blockWidth = g.blockWidth.value,
+    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Config(
+      keyWidth   = config.keyWidth.value,
+      blockWidth = config.blockWidth.value,
       useEncDec  = chainningMode == ENC_DEC,
-      ivWidth    = g.blockWidth.value)))
-    val core = master(SymmetricCryptoBlockIO(g))
+      ivWidth    = config.blockWidth.value)))
+    val core = master(SymmetricCryptoBlockIO(config))
   }
 
   val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_Std_CmdMode.INIT
 
-  val tmpBlock = Reg(Bits(g.blockWidth))
+  val tmpBlock = Reg(Bits(config.blockWidth))
 
   io.core.cmd.valid := io.bcmo.cmd.valid
   io.core.cmd.key   := io.bcmo.cmd.key
@@ -147,11 +148,11 @@ case class CBC_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode
     case ENCRYPT =>  True
     case DECRYPT =>  False
     case ENC_DEC =>
-      assert(io.core.g.useEncDec, "This core doesn't support encryption/decryption mode")
+      assert(io.core.config.useEncDec, "This core doesn't support encryption/decryption mode")
       io.bcmo.cmd.enc
   }
 
-  if(io.core.g.useEncDec) io.core.cmd.enc := isEnc
+  if(io.core.config.useEncDec) io.core.cmd.enc := isEnc
 
   val xorValue = isInit ? io.bcmo.cmd.iv | tmpBlock
 
@@ -177,26 +178,26 @@ case class CBC_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode
   *                |                        |
   *            Ciphertext               Ciphertext
   */
-case class OFB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode, algoMode: EncryptionMode) extends Component{
+case class OFB_Std(config: SymmetricCryptoBlockConfig, chainningMode: EncryptionMode, algoMode: EncryptionMode) extends Component {
 
   assert(algoMode != ENC_DEC, "This is a cipher chaining, the algo mode must be either in Encryption or decryption")
 
   val io = new Bundle{
-    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Generic(
-      keyWidth   = g.keyWidth.value,
-      blockWidth = g.blockWidth.value,
+    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Config(
+      keyWidth   = config.keyWidth.value,
+      blockWidth = config.blockWidth.value,
       useEncDec  = chainningMode == ENC_DEC,
-      ivWidth    = g.blockWidth.value
+      ivWidth    = config.blockWidth.value
     )))
 
-    val core = master(SymmetricCryptoBlockIO(g))
+    val core = master(SymmetricCryptoBlockIO(config))
   }
 
   val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_Std_CmdMode.INIT
 
-  if(g.useEncDec) io.core.cmd.enc := Bool(algoMode == ENCRYPT)
+  if(config.useEncDec) io.core.cmd.enc := Bool(algoMode == ENCRYPT)
 
-  val tmpBlock = Reg(Bits(g.blockWidth))
+  val tmpBlock = Reg(Bits(config.blockWidth))
 
   io.core.cmd.valid := io.bcmo.cmd.valid
   io.core.cmd.block := (isInit) ? io.bcmo.cmd.iv | tmpBlock
@@ -224,35 +225,35 @@ case class OFB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode
   *                |       |                |---- ...
   *            Ciphertext--/            Ciphertext
   */
-case class CFB_Std(g: SymmetricCryptoBlockGeneric, chainningMode: EncryptionMode, algoMode: EncryptionMode) extends Component {
+case class CFB_Std(config: SymmetricCryptoBlockConfig, chainningMode: EncryptionMode, algoMode: EncryptionMode) extends Component {
 
   assert(algoMode != ENC_DEC, "This is a cipher chaining, the algo mode must be either in Encryption or decryption")
 
   val io = new Bundle{
-    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Generic(
-      keyWidth   = g.keyWidth.value,
-      blockWidth = g.blockWidth.value,
+    val bcmo = slave (BCMO_Std_IO(BCMO_Std_Config(
+      keyWidth   = config.keyWidth.value,
+      blockWidth = config.blockWidth.value,
       useEncDec  = chainningMode == ENC_DEC,
-      ivWidth    = g.blockWidth.value
+      ivWidth    = config.blockWidth.value
     )))
 
-    val core = master(SymmetricCryptoBlockIO(g))
+    val core = master(SymmetricCryptoBlockIO(config))
   }
 
   val isInit   = io.bcmo.cmd.valid && io.bcmo.cmd.mode === BCMO_Std_CmdMode.INIT
 
-  if(g.useEncDec) io.core.cmd.enc := Bool(algoMode == ENCRYPT)
+  if(config.useEncDec) io.core.cmd.enc := Bool(algoMode == ENCRYPT)
 
   val isEnc = chainningMode match{
     case ENCRYPT =>  True
     case DECRYPT =>  False
     case ENC_DEC =>
-      assert(io.core.g.useEncDec, "This core doesn't support encryption/decryption mode")
+      assert(io.core.config.useEncDec, "This core doesn't support encryption/decryption mode")
       io.bcmo.cmd.enc
   }
 
-  val tmpBlock = Reg(Bits(g.blockWidth))
-  val cipher   = Bits(g.blockWidth)
+  val tmpBlock = Reg(Bits(config.blockWidth))
+  val cipher   = Bits(config.blockWidth)
 
   io.core.cmd.valid := io.bcmo.cmd.valid
   io.core.cmd.block := (isInit) ? io.bcmo.cmd.iv | tmpBlock

@@ -6,7 +6,7 @@ import ref.mac.HMAC
 import spinal.core._
 import spinal.crypto.{BigIntToHexString, CastByteArray, Endianness}
 import spinal.crypto.hash.md5.MD5Core_Std
-import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCoreStdIO, HMACCore_Std}
+import spinal.crypto.mac.hmac.{HMACCoreStdConfig, HMACCoreStdIO, HMACCore_Std}
 import spinal.lib.slave
 import spinal.sim._
 import spinal.core.sim._
@@ -18,9 +18,9 @@ import scala.util.continuations.cpsParam
 class HMACCoreStd_MD5_Tester() extends Component {
 
   val md5  = new MD5Core_Std()
-  val hmac = new HMACCore_Std(HMACCoreStdGeneric(md5.g.hashBlockWidth, md5.g))
+  val hmac = new HMACCore_Std(HMACCoreStdConfig(md5.config.hashBlockWidth, md5.config))
 
-  val io = slave(HMACCoreStdIO(hmac.g))
+  val io = slave(HMACCoreStdIO(hmac.config))
 
   hmac.io.hmacCore <> io
   hmac.io.hashCore <> md5.io

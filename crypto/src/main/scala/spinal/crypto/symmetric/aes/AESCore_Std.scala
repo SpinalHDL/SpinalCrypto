@@ -29,7 +29,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
-import spinal.crypto.symmetric.{SymmetricCryptoBlockGeneric, SymmetricCryptoBlockIO}
+import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlockIO}
 import spinal.crypto.devtype._
 
 
@@ -39,9 +39,9 @@ import spinal.crypto.devtype._
   * This design works in encrypt and decrypt and use a key of 128, 192 or 256-bit.
   *
   */
-class AESCore_Std(keyWidth: BitCount) extends Component{
+class AESCore_Std(keyWidth: BitCount) extends Component {
 
-  val gIO  = SymmetricCryptoBlockGeneric(
+  val gIO  = SymmetricCryptoBlockConfig(
     keyWidth   = keyWidth,
     blockWidth = AESCoreSpec.blockWidth,
     useEncDec  = true
@@ -94,11 +94,11 @@ class AESCore_Std(keyWidth: BitCount) extends Component{
   *               Plaintext
   *
   */
-class AESEngine_Std(keyWidth: BitCount) extends Component{
+class AESEngine_Std(keyWidth: BitCount) extends Component {
 
   assert(List(128, 192, 256).contains(keyWidth.value), "AES support only 128/192/256 keys width")
 
-  val gIO  = SymmetricCryptoBlockGeneric(
+  val gIO  = SymmetricCryptoBlockConfig(
     keyWidth   = keyWidth,
     blockWidth = AESCoreSpec.blockWidth,
     useEncDec  = true
@@ -169,7 +169,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
       }
     }
 
-    val sKeyAdd: State = new State{
+    val sKeyAdd: State = new State {
       whenIsActive{
         when(!keyValid) {
           keyAddition_cmd := True
@@ -205,7 +205,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
       }
     }
 
-    val sByteSub: State = new State{
+    val sByteSub: State = new State {
       whenIsActive{
         byteSub_cmd.valid := True
         when(byteSub_cmd.ready){
@@ -219,7 +219,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
       }
     }
 
-    val sShiftRow: State = new State{
+    val sShiftRow: State = new State {
       whenIsActive{
         shiftRow_cmd := True
         when(io.engine.cmd.enc){ // Encryption
@@ -234,7 +234,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
       }
     }
 
-    val sMixColumn: State = new State{
+    val sMixColumn: State = new State {
       whenIsActive{
         mixCol_cmd.valid := True
         when(mixCol_cmd.ready){
@@ -253,7 +253,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
     * Key Addition operation (1 clock)
     * newState = currentState XOR key
     */
-  val keyAddition = new Area{
+  val keyAddition = new Area {
 
     when(sm.keyAddition_cmd){
       when((cntRound === 0 && io.engine.cmd.enc) || (cntRound === (nbrRound) && !io.engine.cmd.enc) ){
@@ -297,7 +297,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
     * Shift row operation (1 clock)
     * newState(i) = ShiftRow(currentState(i))
     */
-  val shiftRow = new Area{
+  val shiftRow = new Area {
     when(sm.shiftRow_cmd) {
       when(io.engine.cmd.enc){
         for ((src, dst) <- AESCoreSpec.shiftRowIndex.zipWithIndex){
@@ -331,7 +331,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component{
     *   C2 = 0D * B0 XOR 09 * B1 XOR 0E * B2 XOR 0B * B3
     *   C3 = 0B * B0 XOR 0D * B1 XOR 09 * B2 XOR 0E * B3
     */
-  val mixColumn = new Area{
+  val mixColumn = new Area {
 
     val cntColumn = Reg(UInt(log2Up(16) bits))
     sm.mixCol_cmd.ready := cntColumn === 3*4

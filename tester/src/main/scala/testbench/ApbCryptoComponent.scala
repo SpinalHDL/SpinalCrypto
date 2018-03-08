@@ -2,7 +2,7 @@ package testbench
 
 import spinal.core._
 import spinal.crypto.hash.md5.MD5Core_Std
-import spinal.crypto.mac.hmac.{HMACCoreStdGeneric, HMACCore_Std}
+import spinal.crypto.mac.hmac.{HMACCoreStdConfig, HMACCore_Std}
 import spinal.crypto.symmetric.aes.AESCore_Std
 import spinal.lib._
 import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
@@ -90,7 +90,7 @@ case class Apb3_HMAC_Std_MD5Core_Std() extends Component with ApbCryptoComponent
   }
 
   val md5Core  = new MD5Core_Std()
-  val hmacCore = new HMACCore_Std(HMACCoreStdGeneric(md5Core.g.hashBlockWidth, md5Core.g))
+  val hmacCore = new HMACCore_Std(HMACCoreStdConfig(md5Core.config.hashBlockWidth, md5Core.config))
 
   hmacCore.io.hashCore <> md5Core.io
 

@@ -39,18 +39,18 @@ import spinal.crypto.hash._
   * MD5 specification : https://www.ietf.org/rfc/rfc1321.txt
   *
   */
-class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
+class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component {
 
-  val g =  HashCoreGeneric(
+  val config =  HashCoreConfig(
     dataWidth      = dataWidth,
     hashWidth      = MD5CoreSpec.hashWidth,
     hashBlockWidth = MD5CoreSpec.blockWidth
   )
 
-  val io = slave(HashCoreIO(g))
+  val io = slave(HashCoreIO(config))
 
   val engine  = new MD5Engine_Std()
-  val padding = new MD5Padding_Std(g)
+  val padding = new MD5Padding_Std(config)
 
   padding.io.engine  <> engine.io
   padding.io.core    <> io
@@ -64,20 +64,20 @@ class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component{
   *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
   *
   */
-class MD5Padding_Std(g: HashCoreGeneric) extends Component{
+class MD5Padding_Std(config: HashCoreConfig) extends Component {
 
-  assert(g.dataWidth.value == 32, "Currently MD5Core_Std supports only 32 bits")
+  assert(config.dataWidth.value == 32, "Currently MD5Core_Std supports only 32 bits")
 
   val io = new Bundle{
-    val core    = slave(HashCoreIO(g))
+    val core    = slave(HashCoreIO(config))
     val engine  = master(MD5EngineStdIO())
   }
 
-  val nbrWordInBlock = MD5CoreSpec.blockWidth.value / g.dataWidth.value
-  val nbrByteInWord  = g.dataWidth.value / 8
+  val nbrWordInBlock = MD5CoreSpec.blockWidth.value / config.dataWidth.value
+  val nbrByteInWord  = config.dataWidth.value / 8
 
   val cntBit         = Reg(UInt(MD5CoreSpec.cntBitWidth))
-  val block          = Reg(Vec(Bits(g.dataWidth), nbrWordInBlock))
+  val block          = Reg(Vec(Bits(config.dataWidth), nbrWordInBlock))
   val indexWord      = Reg(UInt(log2Up(nbrWordInBlock) bits))
 
 
@@ -94,7 +94,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
   /**
     * Padding state machine
     */
-  val sm = new StateMachine{
+  val sm = new StateMachine {
 
     val addPaddingNextWord = Reg(Bool)
     val isBiggerThan448    = Reg(Bool)
@@ -136,7 +136,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
             }
           }otherwise{
 
-            cntBit     := cntBit + g.dataWidth.value
+            cntBit     := cntBit + config.dataWidth.value
             indexWord  := indexWord - 1
 
             when(indexWord === 0){
@@ -148,7 +148,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
         }
       }
 
-      val sPadding: State = new State{ /* Do padding  */
+      val sPadding: State = new State { /* Do padding  */
         onEntry{
 
           when(isLastFullWordInBlock || fillNewBlock){
@@ -189,7 +189,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
         }
       }
 
-      val sProcessing: State = new State{   /* Run MD5 Engine */
+      val sProcessing: State = new State {    /* Run MD5 Engine */
         whenIsActive{
           io.engine.cmd.valid := True
 
@@ -224,7 +224,7 @@ class MD5Padding_Std(g: HashCoreGeneric) extends Component{
 /**
   * MD5 Engine command
   */
-case class MD5EngineStdCmd() extends Bundle{
+case class MD5EngineStdCmd() extends Bundle {
   val block = Bits(MD5CoreSpec.blockWidth)
 }
 
@@ -232,7 +232,7 @@ case class MD5EngineStdCmd() extends Bundle{
 /**
   * MD5 Engine response
   */
-case class MD5EngineStdRsp() extends Bundle{
+case class MD5EngineStdRsp() extends Bundle {
   val digest = Bits(MD5CoreSpec.hashWidth)
 }
 
@@ -240,7 +240,7 @@ case class MD5EngineStdRsp() extends Bundle{
 /**
   * MD5 Engine IO
   */
-case class MD5EngineStdIO() extends Bundle with IMasterSlave{
+case class MD5EngineStdIO() extends Bundle with IMasterSlave {
 
   val init = Bool
   val cmd  = Stream(MD5EngineStdCmd())
@@ -288,7 +288,7 @@ case class MD5EngineStdIO() extends Bundle with IMasterSlave{
   *          -------------------------------
   *
   */
-class MD5Engine_Std extends Component{
+class MD5Engine_Std extends Component {
 
   val io = slave(MD5EngineStdIO())
 
@@ -332,7 +332,7 @@ class MD5Engine_Std extends Component{
     *         ------- ------- ------- -------
     * Note : A=0, B=1, C=2, D=3
     */
-  val iterativeRound = new Area{
+  val iterativeRound = new Area {
 
     val i = Reg(UInt(6 bits))
 

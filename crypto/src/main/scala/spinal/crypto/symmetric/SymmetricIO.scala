@@ -36,38 +36,38 @@ import spinal.lib.bus.misc.BusSlaveFactory
   * @param blockWidth Block width
   * @param useEncDec  Create a signal for the encryption/decryption
   */
-case class SymmetricCryptoBlockGeneric(
+case class SymmetricCryptoBlockConfig(
   keyWidth   : BitCount,
   blockWidth : BitCount,
   useEncDec  : Boolean = true
-){}
+)
 
 
 /**
   * Command interface for a symmetric block algo
   */
-case class SymmetricCryptoBlockCmd(g: SymmetricCryptoBlockGeneric) extends Bundle {
-  val key    = Bits(g.keyWidth)
-  val block  = Bits(g.blockWidth)
-  val enc    = if(g.useEncDec) Bool else null
+case class SymmetricCryptoBlockCmd(config: SymmetricCryptoBlockConfig) extends Bundle {
+  val key    = Bits(config.keyWidth)
+  val block  = Bits(config.blockWidth)
+  val enc    = if(config.useEncDec) Bool else null
 }
 
 
 /**
   * Response interface for a symmetric block algo
   */
-case class SymmetricCryptoBlockRsp(g: SymmetricCryptoBlockGeneric) extends Bundle {
-  val block = Bits(g.blockWidth)
+case class SymmetricCryptoBlockRsp(config: SymmetricCryptoBlockConfig) extends Bundle {
+  val block = Bits(config.blockWidth)
 }
 
 
 /**
   * Interface used by a symmetric block algo
   */
-case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle with IMasterSlave {
+case class SymmetricCryptoBlockIO(config: SymmetricCryptoBlockConfig) extends Bundle with IMasterSlave {
 
-  val cmd  = Stream(SymmetricCryptoBlockCmd(g))
-  val rsp  = Flow(SymmetricCryptoBlockRsp(g))
+  val cmd  = Stream(SymmetricCryptoBlockCmd(config))
+  val rsp  = Flow(SymmetricCryptoBlockRsp(config))
 
   override def asMaster() = {
     master(cmd)
@@ -87,7 +87,7 @@ case class SymmetricCryptoBlockIO(g: SymmetricCryptoBlockGeneric) extends Bundle
     busCtrl.driveMultiWord(cmd.block, addr)
     addr += (widthOf(cmd.block)/32)*4
 
-    if(g.useEncDec) busCtrl.drive(cmd.enc, addr)
+    if(config.useEncDec) busCtrl.drive(cmd.enc, addr)
     addr += 4
 
     val validReg = busCtrl.drive(cmd.valid, addr) init(False)

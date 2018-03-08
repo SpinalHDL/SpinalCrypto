@@ -44,7 +44,7 @@ object SymmetricCryptoBlockIOSim {
     dut.cmd.valid #= false
     dut.cmd.block.randomize()
     dut.cmd.key.randomize()
-    if(dut.g.useEncDec) dut.cmd.enc.randomize()
+    if(dut.config.useEncDec) dut.cmd.enc.randomize()
   }
 
 
@@ -61,7 +61,7 @@ object SymmetricCryptoBlockIOSim {
     dut.cmd.valid #= true
     dut.cmd.block #= block_in
     dut.cmd.key   #= key
-    if(dut.g.useEncDec) dut.cmd.enc #= enc
+    if(dut.config.useEncDec) dut.cmd.enc #= enc
 
     clockDomain.waitActiveEdge()
 
