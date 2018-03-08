@@ -48,7 +48,7 @@
 |:-------------------------------------------------- |:--------------------------:|:------------------- |
 | LFSR (Fibonacci/Galois)                            |  :ok:                      |  Not tested on FPGA |
 | TRNG with PLL                                      |  :no_entry_sign:           |  -                  |
-| CRC                                                |  :arrows_counterclockwise: |  -                  |
+| CRC                                                |  :ok:                      |  Test only CRC 8, 16, 32 |
 
 
 

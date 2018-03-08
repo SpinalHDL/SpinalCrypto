@@ -46,8 +46,8 @@ class CRCPolynomial(
   * Define all CRC 32
   */
 object CRC32{
-  def CRC32      = new CRCPolynomial(polynomial = p"32'x04C11DB7", initValue = BigInt("FFFFFFFF", 16), inputReflected = true,  outputReflected = true,  finalXor = BigInt("FFFFFFFF", 16))
-  def CRC32_XFER = new CRCPolynomial(polynomial = p"32'x000000AF", initValue = BigInt("00000000", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("00000000", 16))
+  def Standard  = new CRCPolynomial(polynomial = p"32'x04C11DB7", initValue = BigInt("FFFFFFFF", 16), inputReflected = true,  outputReflected = true,  finalXor = BigInt("FFFFFFFF", 16))
+  def XFER      = new CRCPolynomial(polynomial = p"32'x000000AF", initValue = BigInt("00000000", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("00000000", 16))
 }
 
 
@@ -55,7 +55,7 @@ object CRC32{
   * Define all CRC 16
   */
 object CRC16{
-  def CRC16_XModem = new CRCPolynomial(polynomial = p"16'x1021", initValue = BigInt("0000", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("0000", 16))
+  def XModem = new CRCPolynomial(polynomial = p"16'x1021", initValue = BigInt("0000", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("0000", 16))
 }
 
 
@@ -63,7 +63,7 @@ object CRC16{
   * Define all CRC 8
   */
 object CRC8{
-  def CRC8      = new CRCPolynomial(polynomial = p"8'x07", initValue = BigInt("00", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("00", 16))
-  def CRC8_DARC = new CRCPolynomial(polynomial = p"8'x39", initValue = BigInt("00", 16), inputReflected = true,  outputReflected = true, finalXor = BigInt("00", 16))
+  def Standard  = new CRCPolynomial(polynomial = p"8'x07", initValue = BigInt("00", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("00", 16))
+  def DARC      = new CRCPolynomial(polynomial = p"8'x39", initValue = BigInt("00", 16), inputReflected = true,  outputReflected = true, finalXor = BigInt("00", 16))
 }
 

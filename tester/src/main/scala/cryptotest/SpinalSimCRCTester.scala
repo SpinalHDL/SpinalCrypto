@@ -37,7 +37,7 @@ class SpinalSimCRCTester extends FunSuite {
 
     for (mode <- crcMode) {
 
-      val config = CRCCombinationalGeneric(
+      val config = CRCCombinationalConfig(
         crcConfig = mode._1,
         dataWidth = dataWidth bits
       )
@@ -62,8 +62,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_8_combinational"){
 
     val configurations = List(
-      CRC32.CRC32      -> Crc32.Crc32,
-      CRC32.CRC32_XFER -> Crc32.Crc32Xfer
+      CRC32.Standard      -> Crc32.Crc32,
+      CRC32.XFER -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 8)
@@ -76,8 +76,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_16_combinational"){
 
     val configurations = List(
-      CRC32.CRC32      -> Crc32.Crc32,
-      CRC32.CRC32_XFER -> Crc32.Crc32Xfer
+      CRC32.Standard      -> Crc32.Crc32,
+      CRC32.XFER -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 16)
@@ -90,8 +90,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_32_combinational"){
 
     val configurations = List(
-      CRC32.CRC32      -> Crc32.Crc32,
-      CRC32.CRC32_XFER -> Crc32.Crc32Xfer
+      CRC32.Standard      -> Crc32.Crc32,
+      CRC32.XFER -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 32)
@@ -104,7 +104,7 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC16_16_combinational"){
 
     val configurations = List(
-      CRC16.CRC16_XModem      -> Crc16.Crc16Xmodem
+      CRC16.XModem      -> Crc16.Crc16Xmodem
     )
 
     crcSimulation(configurations, 16)
@@ -117,7 +117,7 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC16_8_combinational"){
 
     val configurations = List(
-      CRC16.CRC16_XModem   -> Crc16.Crc16Xmodem
+      CRC16.XModem   -> Crc16.Crc16Xmodem
     )
 
     crcSimulation(configurations, 8)
@@ -130,8 +130,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC8_8_combinational") {
 
     val configurations = List(
-      CRC8.CRC8      -> Crc8.Crc8,
-      CRC8.CRC8_DARC -> Crc8.Crc8Darc
+      CRC8.Standard      -> Crc8.Crc8,
+      CRC8.DARC -> Crc8.Crc8Darc
     )
 
     crcSimulation(configurations, 8)

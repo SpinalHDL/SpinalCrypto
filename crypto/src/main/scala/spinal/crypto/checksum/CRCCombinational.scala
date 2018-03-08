@@ -37,12 +37,12 @@ import scala.collection.mutable.ListBuffer
 
 
 /**
-  * Generic
+  * CRC Configuration
   *
   * @param crcConfig : String representing the equation
-  * @param dataWidth     : Bus data width
+  * @param dataWidth : Bus data width
   */
-case class CRCCombinationalGeneric (
+case class CRCCombinationalConfig(
   crcConfig : CRCPolynomial,
   dataWidth : BitCount
 ){
@@ -55,13 +55,13 @@ object CRCCombinationalCmdMode extends SpinalEnum{
 }
 
 
-case class CRCCombinationalCmd(g:CRCCombinationalGeneric) extends Bundle{
+case class CRCCombinationalCmd(g: CRCCombinationalConfig) extends Bundle{
   val mode = CRCCombinationalCmdMode()
   val data = Bits(g.dataWidth)
 }
 
 
-case class CRCCombinationalIO(g: CRCCombinationalGeneric) extends Bundle{
+case class CRCCombinationalIO(g: CRCCombinationalConfig) extends Bundle{
   val cmd = slave Flow(CRCCombinationalCmd(g))
   val crc = out Bits(g.crcWidth)
 }
@@ -70,7 +70,7 @@ case class CRCCombinationalIO(g: CRCCombinationalGeneric) extends Bundle{
 /**
   * CRC Combinational component
   */
-class CRCCombinational(g: CRCCombinationalGeneric) extends Component{
+class CRCCombinational(g: CRCCombinationalConfig) extends Component{
 
   assert(g.dataWidth.value % 8 == 0, "Currently support only datawidth multiple of 8")
   assert(g.crcConfig.polynomial.order % 8 == 0, "Currently support only polynomial degree multiple of 8")
@@ -197,17 +197,4 @@ object CRCCombinationalCore {
 
     finalRes.toList
   }
-}
-
-
-
-
-
-
-object PlayWithCRC extends App {
-  import java.util.zip.CRC32
-  val crc=new CRC32
-
-  crc.update("AAAA".getBytes)
-  println(crc.getValue.toHexString)  //> 414fa339
 }
