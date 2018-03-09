@@ -1,6 +1,7 @@
 package testbench
 
 import spinal.core._
+import spinal.crypto.checksum._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi.{Axi4, Axi4ToAxi4Shared}
 import spinal.lib.com.uart.Uart
@@ -17,7 +18,8 @@ object Generate_TB extends App {
     () => new Apb3_AESCore_Std(192 bits),
     () => new Apb3_AESCore_Std(256 bits),
     () => new Apb3_MD5Core_Std(),
-    () => new Apb3_HMAC_Std_MD5Core_Std()
+    () => new Apb3_HMAC_Std_MD5Core_Std(),
+    () => new Apb3_CRC_Combinational(CRCCombinationalConfig(CRC32.Standard, dataWidth = 32 bits))
   )
 
   val spinalConfig = SpinalConfig(

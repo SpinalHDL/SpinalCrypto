@@ -244,8 +244,8 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig)(apbSlaves: (() => ApbCryptoComp
     val axiCrossbar = Axi4CrossbarFactory()
 
     axiCrossbar.addSlaves(
-      ram.io.axi       -> (0x00000000L,   onChipRamSize),
-      sdramCtrl.io.axi -> (0x40000000L,   sdramLayout.capacity),
+      ram.io.axi             -> (0x80000000L,   onChipRamSize),
+      sdramCtrl.io.axi       -> (0x40000000L,   sdramLayout.capacity),
       apbBridge.io.axiShared -> (0xF0000000L,   1 MB)
     )
 

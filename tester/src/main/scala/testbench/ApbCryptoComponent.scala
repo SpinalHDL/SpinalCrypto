@@ -4,9 +4,11 @@ import spinal.core._
 import spinal.crypto.hash.md5.MD5Core_Std
 import spinal.crypto.mac.hmac.{HMACCoreStdConfig, HMACCore_Std}
 import spinal.crypto.symmetric.aes.AESCore_Std
+import spinal.crypto.checksum._
 import spinal.lib._
 import spinal.crypto.symmetric.des.{DESCore_Std, TripleDESCore_Std}
 import spinal.lib.bus.amba3.apb.{Apb3, Apb3Config, Apb3SlaveFactory}
+
 
 
 
@@ -96,6 +98,21 @@ case class Apb3_HMAC_Std_MD5Core_Std() extends Component with ApbCryptoComponent
 
   val busCtrl = Apb3SlaveFactory(io.apb)
   hmacCore.io.hmacCore.driveFrom(busCtrl)
+
+  override def bus = io.apb
+}
+
+
+case class Apb3_CRC_Combinational(config: CRCCombinationalConfig) extends Component with ApbCryptoComponent {
+
+  val io = new Bundle{
+    val apb       = slave(Apb3(Apb3_TestBenchConfig.getApb3Config))
+  }
+
+  val crc  = new CRCCombinational(config)
+
+  val busCtrl = Apb3SlaveFactory(io.apb)
+  crc.io.driveFrom(busCtrl)
 
   override def bus = io.apb
 }

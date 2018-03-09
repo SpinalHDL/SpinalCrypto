@@ -23,6 +23,7 @@ package spinal.crypto.checksum
 import spinal.core._
 import spinal.lib._
 import spinal.crypto._
+import spinal.lib.bus.misc.BusSlaveFactory
 
 import scala.collection.mutable.ListBuffer
 
@@ -62,8 +63,17 @@ case class CRCCombinationalCmd(g: CRCCombinationalConfig) extends Bundle{
 
 
 case class CRCCombinationalIO(g: CRCCombinationalConfig) extends Bundle{
+
   val cmd = slave Flow(CRCCombinationalCmd(g))
   val crc = out Bits(g.crcWidth)
+
+  /** Drive IO from a bus */
+  def driveFrom(busCtrl: BusSlaveFactory, baseAddress: Int = 0) = new Area {
+
+    busCtrl.driveFlow(cmd, baseAddress + 0x00)
+
+    busCtrl.read(crc, baseAddress + 0x08)
+  }
 }
 
 
