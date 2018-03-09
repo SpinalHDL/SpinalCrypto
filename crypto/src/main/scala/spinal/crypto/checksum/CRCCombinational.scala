@@ -81,7 +81,7 @@ class CRCCombinational(g: CRCCombinationalConfig) extends Component{
 
   // Input operation
   val crc_reg  = Reg(cloneOf(io.crc))
-  val dataIn   = if(g.crcConfig.inputReflected) Reverse(io.cmd.data)  else EndiannessSwap(io.cmd.data)
+  val dataIn   = if(g.crcConfig.inputReflected) EndiannessSwap(Reverse(io.cmd.data))  else io.cmd.data
 
   // Compute the CRC
   val next_crc = CRCCombinationalCore(dataIn, crc_reg, g.crcConfig.polynomial)
@@ -127,12 +127,11 @@ object CRCCombinationalCore {
   def apply(data: Bits, crc: Bits, polynomial: PolynomialGF2) : Bits ={
 
     val newCRC = cloneOf(crc)
-    val dataR  = EndiannessSwap(data)
 
     val listXor = lfsrCRCGenerator(polynomial, data.getWidth)
 
     for(i <- 0 until crc.getWidth){
-      newCRC(i) := listXor(i).map(t => if (t.name == "D") dataR(t.index) else crc(t.index)).reduce(_ ^ _)
+      newCRC(i) := listXor(i).map(t => if (t.name == "D") data(t.index) else crc(t.index)).reduce(_ ^ _)
     }
 
     newCRC

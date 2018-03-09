@@ -64,6 +64,6 @@ object CRC16{
   */
 object CRC8{
   def Standard  = new CRCPolynomial(polynomial = p"8'x07", initValue = BigInt("00", 16), inputReflected = false, outputReflected = false, finalXor = BigInt("00", 16))
-  def DARC      = new CRCPolynomial(polynomial = p"8'x39", initValue = BigInt("00", 16), inputReflected = true,  outputReflected = true, finalXor = BigInt("00", 16))
+  def DARC      = new CRCPolynomial(polynomial = p"8'x39", initValue = BigInt("00", 16), inputReflected = true,  outputReflected = true,  finalXor = BigInt("00", 16))
 }
 

@@ -62,8 +62,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_8_combinational"){
 
     val configurations = List(
-      CRC32.Standard      -> Crc32.Crc32,
-      CRC32.XFER -> Crc32.Crc32Xfer
+      CRC32.Standard  -> Crc32.Crc32,
+      CRC32.XFER      -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 8)
@@ -76,8 +76,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_16_combinational"){
 
     val configurations = List(
-      CRC32.Standard      -> Crc32.Crc32,
-      CRC32.XFER -> Crc32.Crc32Xfer
+      CRC32.Standard  -> Crc32.Crc32,
+      CRC32.XFER      -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 16)
@@ -90,8 +90,8 @@ class SpinalSimCRCTester extends FunSuite {
   test("CRC32_32_combinational"){
 
     val configurations = List(
-      CRC32.Standard      -> Crc32.Crc32,
-      CRC32.XFER -> Crc32.Crc32Xfer
+      CRC32.Standard  -> Crc32.Crc32,
+      CRC32.XFER      -> Crc32.Crc32Xfer
     )
 
     crcSimulation(configurations, 32)
