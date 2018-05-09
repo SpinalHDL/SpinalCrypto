@@ -126,3 +126,36 @@ case class HashCoreIO(config: HashCoreConfig) extends Bundle with IMasterSlave {
     }
   }
 }
+
+
+/**
+  * Hash Engine command
+  */
+case class HashEngineStdCmd(blockSize: BitCount) extends Bundle {
+  val message = Bits(blockSize)
+}
+
+
+/**
+  * Hash Engine response
+  */
+case class HashEngineStdRsp(digestSize: BitCount) extends Bundle {
+  val digest = Bits(digestSize)
+}
+
+
+/**
+  * Hash Engine IO
+  */
+case class HashEngineStdIO(blockSize: BitCount, digestSize: BitCount) extends Bundle with IMasterSlave {
+
+  val init = Bool
+  val cmd  = Stream(HashEngineStdCmd(blockSize))
+  val rsp  = Flow(HashEngineStdRsp(digestSize))
+
+  override def asMaster() = {
+    out(init)
+    master(cmd)
+    slave(rsp)
+  }
+}

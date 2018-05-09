@@ -67,7 +67,7 @@ class SpinalSimMD5EngineStdTester extends FunSuite {
       dut.clockDomain.forkStimulus(2)
 
       dut.io.cmd.valid #= false
-      dut.io.cmd.block.randomize()
+      dut.io.cmd.message.randomize()
       dut.io.init      #= false
 
       dut.clockDomain.waitActiveEdge()
@@ -103,7 +103,7 @@ class SpinalSimMD5EngineStdTester extends FunSuite {
         while(indexBlock != refBlock(index).length ){
 
           dut.io.cmd.valid #= true
-          dut.io.cmd.block #= refBlock(index)(indexBlock)
+          dut.io.cmd.message #= refBlock(index)(indexBlock)
 
           waitUntil(dut.io.rsp.valid.toBoolean == true)
 

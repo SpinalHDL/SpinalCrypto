@@ -70,7 +70,7 @@ class MD5Padding_Std(config: HashCoreConfig) extends Component {
 
   val io = new Bundle{
     val core    = slave(HashCoreIO(config))
-    val engine  = master(MD5EngineStdIO())
+    val engine  = master(HashEngineStdIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
   }
 
   val nbrWordInBlock = MD5CoreSpec.blockWidth.value / config.dataWidth.value
@@ -210,7 +210,7 @@ class MD5Padding_Std(config: HashCoreConfig) extends Component {
     }
   }
 
-  io.engine.cmd.block := block.asBits
+  io.engine.cmd.message := block.asBits
   io.engine.cmd.valid := False // default value
   io.engine.init      := io.core.init
 
@@ -220,38 +220,6 @@ class MD5Padding_Std(config: HashCoreConfig) extends Component {
   io.core.rsp.valid  := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }
 
-
-/**
-  * MD5 Engine command
-  */
-case class MD5EngineStdCmd() extends Bundle {
-  val block = Bits(MD5CoreSpec.blockWidth)
-}
-
-
-/**
-  * MD5 Engine response
-  */
-case class MD5EngineStdRsp() extends Bundle {
-  val digest = Bits(MD5CoreSpec.hashWidth)
-}
-
-
-/**
-  * MD5 Engine IO
-  */
-case class MD5EngineStdIO() extends Bundle with IMasterSlave {
-
-  val init = Bool
-  val cmd  = Stream(MD5EngineStdCmd())
-  val rsp  = Flow(MD5EngineStdRsp())
-
-  override def asMaster() = {
-    out(init)
-    master(cmd)
-    slave(rsp)
-  }
-}
 
 
 /**
@@ -290,7 +258,7 @@ case class MD5EngineStdIO() extends Bundle with IMasterSlave {
   */
 class MD5Engine_Std extends Component {
 
-  val io = slave(MD5EngineStdIO())
+  val io = slave(HashEngineStdIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
 
   val iv    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 
@@ -353,7 +321,7 @@ class MD5Engine_Std extends Component {
 
     // Cut the message block into 32 bits
     val k = memK(i)
-    val wordBlock = io.cmd.block.subdivideIn(32 bits).reverse(k)
+    val wordBlock = io.cmd.message.subdivideIn(32 bits).reverse(k)
 
     // Select among the 4 memShift memory
     val shiftValue = selFunc.muxList(for(index <- 0 until 4) yield (index, memS(index)(i(1 downto 0)) ))
