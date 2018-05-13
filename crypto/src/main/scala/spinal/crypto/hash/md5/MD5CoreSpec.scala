@@ -41,7 +41,7 @@ object MD5CoreSpec {
   /** Digest message */
   def hashWidth     = 128 bits
   /** Total number of iterations */
-  def nbrIteration  = 4*16
+  def nbrIteration  = 4 * 16
   /** Width of the counter of bit */
   def cntBitWidth   = 64 bits
 

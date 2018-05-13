@@ -70,7 +70,7 @@ class MD5Padding_Std(config: HashCoreConfig) extends Component {
 
   val io = new Bundle{
     val core    = slave(HashCoreIO(config))
-    val engine  = master(HashEngineStdIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
+    val engine  = master(HashEngineIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
   }
 
   val nbrWordInBlock = MD5CoreSpec.blockWidth.value / config.dataWidth.value
@@ -258,7 +258,7 @@ class MD5Padding_Std(config: HashCoreConfig) extends Component {
   */
 class MD5Engine_Std extends Component {
 
-  val io = slave(HashEngineStdIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
+  val io = slave(HashEngineIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
 
   val iv    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
 

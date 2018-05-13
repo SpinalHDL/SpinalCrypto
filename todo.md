@@ -32,7 +32,7 @@
 | Algo                                               |  Status                    | Remark              |
 |:-------------------------------------------------- |:--------------------------:|:------------------- |
 | MD5Core_Std                                        |  :ok:                      |  Not tested on FPGA |
-| SHA                                                |  :no_entry_sign:           |  -                  |
+| SHA2Core_Std                                       |  :ok:                      |  Not tested on FPGA |
 | MD6                                                |  :no_entry_sign:           |  -                  |
 
 ### MAC

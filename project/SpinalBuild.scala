@@ -12,8 +12,8 @@ object SpinalBuild extends Build {
     settings = defaultSettings  ++  Seq(
       name    := "SpinalHDL Crypto",
       version := SpinalVersion.crypto,
-      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-core_2.11" % "1.1.2",
-      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11" % "1.1.2"
+      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-core_2.11" % "1.1.6",
+      libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11" % "1.1.6"
     )
   )
 

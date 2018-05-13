@@ -3,6 +3,7 @@ package cryptotest
 
 import org.scalatest.FunSuite
 import ref.hash.MD5
+import spinal.crypto.hash.LITTLE_endian
 import spinal.crypto.hash.md5.{MD5Core_Std, MD5Engine_Std}
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 import spinal.sim._
@@ -39,7 +40,7 @@ class SpinalSimMD5CoreStdTester extends FunSuite {
 
       while(iteration != 0){
 
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration)(MD5.digest)
+        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, LITTLE_endian)(MD5.digest)
 
         iteration -=1
       }
