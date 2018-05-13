@@ -3,6 +3,7 @@
 *.bak
 *.gtkw
 *.yaml
+*.bin
 
 # sbt specific
 .cache/

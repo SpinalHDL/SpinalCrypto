@@ -17,6 +17,7 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 ### Hash
 
 - MD5Core_Std
+- SHA2Core_Std
 
 
 ### MAC

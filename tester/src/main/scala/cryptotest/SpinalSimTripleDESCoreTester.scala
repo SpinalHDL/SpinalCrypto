@@ -2,6 +2,7 @@ package cryptotest
 
 import org.scalatest.FunSuite
 import ref.symmetric.TripleDES
+import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 import spinal.sim._
 import spinal.core.sim._
@@ -19,7 +20,7 @@ class SpinalSimTripleDESCoreTester extends FunSuite {
     */
   test("TripleDESCore_Std"){
 
-    SimConfig.compile(new TripleDESCore_Std()).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new TripleDESCore_Std()).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 

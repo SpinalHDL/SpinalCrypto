@@ -47,7 +47,7 @@ object HashEngineIOsim {
         indexBlock += 1
       }
 
-      assert(CastByteArray(rtlDigest.toByteArray, dut.rsp.digest.getWidth).sameElements(CastByteArray(refHash.toByteArray, dut.rsp.digest.getWidth)), s"RTL != REF ${BigIntToHexString(rtlDigest)} != ${BigIntToHexString(refHash}")
+      assert(CastByteArray(rtlDigest.toByteArray, dut.rsp.digest.getWidth).sameElements(CastByteArray(refHash.toByteArray, dut.rsp.digest.getWidth)), s"RTL != REF ${BigIntToHexString(rtlDigest)} != ${BigIntToHexString(refHash)}")
 
 
   }

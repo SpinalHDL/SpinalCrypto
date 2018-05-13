@@ -18,7 +18,7 @@ import scala.util.continuations.cpsParam
 class HMACCoreStd_MD5_Tester() extends Component {
 
   val md5  = new MD5Core_Std()
-  val hmac = new HMACCore_Std(HMACCoreStdConfig(md5.config.hashBlockWidth, md5.config))
+  val hmac = new HMACCore_Std(HMACCoreStdConfig(md5.configCore.hashBlockWidth, md5.configCore))
 
   val io = slave(HMACCoreStdIO(hmac.config))
 
@@ -31,7 +31,7 @@ class HMACCoreStd_MD5_Tester() extends Component {
 class SpinalSimHMACCoreStdTester extends FunSuite {
 
   // RTL to simulate
-  val compiledRTL = SimConfig.compile(new HMACCoreStd_MD5_Tester())
+  val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new HMACCoreStd_MD5_Tester())
 
 
   /**

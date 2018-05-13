@@ -92,7 +92,7 @@ case class Apb3_HMAC_Std_MD5Core_Std() extends Component with ApbCryptoComponent
   }
 
   val md5Core  = new MD5Core_Std()
-  val hmacCore = new HMACCore_Std(HMACCoreStdConfig(md5Core.config.hashBlockWidth, md5Core.config))
+  val hmacCore = new HMACCore_Std(HMACCoreStdConfig(md5Core.configCore.hashBlockWidth, md5Core.configCore))
 
   hmacCore.io.hashCore <> md5Core.io
 

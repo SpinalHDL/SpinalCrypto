@@ -109,7 +109,7 @@ class SpinalSimAESCoreTester extends FunSuite {
     */
   test("AESCoreStd_128"){
 
-    SimConfig.compile(new AESCore_Std(128 bits)).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new AESCore_Std(128 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -137,7 +137,7 @@ class SpinalSimAESCoreTester extends FunSuite {
     */
   test("AESCoreStd_192"){
 
-    SimConfig.compile(new AESCore_Std(192 bits)).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new AESCore_Std(192 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -187,7 +187,7 @@ class SpinalSimAESCoreTester extends FunSuite {
     */
   test("AESCoreStd_256"){
 
-    SimConfig.compile(new AESCore_Std(256 bits)).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new AESCore_Std(256 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 

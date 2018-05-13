@@ -106,7 +106,7 @@ class DES_CFB_Tester() extends Component{
 class SpinalSimBCMOStdTester extends FunSuite {
 
   test("ECB_DES") {
-    SimConfig.compile(new DES_ECB_Tester()).doSim { dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new DES_ECB_Tester()).doSim { dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -148,7 +148,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
 
   test("CBC_DES"){
-    SimConfig.compile(new DES_CBC_Tester()).doSim { dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new DES_CBC_Tester()).doSim { dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -220,7 +220,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
 
   test("OFB_DES"){
-    SimConfig.compile(new DES_OFB_Tester()).doSim { dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new DES_OFB_Tester()).doSim { dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -292,7 +292,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
   test("CFB_DES"){
 
-    SimConfig.compile(new DES_CFB_Tester()).doSim { dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new DES_CFB_Tester()).doSim { dut =>
 
       dut.clockDomain.forkStimulus(2)
 
