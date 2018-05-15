@@ -40,6 +40,7 @@ import spinal.crypto.hash._
   * SHA2 documentation :
   *   http://www.iwar.org.uk/comsec/resources/cipher/sha256-384-512.pdf
   *   https://tools.ietf.org/html/rfc4634
+  *   https://emn178.github.io/online-tools/sha512_256.html
   *
   */
 class SHA2Core_Std(mode: SHA2, dataWidth: BitCount = 32 bits) extends Component {
@@ -222,14 +223,14 @@ class SHA2Engine_Std(mode: SHA2) extends Component {
     }
   }
 
+  io.rsp.valid  := RegNext(finalProcessing, False)
   io.rsp.digest := (mode match {
     case SHA2_256 | SHA2_512 => hash.reverse.asBits
-    case SHA2_224            => hash.dropRight(1).reverse.asBits // remove H
-    case SHA2_384            => hash.dropRight(2).reverse.asBits // remove G H
-    case _                   => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
+    case SHA2_224                    => hash.dropRight(1).reverse.asBits // remove H
+    case SHA2_384                    => hash.dropRight(2).reverse.asBits // remove G H
+    case SHA2_512_224 | SHA2_512_256 => hash.reverse.asBits.resizeLeft(mode.hashWidth)
+    case _                           => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
   })
-
-  io.rsp.valid  := RegNext(finalProcessing, False)
 
   io.cmd.ready  := io.rsp.valid
 }
