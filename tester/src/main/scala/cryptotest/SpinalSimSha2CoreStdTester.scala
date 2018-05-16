@@ -41,7 +41,7 @@ class SpinalSimSHA2CoreStdTester extends FunSuite {
 
       while(iteration != 0){
 
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian )(SHA2.digest_256)
+        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian )(SHA2.digest("SHA-256"))
 
         iteration -= 1
       }
@@ -67,7 +67,7 @@ class SpinalSimSHA2CoreStdTester extends FunSuite {
 
       while(iteration != 0){
 
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian )(SHA2.digest_512)
+        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian )(SHA2.digest("SHA-512"))
 
         iteration -= 1
       }

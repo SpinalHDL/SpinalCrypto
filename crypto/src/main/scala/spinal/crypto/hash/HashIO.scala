@@ -191,12 +191,12 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
     val engine  = master(HashEngineIO(configCore.hashBlockWidth , configCore.hashWidth))
   }
 
-  val nbrWordInBlock = configCore.hashBlockWidth.value  / configCore.dataWidth.value
+  val nbrWordInBlock = configCore.hashBlockWidth.value / configCore.dataWidth.value
   val nbrByteInWord  = configCore.dataWidth.value / 8
 
-  val cntBit         = Reg(UInt(64 bits))
-  val block          = Reg(Vec(Bits(configCore.dataWidth), nbrWordInBlock))
-  val indexWord      = Reg(UInt(log2Up(nbrWordInBlock) bits))
+  val cntBit     = Reg(UInt(64 bits))
+  val block      = Reg(Vec(Bits(configCore.dataWidth), nbrWordInBlock))
+  val indexWord  = Reg(UInt(log2Up(nbrWordInBlock) bits))
 
 
   val maskMsg = io.core.cmd.size.mux(
@@ -320,7 +320,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
         }
       }
 
-      val sProcessing: State = new State {    /* Run MD5 Engine */
+      val sProcessing: State = new State {    /* Run Hash Engine */
         whenIsActive{
           io.engine.cmd.valid := True
 
@@ -342,10 +342,10 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
   }
 
   io.engine.cmd.message := block.asBits
-  io.engine.cmd.valid := False // default value
-  io.engine.init      := io.core.init
+  io.engine.cmd.valid   := False // default value
+  io.engine.init        := io.core.init
 
-  io.core.cmd.ready := False // default value
+  io.core.cmd.ready  := False // default value
 
   io.core.rsp.digest := io.engine.rsp.digest
   io.core.rsp.valid  := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
