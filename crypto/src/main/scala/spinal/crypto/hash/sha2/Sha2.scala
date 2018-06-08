@@ -31,22 +31,22 @@ import spinal.core._
 /**
   * Define all SHA2 families
   */
-trait SHA2{ def hashWidth: Int}
-object SHA2_224     extends SHA2 { def hashWidth = 224 }
-object SHA2_256     extends SHA2 { def hashWidth = 256 }
-object SHA2_384     extends SHA2 { def hashWidth = 384 }
-object SHA2_512     extends SHA2 { def hashWidth = 512 }
-object SHA2_512_224 extends SHA2 { def hashWidth = 224 }
-object SHA2_512_256 extends SHA2 { def hashWidth = 256 }
+trait SHA2_Type{ def hashWidth: Int}
+object SHA2_224     extends SHA2_Type { def hashWidth = 224 }
+object SHA2_256     extends SHA2_Type { def hashWidth = 256 }
+object SHA2_384     extends SHA2_Type { def hashWidth = 384 }
+object SHA2_512     extends SHA2_Type { def hashWidth = 512 }
+object SHA2_512_224 extends SHA2_Type { def hashWidth = 224 }
+object SHA2_512_256 extends SHA2_Type { def hashWidth = 256 }
 
 
 
-object SHA2CoreSpec {
+object SHA2 {
 
   /**
     * Number of rounds
     */
-  def numberRound(mode: SHA2) = mode match {
+  def numberRound(mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => 64
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => 80
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
@@ -55,7 +55,7 @@ object SHA2CoreSpec {
   /**
     * Width variable
     */
-  def variableWidth(mode: SHA2) = mode match {
+  def variableWidth(mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => 32
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => 64
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
@@ -64,7 +64,7 @@ object SHA2CoreSpec {
   /**
     * Block width
     */
-  def blockWidth(mode: SHA2) = mode match {
+  def blockWidth(mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => 512
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => 1024
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
@@ -73,7 +73,7 @@ object SHA2CoreSpec {
   /**
     * Define Init hash value
     */
-  def InitHash(mode: SHA2): List[BigInt] = mode match {
+  def InitHash(mode: SHA2_Type): List[BigInt] = mode match {
 
     case SHA2_224 => List(
       BigInt("c1059ed8", 16), BigInt("367cd507", 16),
@@ -127,7 +127,7 @@ object SHA2CoreSpec {
     * first sixty-four prime numbers
     */
 
-  def K(mode: SHA2) = mode match {
+  def K(mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256 => List(
       BigInt("428a2f98", 16), BigInt("71374491", 16), BigInt("b5c0fbcf", 16), BigInt("e9b5dba5", 16), BigInt("3956c25b", 16), BigInt("59f111f1", 16), BigInt("923f82a4", 16), BigInt("ab1c5ed5", 16),
       BigInt("d807aa98", 16), BigInt("12835b01", 16), BigInt("243185be", 16), BigInt("550c7dc3", 16), BigInt("72be5d74", 16), BigInt("80deb1fe", 16), BigInt("9bdc06a7", 16), BigInt("c19bf174", 16),
@@ -171,25 +171,25 @@ object SHA2CoreSpec {
 
   def MAJ(x: UInt, y: UInt, z: UInt) = (x & y) ^ (x & z) ^ (y & z)
 
-  def BSIG0(x: UInt, mode: SHA2) = mode match {
+  def BSIG0(x: UInt, mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => x.rotateRight( 2) ^ x.rotateRight(13) ^ x.rotateRight(22)
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => x.rotateRight(28) ^ x.rotateRight(34) ^ x.rotateRight(39)
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
   }
 
-  def BSIG1(x: UInt, mode: SHA2) = mode match {
+  def BSIG1(x: UInt, mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => x.rotateRight( 6) ^ x.rotateRight(11) ^ x.rotateRight(25)
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => x.rotateRight(14) ^ x.rotateRight(18) ^ x.rotateRight(41)
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
   }
 
-  def SSIG0(x: UInt, mode: SHA2) = mode match {
+  def SSIG0(x: UInt, mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => x.rotateRight(7) ^ x.rotateRight(18) ^ (x |>> 3)
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => x.rotateRight(1) ^ x.rotateRight( 8) ^ (x |>> 7)
     case _ => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")
   }
 
-  def SSIG1(x: UInt, mode: SHA2) = mode match {
+  def SSIG1(x: UInt, mode: SHA2_Type) = mode match {
     case SHA2_224 | SHA2_256                               => x.rotateRight(17) ^ x.rotateRight(19) ^ (x |>> 10)
     case SHA2_384 | SHA2_512 | SHA2_512_224 | SHA2_512_256 => x.rotateRight(19) ^ x.rotateRight(61) ^ (x |>>  6)
     case _  => SpinalError(s"SHA-2 doesn't support the following hash size ${mode.hashWidth} bits")

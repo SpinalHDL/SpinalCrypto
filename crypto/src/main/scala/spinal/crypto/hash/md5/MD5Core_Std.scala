@@ -43,8 +43,8 @@ class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component {
 
   val configCore =  HashCoreConfig(
     dataWidth      = dataWidth,
-    hashWidth      = MD5CoreSpec.hashWidth,
-    hashBlockWidth = MD5CoreSpec.blockWidth
+    hashWidth      = MD5.hashWidth,
+    hashBlockWidth = MD5.blockWidth
   )
 
   val configPadding = HashPaddingConfig(endianess = LITTLE_endian)
@@ -95,17 +95,17 @@ class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component {
   */
 class MD5Engine_Std extends Component {
 
-  val io = slave(HashEngineIO(MD5CoreSpec.blockWidth , MD5CoreSpec.hashWidth))
+  val io = slave(HashEngineIO(MD5.blockWidth , MD5.hashWidth))
 
-  val iv    = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
+  val iv    = Vec(Reg(Bits(MD5.subBlockWidth)), 4)
 
-  val memT  = Mem(UInt(32 bits), MD5CoreSpec.constantT.map(U(_, 32 bits)))
-  val memK  = Mem(UInt(4 bits),  MD5CoreSpec.indexK.map(U(_, 4 bits)))
+  val memT  = Mem(UInt(32 bits), MD5.constantT.map(U(_, 32 bits)))
+  val memK  = Mem(UInt(4 bits),  MD5.indexK.map(U(_, 4 bits)))
 
-  val memS  = List(Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(0,  4).map(U(_, 5 bits))),
-                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(4,  8).map(U(_, 5 bits))),
-                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(8, 12).map(U(_, 5 bits))),
-                   Mem(UInt(5 bits),  MD5CoreSpec.shiftCstS.slice(12,16).map(U(_, 5 bits)))
+  val memS  = List(Mem(UInt(5 bits),  MD5.shiftCstS.slice(0,  4).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5.shiftCstS.slice(4,  8).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5.shiftCstS.slice(8, 12).map(U(_, 5 bits))),
+                   Mem(UInt(5 bits),  MD5.shiftCstS.slice(12,16).map(U(_, 5 bits)))
   )
 
   /**
@@ -144,17 +144,17 @@ class MD5Engine_Std extends Component {
     val endIteration = i === 63
 
     /* Register block */
-    val block   = Vec(Reg(Bits(MD5CoreSpec.subBlockWidth)), 4)
+    val block   = Vec(Reg(Bits(MD5.subBlockWidth)), 4)
 
     /* Block signals */
-    val sBlock  = Vec(Bits(MD5CoreSpec.subBlockWidth), 4)
+    val sBlock  = Vec(Bits(MD5.subBlockWidth), 4)
 
     // mux to select among the three function F, G, H, I
     val selFunc = B(0, 2 bits)
-    val funcResult = selFunc.mux(B"00" -> MD5CoreSpec.funcF(block(1), block(2), block(3)),
-                                 B"01" -> MD5CoreSpec.funcG(block(1), block(2), block(3)),
-                                 B"10" -> MD5CoreSpec.funcH(block(1), block(2), block(3)),
-                                 B"11" -> MD5CoreSpec.funcI(block(1), block(2), block(3)))
+    val funcResult = selFunc.mux(B"00" -> MD5.funcF(block(1), block(2), block(3)),
+                                 B"01" -> MD5.funcG(block(1), block(2), block(3)),
+                                 B"10" -> MD5.funcH(block(1), block(2), block(3)),
+                                 B"11" -> MD5.funcI(block(1), block(2), block(3)))
 
     // Cut the message block into 32 bits
     val k = memK(i)
@@ -193,7 +193,7 @@ class MD5Engine_Std extends Component {
     val isProcessing = Reg(Bool)
 
     when(io.init){
-      iterativeRound.block  := MD5CoreSpec.initBlock
+      iterativeRound.block  := MD5.initBlock
       iterativeRound.i      := 0
       isProcessing          := False
     }.elsewhen(io.cmd.valid && !isProcessing && !io.cmd.ready){

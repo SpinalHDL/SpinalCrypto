@@ -43,7 +43,7 @@ class AESCore_Std(keyWidth: BitCount) extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
     keyWidth   = keyWidth,
-    blockWidth = AESCoreSpec.blockWidth,
+    blockWidth = AES.blockWidth,
     useEncDec  = true
   )
 
@@ -100,7 +100,7 @@ class AESEngine_Std(keyWidth: BitCount) extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
     keyWidth   = keyWidth,
-    blockWidth = AESCoreSpec.blockWidth,
+    blockWidth = AES.blockWidth,
     useEncDec  = true
   )
 
@@ -110,14 +110,14 @@ class AESEngine_Std(keyWidth: BitCount) extends Component {
   }
 
   // SBox memory for the the byte substitution
-  val sBoxMem    = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))
-  val sBoxMemInv = Mem(Bits(8 bits), AESCoreSpec.sBoxInverse.map(B(_, 8 bits)))
+  val sBoxMem    = Mem(Bits(8 bits), AES.sBox.map(B(_, 8 bits)))
+  val sBoxMemInv = Mem(Bits(8 bits), AES.sBoxInverse.map(B(_, 8 bits)))
 
   // data state of 128-bit
   val dataState  = Reg(Vec(Bits(8 bits), 16))
 
   // Count the number of round
-  val nbrRound   = AESCoreSpec.nbrRound(keyWidth)
+  val nbrRound   = AES.nbrRound(keyWidth)
   val cntRound   = Reg(UInt(log2Up(nbrRound) bits))
 
   /* Key scheduling default value */
@@ -300,11 +300,11 @@ class AESEngine_Std(keyWidth: BitCount) extends Component {
   val shiftRow = new Area {
     when(sm.shiftRow_cmd) {
       when(io.engine.cmd.enc){
-        for ((src, dst) <- AESCoreSpec.shiftRowIndex.zipWithIndex){
+        for ((src, dst) <- AES.shiftRowIndex.zipWithIndex){
           dataState(dst) := dataState(src)
         }
       }otherwise{
-        for ((src, dst) <- AESCoreSpec.invShiftRowIndex.zipWithIndex){
+        for ((src, dst) <- AES.invShiftRowIndex.zipWithIndex){
           dataState(dst) := dataState(src)
         }
       }

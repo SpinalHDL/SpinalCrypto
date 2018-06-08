@@ -43,12 +43,12 @@ import spinal.crypto.hash._
   *   https://emn178.github.io/online-tools/sha512_256.html
   *
   */
-class SHA2Core_Std(mode: SHA2, dataWidth: BitCount = 32 bits) extends Component {
+class SHA2Core_Std(mode: SHA2_Type, dataWidth: BitCount = 32 bits) extends Component {
 
   val configCore =  HashCoreConfig(
     dataWidth      = dataWidth,
     hashWidth      = mode.hashWidth bits,
-    hashBlockWidth = SHA2CoreSpec.blockWidth(mode) bits
+    hashBlockWidth = SHA2.blockWidth(mode) bits
   )
 
   val configPadding = HashPaddingConfig(endianess = BIG_endian)
@@ -114,26 +114,24 @@ class SHA2Core_Std(mode: SHA2, dataWidth: BitCount = 32 bits) extends Component 
   *
   *
   */
-class SHA2Engine_Std(mode: SHA2) extends Component {
-
-  import SHA2CoreSpec._
+class SHA2Engine_Std(mode: SHA2_Type) extends Component {
 
   /** IO */
-  val io = slave(HashEngineIO(blockWidth(mode) bits, mode.hashWidth bits))
+  val io = slave(HashEngineIO(SHA2.blockWidth(mode) bits, mode.hashWidth bits))
 
 
   /** Internal variables */
-  val a, b, c, d, e, f, g, h = Reg(UInt(variableWidth(mode) bits))
+  val a, b, c, d, e, f, g, h = Reg(UInt(SHA2.variableWidth(mode) bits))
 
-  val w = Vec(Reg(UInt(variableWidth(mode) bits)), numberRound(mode))
+  val w = Vec(Reg(UInt(SHA2.variableWidth(mode) bits)), SHA2.numberRound(mode))
 
-  val roundCnt         = Reg(UInt(log2Up(numberRound(mode)) bits))
+  val roundCnt         = Reg(UInt(log2Up(SHA2.numberRound(mode)) bits))
   val startProcessing  = RegInit(False)
   val finalProcessing  = RegInit(False)
   val isBusy           = RegInit(False)
 
-  val memK = Mem(UInt(variableWidth(mode) bits), K(mode).map(U(_, variableWidth(mode) bits)))
-  val hash = Reg(Vec(UInt(variableWidth(mode) bits), InitHash(mode).length))
+  val memK = Mem(UInt(SHA2.variableWidth(mode) bits), SHA2.K(mode).map(U(_, SHA2.variableWidth(mode) bits)))
+  val hash = Reg(Vec(UInt(SHA2.variableWidth(mode) bits), SHA2.InitHash(mode).length))
 
 
   /**
@@ -142,7 +140,7 @@ class SHA2Engine_Std(mode: SHA2) extends Component {
   when(io.cmd.valid && !isBusy && !io.cmd.ready){
 
     for(i <- 0 until 16){
-      w(i) := io.cmd.message.subdivideIn(variableWidth(mode) bits).reverse(i).asUInt
+      w(i) := io.cmd.message.subdivideIn(SHA2.variableWidth(mode) bits).reverse(i).asUInt
     }
 
     a := hash(0)
@@ -166,7 +164,7 @@ class SHA2Engine_Std(mode: SHA2) extends Component {
 
     when(io.init){
 
-      hash := Vec(InitHash(mode).map(U(_, variableWidth(mode) bits)))
+      hash := Vec(SHA2.InitHash(mode).map(U(_, SHA2.variableWidth(mode) bits)))
 
       finalProcessing := False
       startProcessing := False
@@ -181,20 +179,20 @@ class SHA2Engine_Std(mode: SHA2) extends Component {
 
     when(startProcessing){
 
-      when(roundCnt === numberRound(mode) - 1){
+      when(roundCnt === SHA2.numberRound(mode) - 1){
         startProcessing := False
         finalProcessing := True
       }
 
-      when(roundCnt < (numberRound(mode) - 16)){
-        w(roundCnt + 16) := w(roundCnt) + w(roundCnt + 9) + SSIG0(w(roundCnt +  1), mode) + SSIG1(w(roundCnt + 14), mode)
+      when(roundCnt < (SHA2.numberRound(mode) - 16)){
+        w(roundCnt + 16) := w(roundCnt) + w(roundCnt + 9) + SHA2.SSIG0(w(roundCnt +  1), mode) + SHA2.SSIG1(w(roundCnt + 14), mode)
       }
 
       roundCnt := roundCnt + 1
 
-      val temp1 = h + BSIG1(e, mode) + CH(e, f, g) + memK(roundCnt) + w(roundCnt)
+      val temp1 = h + SHA2.BSIG1(e, mode) + SHA2.CH(e, f, g) + memK(roundCnt) + w(roundCnt)
 
-      a := BSIG0(a, mode) + MAJ(a, b, c) + temp1
+      a := SHA2.BSIG0(a, mode) + SHA2.MAJ(a, b, c) + temp1
       b := a
       c := b
       d := c

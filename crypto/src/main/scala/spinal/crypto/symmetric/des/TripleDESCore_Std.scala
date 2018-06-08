@@ -59,14 +59,14 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlock
 class TripleDESCore_Std() extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
-    keyWidth   = ((DESCoreSpec.keyWidth.value + DESCoreSpec.keyWidthParity.value) * 3) bits,
-    blockWidth = DESCoreSpec.blockWidth,
+    keyWidth   = ((DES.keyWidth.value + DES.keyWidthParity.value) * 3) bits,
+    blockWidth = DES.blockWidth,
     useEncDec  = true
   )
 
   val io = slave(new SymmetricCryptoBlockIO(gIO))
 
-  val block = Reg(Bits(DESCoreSpec.blockWidth))
+  val block = Reg(Bits(DES.blockWidth))
 
   val coreDES = new DESCore_Std()
 
@@ -77,7 +77,7 @@ class TripleDESCore_Std() extends Component {
 
     val desCmdValid = False
     val desEncDec   = False
-    val desKey      = B(0, DESCoreSpec.keyWidthParity + DESCoreSpec.keyWidth)
+    val desKey      = B(0, DES.keyWidthParity + DES.keyWidth)
     val inSel       = False
     val cmdReady    = False
 

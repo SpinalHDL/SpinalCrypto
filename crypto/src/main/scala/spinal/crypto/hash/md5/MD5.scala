@@ -32,7 +32,7 @@ import scala.math.{pow, sin}
 /**
   * MD5Core Specification
   */
-object MD5CoreSpec {
+object MD5 {
 
   /** Size of a message block */
   def blockWidth    = 512 bits

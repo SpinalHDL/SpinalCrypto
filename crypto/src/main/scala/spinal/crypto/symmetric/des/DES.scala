@@ -31,7 +31,7 @@ import spinal.core._
 /**
   * Constants for the DES Core
   */
-object DESCoreSpec {
+object DES {
 
   def initialPermutation = Seq(
     58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4,

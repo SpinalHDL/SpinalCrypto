@@ -45,7 +45,7 @@ object AESKeyScheduleCmdMode_Std extends SpinalEnum {
   */
 case class AESKeyScheduleCmd_Std(keyWidth: BitCount) extends Bundle {
   val mode  = AESKeyScheduleCmdMode_Std()
-  val round = UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits)
+  val round = UInt(log2Up(AES.nbrRound(keyWidth)) bits)
   val key   = Bits(keyWidth)
 }
 
@@ -78,11 +78,11 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component {
   val stateKey_tmp = Vec(Bits(32 bits),     keyWidth.value / 32)
 
   // Count internally the number of round
-  val cntRound = Reg(UInt(log2Up(AESCoreSpec.nbrRound(keyWidth)) bits))
+  val cntRound = Reg(UInt(log2Up(AES.nbrRound(keyWidth)) bits))
 
   // Memory for the RCON and SBOX
-  val rconMem = Mem(Bits(8 bits), AESCoreSpec.rcon(keyWidth).map(B(_, 8 bits)))
-  val sBoxMem = Mem(Bits(8 bits), AESCoreSpec.sBox.map(B(_, 8 bits)))
+  val rconMem = Mem(Bits(8 bits), AES.rcon(keyWidth).map(B(_, 8 bits)))
+  val sBoxMem = Mem(Bits(8 bits), AES.sBox.map(B(_, 8 bits)))
 
   // subdivide the input key in 32-bit
   val keyWord = io.cmd.key.subdivideIn(32 bits).reverse
@@ -130,7 +130,7 @@ class AESKeyScheduleCore_Std(keyWidth: BitCount) extends Component {
       // initialize the statekey
       for(i <- 0 until stateKey.length)  stateKey(i) := keyWord(i)
 
-      when(io.cmd.round === AESCoreSpec.nbrRound(keyWidth) + 1){ // init cmd with round == (nbrRound+1) => decrypt mode
+      when(io.cmd.round === AES.nbrRound(keyWidth) + 1){ // init cmd with round == (nbrRound+1) => decrypt mode
         autoUpdate := True
         cntRound   := 1
       }otherwise {               // encrypt mode
