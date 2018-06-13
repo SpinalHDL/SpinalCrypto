@@ -1,6 +1,10 @@
 package spinal.crypto.hash.sha3
 
-
+/*
+The SHA-3 family consists of four cryptographic hash functions and two extendable-output
+functions (XOFs). The cryptographic hash functions are called SHA3-224, SHA3-256, SHA3-
+384, and SHA3-512; and the XOFs are called SHAKE128 and SHAKE256.
+ */
 
 /**
   * Define all SHA3 families
