@@ -33,6 +33,7 @@
 |:-------------------------------------------------- |:--------------------------:|:------------------- |
 | MD5Core_Std                                        |  :ok:                      |  Not tested on FPGA |
 | SHA2Core_Std                                       |  :ok:                      |  Not tested on FPGA |
+| SHA3Core_Std                                       |  :ok:                      |  Not tested on FPGA |
 | MD6                                                |  :no_entry_sign:           |  -                  |
 
 ### MAC
@@ -49,6 +50,7 @@
 | LFSR (Fibonacci/Galois)                            |  :ok:                      |  Not tested on FPGA |
 | TRNG with PLL                                      |  :no_entry_sign:           |  -                  |
 | CRC                                                |  :ok:                      |  Test only CRC 8, 16, 32 |
+| Keccak                                             |  :ok:                      |  Not tested on FPGA |
 
 
 
