@@ -26,10 +26,23 @@
 package spinal.crypto.hash.sha3
 
 import spinal.core._
+import spinal.crypto.construtor.{SpongeIO_Std, Sponge_Std}
+import spinal.crypto.primitive.keccak.KeccakF_Std
 import spinal.lib._
+
+// Pattern ...
+// https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
 
 class Sha3Core_Std(sha3Type: SHA3_Type) extends Component {
 
+  val io = new Bundle{
+    val sponge = slave(SpongeIO_Std(576, 512))
+  }
 
+  val sponge = new Sponge_Std(capacity = sha3Type.c, rate = sha3Type.r, d = sha3Type.hashWidth)
+  val func   = new KeccakF_Std(sha3Type.c + sha3Type.r)
+
+  sponge.io.func <> func.io
+  sponge.io.sponge <> io.sponge
 
 }

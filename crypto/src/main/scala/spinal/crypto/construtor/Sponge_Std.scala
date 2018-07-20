@@ -33,9 +33,11 @@ case class SpongeCmd_Std(width: Int) extends Bundle {
   val n = Bits(width bits)
 
 }
+
 case class SpongeRsp_Std(width: Int) extends Bundle {
   val z = Bits(width bits)
 }
+
 case class SpongeIO_Std(cmd_width: Int, rsp_width: Int) extends Bundle with IMasterSlave {
   val cmd  = Stream(Fragment(SpongeCmd_Std(cmd_width)))
   val rsp  = Flow(SpongeRsp_Std(rsp_width))
@@ -47,6 +49,43 @@ case class SpongeIO_Std(cmd_width: Int, rsp_width: Int) extends Bundle with IMas
     out(init)
   }
 }
+
+/*
+
+##bit ordering
+https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
+
+Keccak interprets byte arrays in big-endian, but with an LSB bit numbering.
+
+padding in done on r size
+
+domain    result         used in
+  01     M||0110*1     SHA3-224 to 512
+  11     M||1110*1     RawSHAKE128 or 256
+ 1111    M||111110*1   SHAKE128 or 256
+
+
+
+For most applications, the message is byte-aligned, i.e., len(M)=8m for a nonnegative integer m.
+
+ +-------------------------+--------------------------------+
+|                         |                                |
+| Number of padding bytes |       Padded message           |
+|                         |                                |
++----------------------------------------------------------+
+|                         |                                |
+|         q = 1           |  M || 0x86                     |
+|                         |                                |
+|         q = 2           |  M || 0x0680                   |
+|                         |                                |
+|         q > 2           |  M || 0x06 || 0x00... || 0x80  |
+|                         |                                |
++-------------------------+--------------------------------+
+
+q = r/8 - ( m mod r/8)
+
+
+ */
 
 
 /**
@@ -99,6 +138,9 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
   io.sponge.cmd.ready := False
   io.sponge.rsp.z     := zReg.resized
 
+
+  isProcessing.pull()
+
   /**
     * init
     */
@@ -127,7 +169,7 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
       cntSqueezing := cntSqueezing + 1
       zReg.subdivideIn(rate bits)(cntSqueezing.resized) := io.func.rsp.string(b - 1 downto capacity)
 
-      when(cntSqueezing >= nbrSqueezingSeq - 1){
+      when(cntSqueezing === nbrSqueezingSeq ){
         isSqueezing  := False
         isProcessing := False
         io.sponge.cmd.ready := True
