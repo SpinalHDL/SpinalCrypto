@@ -31,7 +31,6 @@ import spinal.lib._
 
 case class SpongeCmd_Std(width: Int) extends Bundle {
   val n = Bits(width bits)
-
 }
 
 case class SpongeRsp_Std(width: Int) extends Bundle {
@@ -50,43 +49,6 @@ case class SpongeIO_Std(cmd_width: Int, rsp_width: Int) extends Bundle with IMas
   }
 }
 
-/*
-
-##bit ordering
-https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
-
-Keccak interprets byte arrays in big-endian, but with an LSB bit numbering.
-
-padding in done on r size
-
-domain    result         used in
-  01     M||0110*1     SHA3-224 to 512
-  11     M||1110*1     RawSHAKE128 or 256
- 1111    M||111110*1   SHAKE128 or 256
-
-
-
-For most applications, the message is byte-aligned, i.e., len(M)=8m for a nonnegative integer m.
-
- +-------------------------+--------------------------------+
-|                         |                                |
-| Number of padding bytes |       Padded message           |
-|                         |                                |
-+----------------------------------------------------------+
-|                         |                                |
-|         q = 1           |  M || 0x86                     |
-|                         |                                |
-|         q = 2           |  M || 0x0680                   |
-|                         |                                |
-|         q > 2           |  M || 0x06 || 0x00... || 0x80  |
-|                         |                                |
-+-------------------------+--------------------------------+
-
-q = r/8 - ( m mod r/8)
-
-
- */
-
 
 /**
   * SPONGE[f, pad, r](N,d).
@@ -102,7 +64,7 @@ q = r/8 - ( m mod r/8)
   *
   *       N                            Absorbing | Squeezing                           Z
   *       |                                      |                                     |
-  *      PAD -------------- ...  ----\           |  /------- ... ------------------> TRUNC
+  *      PAD*-------------- ...  ----\           |  /------- ... ------------------> TRUNC
   *       __     |     ___           |     ___   |  |   ___         |   ___   |
   *      |  |    |    |   |          |    |   |  |  |  |   |        |  |   |  |
   *  (r) |  | - XOR ->|   |       - XOR ->|   |--|---->|   |      ---->|   |---->
@@ -110,36 +72,43 @@ q = r/8 - ( m mod r/8)
   *      |  |         |   |               |   |  |     |   |           |   |
   *  (c) |  | ------->|   |       ------->|   |--|---->|   |      ---->|   |---->
   *      |__|         |___|               |___|  |     |___|           |___|
-  *                                              |
+  *
+  *    * the padding is done outside of this component
   */
 class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
 
-  val b = capacity + rate
-  val nbrSqueezingSeq = scala.math.ceil(d / rate.toDouble).toInt
+  val b          = capacity + rate
+  val nbrSqueeze = scala.math.floor(d / rate.toDouble).toInt
 
+  /**
+    * IO
+    */
   val io = new Bundle {
     val sponge = slave(SpongeIO_Std(rate, d))
     val func   = master(KeccakIOF_Std(b))
   }
 
+
   val rReg = Reg(Bits(rate bits))
   val cReg = Reg(Bits(capacity bits))
-  val zReg = Reg(Bits(rate * nbrSqueezingSeq bits))
+  val zReg = if(nbrSqueeze != 0) Reg(Bits(rate * nbrSqueeze bits)) else null
 
   val isProcessing = RegInit(False)
   val isSqueezing  = RegInit(False)
-  val cntSqueezing = Reg(UInt(log2Up(nbrSqueezingSeq) + 1 bits))
+  val cntSqueeze   = if(nbrSqueeze != 0) Reg(UInt(log2Up(nbrSqueeze) bits)) else null
 
-
-  io.func.cmd.valid  := isSqueezing ? isSqueezing | isProcessing
+  // Cmd func component
+  io.func.cmd.valid  := isProcessing
   io.func.cmd.string := (isSqueezing ? rReg | (io.sponge.cmd.n ^ rReg)) ## cReg
 
-  io.sponge.rsp.valid := False
-  io.sponge.cmd.ready := False
-  io.sponge.rsp.z     := zReg.resized
+  // Rsp sponge
+  val spg_rspValid = False
+  val spg_cmdReady = False
 
+  io.sponge.rsp.valid := RegNext(spg_rspValid, False)
+  io.sponge.cmd.ready := RegNext(spg_cmdReady, False)
+  io.sponge.rsp.z     := (if(nbrSqueeze != 0) zReg else rReg).resizeLeft(d)
 
-  isProcessing.pull()
 
   /**
     * init
@@ -148,38 +117,58 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
     rReg := 0
     cReg := 0
     isSqueezing  := False
-    cntSqueezing := 0
+    isProcessing := False
+    if(nbrSqueeze != 0) cntSqueeze := 0
   }
 
 
   /**
     * Start processing
     */
-  when(io.sponge.cmd.valid && !isProcessing){
-    isProcessing := True
+  when(io.sponge.cmd.valid && !io.sponge.cmd.ready && !isProcessing){
+    isProcessing  := True
   }
 
+
+  /**
+    * Wait response of the function
+    */
   when(io.func.rsp.valid){
 
+    // Store the response
     rReg  := io.func.rsp.string(b - 1        downto capacity)
     cReg  := io.func.rsp.string(capacity - 1 downto 0)
 
-    when(isSqueezing){                // Squeezing
 
-      cntSqueezing := cntSqueezing + 1
-      zReg.subdivideIn(rate bits)(cntSqueezing.resized) := io.func.rsp.string(b - 1 downto capacity)
+    /**
+      * Squeezing  TODO not tested
+      */
+    if(nbrSqueeze != 0){
+      when(isSqueezing){                // Squeezing
 
-      when(cntSqueezing === nbrSqueezingSeq ){
-        isSqueezing  := False
-        isProcessing := False
-        io.sponge.cmd.ready := True
-        io.sponge.rsp.valid := True
+        cntSqueeze := cntSqueeze + 1
+        zReg.subdivideIn(rate bits)(cntSqueeze.resized) := io.func.rsp.string(b - 1 downto capacity)
+
+        when(cntSqueeze === nbrSqueeze ){
+          isSqueezing  := False
+          isProcessing := False
+          spg_rspValid := True
+          spg_cmdReady := True
+        }
       }
+    }
 
-    }otherwise{                       // Absorbing
-      isProcessing := io.sponge.cmd.last
-      isSqueezing  := io.sponge.cmd.last
-      io.sponge.cmd.ready := !io.sponge.cmd.last
+    /**
+      * Absorbing
+      */
+    when(!isSqueezing){
+
+      isProcessing := False
+
+      if(nbrSqueeze == 0){
+        spg_rspValid   := io.sponge.cmd.last
+        spg_cmdReady   := True
+      }
     }
   }
 }

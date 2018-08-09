@@ -27,8 +27,8 @@ package spinal.crypto.hash.sha2
 
 import spinal.core._
 import spinal.lib._
-
 import spinal.crypto.hash._
+import spinal.crypto.padding.{HashPadding_Std, HashPaddingConfig}
 
 
 
