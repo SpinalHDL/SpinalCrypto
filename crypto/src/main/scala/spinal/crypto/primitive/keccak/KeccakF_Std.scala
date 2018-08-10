@@ -29,16 +29,6 @@ import spinal.core._
 import spinal.lib._
 
 
-case class KeccakCore_Std() extends Component {
-
-}
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 case class KeccakCmdF_Std(width: Int) extends Bundle {
   val string = Bits(width bits)
@@ -48,9 +38,9 @@ case class KeccakRspF_Std(width: Int) extends Bundle {
   val string = Bits(width bits)
 }
 
-case class KeccakIOF_Std(width: Int) extends Bundle with IMasterSlave {
-  val cmd = Stream(KeccakCmdF_Std(width))
-  val rsp = Flow(KeccakRspF_Std(width))
+case class FuncIO_Std(cmdWidth: Int, rspWidth: Int) extends Bundle with IMasterSlave {
+  val cmd = Stream(Bits(cmdWidth bits))
+  val rsp = Flow(Bits(rspWidth bits))
 
   override def asMaster(): Unit = {
     slave(rsp)
@@ -60,32 +50,33 @@ case class KeccakIOF_Std(width: Int) extends Bundle with IMasterSlave {
 
 
 /**
-  * KECCAK-f[b] = KECCAK-p[b, 12+2l].
+  * Keccak-f[b] = KECCAK-p[b, 12 + 2l], b = 25 * 2^l, l = 0 to 6 ===> (b = {25,50,100,200,400,800,1600})
   *
+  * @param b    The width of a KECCAK-p permutation in bits
   */
 class KeccakF_Std(b: Int) extends Component {
 
   assert(List(25, 50, 100, 200, 400, 800, 1600).contains(b))
 
-  val io = slave(KeccakIOF_Std(b))
+  val io = slave(FuncIO_Std(b, b))
 
   /**
     * Compute number of round
+    * nr = 12 + 2l
     */
   val nr = 12 + 2 * log2Up(b / 25)
 
 
-  /**
-    * Instantiate the core
-    */
+  /** Instantiate the KeccakP core  */
   val core = new KeccakP_Std(b, nr)
 
   core.io <> io
 }
 
 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Keccak-P
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -96,12 +87,17 @@ class KeccakF_Std(b: Int) extends Component {
   *     1. Convert S into a state array
   *     2. For ir from 12+2l–nr to 12+2l –1, let A=Rnd(A, ir).
   *     3. Convert A into a string
+  *
+  * @param b    The width of a KECCAK-p permutation in bits
+  * @param nr   The number of rounds for a KECCAK-p permutation
   */
 class KeccakP_Std(b: Int, nr: Int) extends Component {
 
+  // Compute the lane size of a KECCAK-p permutation in bits (state[5][5][w])
   val w = b / 25
 
-  val io = slave(KeccakIOF_Std(b))
+  /** IO */
+  val io = slave(FuncIO_Std(b, b))
 
   io.cmd.ready := False
   io.rsp.valid := False
@@ -123,45 +119,46 @@ class KeccakP_Std(b: Int, nr: Int) extends Component {
   val state = Reg(Vec(Vec(Bits(w bits), 5), 5))
   when(io.cmd.valid & !start){
     for(x <- 0 to 4 ; y <- 0 to 4 ){
-      val index = (io.cmd.string.getWidth - 1) - w * (5 * y + x)
-      state(x)(y) :=  io.cmd.string(index downto index - w + 1)
+      val index = (io.cmd.payload.getWidth - 1) - w * (5 * y + x)
+      state(x)(y) :=  io.cmd.payload(index downto index - w + 1)
     }
     start := True
     rnd   := 0
   }
 
   /**
-    * Execute Round
+    * Controller
     */
-  when(start){
-    permCore.io.cmd.valid := True
-    permCore.io.cmd.state := state
-  }
+  val ctrl = new Area{
+    when(start){
+      permCore.io.cmd.valid := True
+      permCore.io.cmd.state := state
+    }
 
-  when(permCore.io.rsp.valid){
-    state := permCore.io.rsp.state
-    rnd   := rnd + 1
+    when(permCore.io.rsp.valid){
+      state := permCore.io.rsp.state
+      rnd   := rnd + 1
 
-    when(rnd === nr - 1){
-      io.cmd.ready := True
-      start        := False
-      io.rsp.valid := True
+      when(rnd === nr - 1){
+        io.cmd.ready := True
+        start        := False
+        io.rsp.valid := True
+      }
     }
   }
-
 
   /**
     * Convert state to string
     */
-  io.rsp.string := (for(y <- 0 to 4 ; x <- 0 to 4) yield permCore.io.rsp.state(x)(y)).reduce(_ ## _)
+  io.rsp.payload := (for(y <- 0 to 4 ; x <- 0 to 4) yield permCore.io.rsp.state(x)(y)).reduce(_ ## _)
 }
 
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Keccak Round
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 case class KeccakCmdRnd_Std(widthState: Int, widthCtnRound: Int) extends Bundle {
@@ -173,35 +170,46 @@ case class KeccakRspRnd_Std(widthState: Int) extends Bundle {
   val state = Vec(Vec(Bits(widthState bits), 5), 5)
 }
 
-case class KeccakIORnd_Std(widthState: Int, widthCtnRound: Int) extends Bundle with IMasterSlave {
-  val cmd = Stream(KeccakCmdRnd_Std(widthState, widthCtnRound))
-  val rsp = Flow(KeccakRspRnd_Std(widthState))
-
-  override def asMaster(): Unit = {
-    slave(rsp)
-    master(cmd)
-  }
-}
-
 
 /**
-  * The five step mappings that comprise a round of KECCAK-p[b, nr] are denoted by θ, ρ, π, χ, and ι.
+  * Round[b](A, RC) {
+  *     # θ step
+  *     C[x] = A[x,0] xor A[x,1] xor A[x,2] xor A[x,3] xor A[x,4],   for x in 0…4
+  *     D[x] = C[x-1] xor rot(C[x+1],1),                             for x in 0…4
+  *     A[x,y] = A[x,y] xor D[x],                           for (x,y) in (0…4,0…4)
+  *
+  *     # ρ and π steps
+  *     B[y,2*x+3*y] = rot(A[x,y], r[x,y]),                 for (x,y) in (0…4,0…4)
+  *
+  *     # χ step
+  *     A[x,y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y]),  for (x,y) in (0…4,0…4)
+  *
+  *     # ι step
+  *     A[0,0] = A[0,0] xor RC
+  *
+  *     return A
+  * }
+  *
+  * @param b    The width of a KECCAK-p permutation in bits
+  * @param nr   The number of rounds for a KECCAK-p permutation
   */
 class KeccakRnd_Std(b: Int, nr: Int) extends Component {
 
+  // Compute the lane size of a KECCAK-p permutation in bits (state[5][5][w])
   val w = b / 25
 
-  /**
-    * IO
-    */
-  val io = slave(KeccakIORnd_Std(w, log2Up(nr)))
+  /** IO */
+  val io = new Bundle {
+    val cmd = slave  Stream(KeccakCmdRnd_Std(w, log2Up(nr)))
+    val rsp = master Flow(KeccakRspRnd_Std(w))
+  }
 
   /**
-    * Implement the state machine
+    * Controller
     */
   val sm = new Area{
 
-    val cnt   = Reg(UInt(2 bits))
+    val cnt   = Reg(UInt(1 bits))
     val start = RegInit(False)
 
     when(io.cmd.valid & !start){
@@ -216,13 +224,11 @@ class KeccakRnd_Std(b: Int, nr: Int) extends Component {
     io.cmd.ready := False
     io.rsp.valid := False
 
-
     when(start & cnt === 1){
       io.cmd.ready := True
       io.rsp.valid := True
       start        := False
     }
-
   }
 
 
@@ -302,11 +308,4 @@ class KeccakRnd_Std(b: Int, nr: Int) extends Component {
     * Output the result
     */
   io.rsp.state  := sIota
-}
-
-
-object PlayWithKeccakCore extends App{
-  //SpinalVhdl(new KeccakRnd_Std)
-  //SpinalVhdl(new KeccakP_Std(1600, 24))
-  SpinalVhdl(new KeccakF_Std(1600))
 }

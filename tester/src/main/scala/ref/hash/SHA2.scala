@@ -22,5 +22,6 @@ object PlayWithSHA2 extends App {
   def bigIntToHex(value: Array[Byte]): String = s"0x${value.map(b => f"${b}%02X").mkString("")}"
 
   println(bigIntToHex(SHA2.digest("SHA-256")("abc")))
+
 }
 

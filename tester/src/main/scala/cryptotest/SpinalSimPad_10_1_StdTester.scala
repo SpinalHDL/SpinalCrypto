@@ -17,7 +17,7 @@ class SpinalSimPad_10_1_StdTester extends FunSuite {
 
   test("Pad_10_1_572_32"){
 
-    SimConfig.withWave(4).withConfig(SpinalConfig(inlineRom = true)).compile(new Pad_10_1_Std(PaddingConfig(32 bits, 572 bits, 8 bits))).doSim{ dut =>
+    SimConfig.withWave(4).withConfig(SpinalConfig(inlineRom = true)).compile(new Pad_10_1_Std(PaddingConfig(32 bits, 576 bits, 8 bits))).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -25,7 +25,8 @@ class SpinalSimPad_10_1_StdTester extends FunSuite {
       val pIn = List(
           "a3",
           "a3a3",
-          "LLA3A3A3A3"
+          "LLA3A3A33",
+          "SpinalHDL is an open source high-level hardware description language. It can be used as an alternative to VHDL or Verilog and has severa"
       )
 
       val pOut = List(
@@ -34,9 +35,11 @@ class SpinalSimPad_10_1_StdTester extends FunSuite {
         BigInt("CF9A30AC1F1F6AC0916F9FEF1919C595DEBE2EE80C85421210FDF05F1C6AF73AA9CAC881D0F91DB6D034A2BBADC1CF7FBCB2ECFA9D191D3A5016FB3FAD8709C9", 16)
       )
 
+
+
+
       val byteSizeMsg = 4
       var index = 0
-
 
       // send differnt pattern
       while(index != pIn.length){
@@ -71,10 +74,10 @@ class SpinalSimPad_10_1_StdTester extends FunSuite {
           dut.io.cmd.data  #= BigInt(0x00.toByte +: (msg.map(_.toByte).toArray)  )// Add 00 in front in order to get a positif number
           dut.io.cmd.size  #= BigInt(if (isLast) msgStr.length - 1 else 0)
 
-          dut.clockDomain.waitActiveEdge()
-
           // Wait the response
           dut.clockDomain.waitActiveEdgeWhere(dut.io.cmd.ready.toBoolean)
+
+          dut.io.cmd.valid #= false
           /*if (isLast){
             waitUntil(dut.io.rsp.valid.toBoolean == true)
 
@@ -97,7 +100,6 @@ class SpinalSimPad_10_1_StdTester extends FunSuite {
           msgStr = msgStr.drop(byteSizeMsg)
         }
 
-        dut.io.cmd.valid #= false
 
         dut.clockDomain.waitActiveEdge(5)
 

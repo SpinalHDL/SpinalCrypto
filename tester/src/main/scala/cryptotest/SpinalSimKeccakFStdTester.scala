@@ -38,20 +38,20 @@ class SpinalSimKeccakFStdTester extends FunSuite {
 
       // initialize value
       dut.io.cmd.valid  #= false
-      dut.io.cmd.string.randomize()
+      dut.io.cmd.payload.randomize()
 
       while(index != pOut.length){
 
         dut.clockDomain.waitActiveEdge()
 
         dut.io.cmd.valid #= true
-        dut.io.cmd.string #= pIn(index)
+        dut.io.cmd.payload #= pIn(index)
 
         dut.clockDomain.waitActiveEdgeWhere(dut.io.rsp.valid.toBoolean)
         dut.io.cmd.valid #= false
 
-        val rtlState_out = BigInt(dut.io.rsp.string.toBigInt.toByteArray.takeRight(dut.io.rsp.string.getWidth / 8))
-        val refState_out = BigInt(pOut(index).toByteArray.takeRight(dut.io.rsp.string.getWidth / 8))
+        val rtlState_out = BigInt(dut.io.rsp.payload.toBigInt.toByteArray.takeRight(dut.io.rsp.payload.getWidth / 8))
+        val refState_out = BigInt(pOut(index).toByteArray.takeRight(dut.io.rsp.payload.getWidth / 8))
 
         assert(rtlState_out == refState_out , s"Wrong result RTL ${BigIntToHexString(rtlState_out)} !=  REF ${BigIntToHexString(refState_out)}")
 

@@ -5,7 +5,7 @@ import spinal.sim._
 import spinal.core.sim._
 import org.scalatest.FunSuite
 import spinal.crypto.BigIntToHexString
-import spinal.crypto.construtor.{SpongeIO_Std, Sponge_Std}
+import spinal.crypto.construtor.{SpongeCoreCmd_Std, SpongeCoreRsp_Std, SpongeCore_Std}
 import spinal.crypto.primitive.keccak.KeccakF_Std
 import spinal.lib._
 
@@ -15,13 +15,19 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
   class KeccakSponge() extends Component {
 
-    val io =  slave(SpongeIO_Std(576, 512))
+    val io =  new Bundle{
+      val init   = in Bool
+      val cmd    = slave(Stream(Fragment(SpongeCoreCmd_Std(576))))
+      val rsp    = master(Flow(SpongeCoreRsp_Std(512)))
+    }
 
-    val sponge = new Sponge_Std(1024, 576, 512)
+    val sponge = new SpongeCore_Std(1024, 576, 512)
     val func   = new KeccakF_Std(1600)
 
     sponge.io.func <> func.io
-    sponge.io.sponge <> io
+    sponge.io.cmd <> io.cmd
+    sponge.io.rsp <> io.rsp
+    sponge.io.init <> io.init
   }
 
 
@@ -43,6 +49,9 @@ class SpinalSimSpongeStdTester extends FunSuite {
           BigInt("a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3", 16),   // 1063-bit
           BigInt("a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3", 16),
           BigInt("A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A3A300000001A3A3A3A38000000000000000", 16)
+        ),
+        List(
+          BigInt("383736353433323100000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000", 16)
         )
       )
 

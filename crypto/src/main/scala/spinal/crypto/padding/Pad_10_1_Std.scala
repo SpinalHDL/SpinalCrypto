@@ -6,9 +6,9 @@ import spinal.lib.fsm._
 
 
 case class PaddingConfig(
-                        dataInWidth: BitCount,
-                        dataOutWidth : BitCount,
-                        symbolWidth  : BitCount
+                          dataInWidth: BitCount,
+                          dataOutWidth : BitCount ,
+                          symbolWidth  : BitCount = 8 bits
                         )
 
 
@@ -60,8 +60,7 @@ q = r/8 - ( m mod r/8)
  */
 
 /**
-  * Add a one after the last byte
-  * @param config
+  * Padding
   */
 class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
@@ -70,26 +69,24 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
   val io = new Bundle{
     val init = in Bool
     val cmd  = slave(Stream(Fragment(Padding_Cmd(config.dataInWidth, config.symbolWidth))))
-    val rsp  = master(Stream(Padding_Rsp(config.dataOutWidth)))
+    val rsp  = master(Stream(Fragment(Padding_Rsp(config.dataOutWidth))))
   }
-
 
   val nbrElementInBlock = config.dataOutWidth.value / config.dataInWidth.value
   val buffer            = Reg(Vec(Bits(config.dataInWidth), nbrElementInBlock))
   val indexBuffer       = Reg(UInt(log2Up(nbrElementInBlock) bits))
 
-
-
   io.cmd.ready := False
   io.rsp.valid := False
-  io.rsp.data  := 0
+  io.rsp.data  := Cat(buffer.reverse)
+  io.rsp.last  := io.cmd.valid & io.cmd.last
 
 
   val mask_1 = io.cmd.size.mux(
-    U"00" -> B"x00000006",
+    U"00" -> B"x00060000",
     U"01" -> B"x00000600",
-    U"10" -> B"x00060000",
-    U"11" -> B"x00000000"
+    U"10" -> B"x00000006",
+    U"11" -> B"x06000000"
   )
 
 
@@ -136,10 +133,11 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
       val sPadding_1: State = new State{
         whenIsActive{
-          buffer(indexBuffer) := buffer(indexBuffer) | mask_1
 
           when(io.cmd.size === 3){
             add_1_nextElement := True
+          }otherwise{
+            buffer(indexBuffer) := buffer(indexBuffer) | mask_1
           }
 
           goto(sPadding)
@@ -148,10 +146,9 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
       val sPadding: State = new State {
         whenIsActive{
-
           when(fillNewBlock){
-            buffer(0) := B"x06000000"
-            buffer.last := B"x00000008"
+            buffer(0)   := mask_1
+            buffer.last := B"x00000080"
             fillNewBlock      := False
             add_1_nextElement := False
             goto(sProcessing)
@@ -160,14 +157,14 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
               fillNewBlock := True
               goto(sProcessing)
             }otherwise{
-              buffer(indexBuffer + 1) := B"x06000000"
+              buffer(indexBuffer + 1) := mask_1
               add_1_nextElement := False
             }
           }otherwise{
-              when(indexBuffer < nbrElementInBlock - 1){
-                buffer.last := B"x00000008"
+
+                buffer.last := buffer.last | B"x00000080"
                 goto(sProcessing)
-              }
+
           }
         }
       }
@@ -178,13 +175,13 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
           when(io.rsp.ready){
             buffer.map(_ := 0)
+            indexBuffer := 0
             when(fillNewBlock){
               goto(sPadding_1)
             }otherwise{
               io.cmd.ready := True
               goto(sLoad)
             }
-
           }
         }
       }
@@ -197,7 +194,7 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
 object PlayWithPadding extends App {
 
-  val config = PaddingConfig(32 bits, 572 bits, 8 bits)
+  val config = PaddingConfig(32 bits, 576 bits, 8 bits)
 
   SpinalConfig(
     mode = VHDL

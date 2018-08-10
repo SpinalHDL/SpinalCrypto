@@ -28,6 +28,7 @@ object SpinalBuild extends Build {
       publish      := {},
       publishLocal := {},
       libraryDependencies += "com.github.spinalhdl" % "vexriscv_2.11" % "latest.release",
+      libraryDependencies += "org.bouncycastle" % "bcprov-jdk15on" % "1.60",
       libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1"
     )
   ) dependsOn (crypto)

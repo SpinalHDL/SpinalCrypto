@@ -26,23 +26,65 @@
 package spinal.crypto.hash.sha3
 
 import spinal.core._
-import spinal.crypto.construtor.{SpongeIO_Std, Sponge_Std}
+import spinal.crypto.construtor.{SpongeCore_Std}
+import spinal.crypto.hash.{HashCoreConfig, HashCoreIO}
+import spinal.crypto.padding.{Pad_10_1_Std, PaddingConfig}
 import spinal.crypto.primitive.keccak.KeccakF_Std
 import spinal.lib._
 
 // Pattern ...
 // https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
 
-class Sha3Core_Std(sha3Type: SHA3_Type) extends Component {
+/**
+  *
+  * @param sha3Type     SHA3 type
+  * @param dataWidth    Input data width
+  */
+class Sha3Core_Std(sha3Type: SHA3_Type, dataWidth: BitCount = 32 bits) extends Component {
 
-  val io = new Bundle{
-    val sponge = slave(SpongeIO_Std(576, 512))
-  }
+  val configCore =  HashCoreConfig(
+    dataWidth      = dataWidth,
+    hashWidth      = sha3Type.hashWidth bits,
+    hashBlockWidth = 0 bits
+  )
 
-  val sponge = new Sponge_Std(capacity = sha3Type.c, rate = sha3Type.r, d = sha3Type.hashWidth)
-  val func   = new KeccakF_Std(sha3Type.c + sha3Type.r)
+  /** IO */
+  val io = slave(HashCoreIO(configCore))
 
+  val padding = new Pad_10_1_Std(PaddingConfig(dataWidth, sha3Type.r bits))
+  val sponge  = new SpongeCore_Std(capacity = sha3Type.c, rate = sha3Type.r, d = sha3Type.hashWidth)
+  val func    = new KeccakF_Std(sha3Type.c + sha3Type.r)
+
+
+  // io <-> padding
+  padding.io.cmd.valid := io.cmd.valid
+  padding.io.cmd.data  := io.cmd.msg
+  padding.io.cmd.last  := io.cmd.last
+  padding.io.cmd.size  := io.cmd.size
+  io.cmd.ready         := padding.io.cmd.ready
+
+  padding.io.init      := io.init
+
+  // padding <-> sponge
+  sponge.io.cmd.valid  := padding.io.rsp.valid
+  sponge.io.cmd.last   := padding.io.rsp.last
+  sponge.io.cmd.n      := Cat(padding.io.rsp.data.subdivideIn(64 bits).map(EndiannessSwap(_)))
+  padding.io.rsp.ready := sponge.io.cmd.ready
+
+  sponge.io.init       := io.init
+
+  // sponge <-> func
   sponge.io.func <> func.io
-  sponge.io.sponge <> io.sponge
 
+  // sponge <-> io
+  io.rsp.valid  := padding.io.cmd.ready & sponge.io.cmd.last
+  io.rsp.digest := Cat(sponge.io.rsp.z.subdivideIn(64 bits).map(EndiannessSwap(_)))
+}
+
+
+object PlayWithSha3 extends App{
+
+  SpinalConfig(
+    mode = VHDL
+  ).generate(new Sha3Core_Std(SHA3_512, 32 bits))
 }

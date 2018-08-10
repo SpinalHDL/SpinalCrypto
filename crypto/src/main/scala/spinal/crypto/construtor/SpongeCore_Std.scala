@@ -26,28 +26,18 @@
 package spinal.crypto.construtor
 
 import spinal.core._
-import spinal.crypto.primitive.keccak.{KeccakF_Std, KeccakIOF_Std}
+import spinal.crypto.primitive.keccak.{FuncIO_Std}
 import spinal.lib._
 
-case class SpongeCmd_Std(width: Int) extends Bundle {
+case class SpongeCoreCmd_Std(width: Int) extends Bundle {
   val n = Bits(width bits)
 }
 
-case class SpongeRsp_Std(width: Int) extends Bundle {
+case class SpongeCoreRsp_Std(width: Int) extends Bundle {
   val z = Bits(width bits)
 }
 
-case class SpongeIO_Std(cmd_width: Int, rsp_width: Int) extends Bundle with IMasterSlave {
-  val cmd  = Stream(Fragment(SpongeCmd_Std(cmd_width)))
-  val rsp  = Flow(SpongeRsp_Std(rsp_width))
-  val init = Bool
 
-  override def asMaster(): Unit = {
-    master(cmd)
-    slave(rsp)
-    out(init)
-  }
-}
 
 
 /**
@@ -75,7 +65,7 @@ case class SpongeIO_Std(cmd_width: Int, rsp_width: Int) extends Bundle with IMas
   *
   *    * the padding is done outside of this component
   */
-class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
+class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
 
   val b          = capacity + rate
   val nbrSqueeze = scala.math.floor(d / rate.toDouble).toInt
@@ -84,8 +74,10 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
     * IO
     */
   val io = new Bundle {
-    val sponge = slave(SpongeIO_Std(rate, d))
-    val func   = master(KeccakIOF_Std(b))
+    val init   = in Bool
+    val cmd    = slave(Stream(Fragment(SpongeCoreCmd_Std(rate))))
+    val rsp    = master(Flow(SpongeCoreRsp_Std(d)))
+    val func   = master(FuncIO_Std(b, b))
   }
 
 
@@ -98,22 +90,22 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
   val cntSqueeze   = if(nbrSqueeze != 0) Reg(UInt(log2Up(nbrSqueeze) bits)) else null
 
   // Cmd func component
-  io.func.cmd.valid  := isProcessing
-  io.func.cmd.string := (isSqueezing ? rReg | (io.sponge.cmd.n ^ rReg)) ## cReg
+  io.func.cmd.valid   := isProcessing
+  io.func.cmd.payload := (isSqueezing ? rReg | (io.cmd.n ^ rReg)) ## cReg
 
   // Rsp sponge
   val spg_rspValid = False
   val spg_cmdReady = False
 
-  io.sponge.rsp.valid := RegNext(spg_rspValid, False)
-  io.sponge.cmd.ready := RegNext(spg_cmdReady, False)
-  io.sponge.rsp.z     := (if(nbrSqueeze != 0) zReg else rReg).resizeLeft(d)
+  io.rsp.valid := RegNext(spg_rspValid, False)
+  io.cmd.ready := RegNext(spg_cmdReady, False)
+  io.rsp.z     := (if(nbrSqueeze != 0) zReg else rReg).resizeLeft(d)
 
 
   /**
     * init
     */
-  when(io.sponge.init){
+  when(io.init){
     rReg := 0
     cReg := 0
     isSqueezing  := False
@@ -125,7 +117,7 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
   /**
     * Start processing
     */
-  when(io.sponge.cmd.valid && !io.sponge.cmd.ready && !isProcessing){
+  when(io.cmd.valid && !io.cmd.ready && !isProcessing){
     isProcessing  := True
   }
 
@@ -136,8 +128,8 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
   when(io.func.rsp.valid){
 
     // Store the response
-    rReg  := io.func.rsp.string(b - 1        downto capacity)
-    cReg  := io.func.rsp.string(capacity - 1 downto 0)
+    rReg  := io.func.rsp.payload(b - 1        downto capacity)
+    cReg  := io.func.rsp.payload(capacity - 1 downto 0)
 
 
     /**
@@ -147,7 +139,7 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
       when(isSqueezing){                // Squeezing
 
         cntSqueeze := cntSqueeze + 1
-        zReg.subdivideIn(rate bits)(cntSqueeze.resized) := io.func.rsp.string(b - 1 downto capacity)
+        zReg.subdivideIn(rate bits)(cntSqueeze.resized) := io.func.rsp.payload(b - 1 downto capacity)
 
         when(cntSqueeze === nbrSqueeze ){
           isSqueezing  := False
@@ -166,7 +158,7 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
       isProcessing := False
 
       if(nbrSqueeze == 0){
-        spg_rspValid   := io.sponge.cmd.last
+        spg_rspValid   := io.cmd.last
         spg_cmdReady   := True
       }
     }
@@ -174,19 +166,3 @@ class Sponge_Std(capacity: Int, rate: Int, d: Int ) extends Component {
 }
 
 
-object PlayWithSponge1 extends App{
-
-  class TopLevel extends Component {
-    val io = new Bundle{
-      val sponge = slave(SpongeIO_Std(576, 512))
-    }
-
-    val sponge = new Sponge_Std(1024, 576, 512)
-    val func   = new KeccakF_Std(1600)
-
-    sponge.io.func <> func.io
-    sponge.io.sponge <> io.sponge
-  }
-
-  SpinalVhdl(new TopLevel)
-}
