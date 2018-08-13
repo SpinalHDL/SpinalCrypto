@@ -52,6 +52,8 @@ case class FuncIO_Std(cmdWidth: Int, rspWidth: Int) extends Bundle with IMasterS
 /**
   * Keccak-f[b] = KECCAK-p[b, 12 + 2l], b = 25 * 2^l, l = 0 to 6 ===> (b = {25,50,100,200,400,800,1600})
   *
+  * @note Keccak interprets byte arrays in big-endian, but with an LSB bit numbering.
+  *
   * @param b    The width of a KECCAK-p permutation in bits
   */
 class KeccakF_Std(b: Int) extends Component {

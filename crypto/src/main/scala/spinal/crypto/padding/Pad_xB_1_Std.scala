@@ -5,11 +5,12 @@ import spinal.lib._
 import spinal.lib.fsm._
 
 
-case class PaddingConfig(
-                          dataInWidth: BitCount,
-                          dataOutWidth : BitCount ,
-                          symbolWidth  : BitCount = 8 bits
-                        )
+case class Padding_xB_1_Config(
+  dataInWidth  : BitCount,
+  dataOutWidth : BitCount ,
+  pad_xB       : Byte,
+  symbolWidth  : BitCount = 8 bits
+)
 
 
 case class Padding_Cmd(dataWidth: BitCount, symbolWidth: BitCount) extends Bundle{
@@ -22,49 +23,24 @@ case class Padding_Rsp(dataWidth: BitCount) extends Bundle{
 }
 
 
-/*
-
-##bit ordering
-https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
-
-Keccak interprets byte arrays in big-endian, but with an LSB bit numbering.
-
-padding in done on r size
-
-domain    result         used in
-  01     M||0110*1     SHA3-224 to 512
-  11     M||1110*1     RawSHAKE128 or 256
- 1111    M||111110*1   SHAKE128 or 256
-
-
-
-For most applications, the message is byte-aligned, i.e., len(M)=8m for a nonnegative integer m.
-
- +-------------------------+--------------------------------+
-|                         |                                |
-| Number of padding bytes |       Padded message           |
-|                         |                                |
-+----------------------------------------------------------+
-|                         |                                |
-|         q = 1           |  M || 0x86                     |
-|                         |                                |
-|         q = 2           |  M || 0x0680                   |
-|                         |                                |
-|         q > 2           |  M || 0x06 || 0x00... || 0x80  |
-|                         |                                |
-+-------------------------+--------------------------------+
-
-q = r/8 - ( m mod r/8)
-
-
- */
-
 /**
-  * Padding
+  * Padding xB* 1 (message is byte-aligned)
+  *
+  * e.g. with xPad = 0x06
+  *
+  *     +--------------------------------+
+  *     |       Padded message           |
+  *     ---------------------------------+
+  *     |  M || 0x86                     |
+  *     |  M || 0x0680                   |
+  *     |  M || 0x06 || 0x00... || 0x80  |
+  *     +--------------------------------+
+  *
   */
-class Pad_10_1_Std(config: PaddingConfig) extends Component {
+class Pad_xB_1_Std(config: Padding_xB_1_Config) extends Component {
 
   assert(config.dataInWidth.value == 32, "Currently padding supports only 32 bits")
+  assert(config.symbolWidth.value == 8,  "Padding works in byte")
 
   val io = new Bundle{
     val init = in Bool
@@ -83,12 +59,11 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
 
 
   val mask_1 = io.cmd.size.mux(
-    U"00" -> B"x00060000",
-    U"01" -> B"x00000600",
-    U"10" -> B"x00000006",
-    U"11" -> B"x06000000"
+    U"00" -> B("x00"     + f"${config.pad_xB}%02X0000"),
+    U"01" -> B("x0000"   + f"${config.pad_xB}%02X00"),
+    U"10" -> B("x000000" + f"${config.pad_xB}%02X"),
+    U"11" -> B("x"       + f"${config.pad_xB}%02X000000")
   )
-
 
   /**
     * Padding state machine
@@ -116,10 +91,8 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
           buffer(indexBuffer) := io.cmd.data
 
           when(io.cmd.last){
-
             goto(sPadding_1)
           }otherwise{
-
             indexBuffer  := indexBuffer + 1
 
             when(indexBuffer === nbrElementInBlock - 1){
@@ -139,7 +112,6 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
           }otherwise{
             buffer(indexBuffer) := buffer(indexBuffer) | mask_1
           }
-
           goto(sPadding)
         }
       }
@@ -161,15 +133,13 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
               add_1_nextElement := False
             }
           }otherwise{
-
-                buffer.last := buffer.last | B"x00000080"
-                goto(sProcessing)
-
+            buffer.last := buffer.last | B"x00000080"
+            goto(sProcessing)
           }
         }
       }
 
-      val sProcessing: State = new State {    /* Run Hash Engine */
+      val sProcessing: State = new State {    /* Run Algorithm */
         whenIsActive{
           io.rsp.valid := True
 
@@ -187,16 +157,4 @@ class Pad_10_1_Std(config: PaddingConfig) extends Component {
       }
     }
   }
-
-}
-
-
-
-object PlayWithPadding extends App {
-
-  val config = PaddingConfig(32 bits, 576 bits, 8 bits)
-
-  SpinalConfig(
-    mode = VHDL
-  ).generate(new Pad_10_1_Std(config))
 }

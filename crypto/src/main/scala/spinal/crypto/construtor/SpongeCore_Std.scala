@@ -29,6 +29,8 @@ import spinal.core._
 import spinal.crypto.primitive.keccak.{FuncIO_Std}
 import spinal.lib._
 
+
+
 case class SpongeCoreCmd_Std(width: Int) extends Bundle {
   val n = Bits(width bits)
 }
@@ -36,8 +38,6 @@ case class SpongeCoreCmd_Std(width: Int) extends Bundle {
 case class SpongeCoreRsp_Std(width: Int) extends Bundle {
   val z = Bits(width bits)
 }
-
-
 
 
 /**
@@ -54,7 +54,7 @@ case class SpongeCoreRsp_Std(width: Int) extends Bundle {
   *
   *       N                            Absorbing | Squeezing                           Z
   *       |                                      |                                     |
-  *      PAD*-------------- ...  ----\           |  /------- ... ------------------> TRUNC
+  *      PAD(*)------------ ...  ----\           |  /------- ... ------------------> TRUNC
   *       __     |     ___           |     ___   |  |   ___         |   ___   |
   *      |  |    |    |   |          |    |   |  |  |  |   |        |  |   |  |
   *  (r) |  | - XOR ->|   |       - XOR ->|   |--|---->|   |      ---->|   |---->
@@ -63,7 +63,7 @@ case class SpongeCoreRsp_Std(width: Int) extends Bundle {
   *  (c) |  | ------->|   |       ------->|   |--|---->|   |      ---->|   |---->
   *      |__|         |___|               |___|  |     |___|           |___|
   *
-  *    * the padding is done outside of this component
+  *    (*) the padding is done outside of this component
   */
 class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
 
@@ -79,7 +79,6 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
     val rsp    = master(Flow(SpongeCoreRsp_Std(d)))
     val func   = master(FuncIO_Std(b, b))
   }
-
 
   val rReg = Reg(Bits(rate bits))
   val cReg = Reg(Bits(capacity bits))
@@ -133,7 +132,7 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
 
 
     /**
-      * Squeezing  TODO not tested
+      * Squeezing  TODO Squeezing sequence not tested not tested
       */
     if(nbrSqueeze != 0){
       when(isSqueezing){                // Squeezing

@@ -28,14 +28,12 @@ package spinal.crypto.hash.sha3
 import spinal.core._
 import spinal.crypto.construtor.{SpongeCore_Std}
 import spinal.crypto.hash.{HashCoreConfig, HashCoreIO}
-import spinal.crypto.padding.{Pad_10_1_Std, PaddingConfig}
+import spinal.crypto.padding.{Pad_xB_1_Std, Padding_xB_1_Config}
 import spinal.crypto.primitive.keccak.KeccakF_Std
 import spinal.lib._
 
-// Pattern ...
-// https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
-
 /**
+  * SHA-3 Core STD
   *
   * @param sha3Type     SHA3 type
   * @param dataWidth    Input data width
@@ -51,8 +49,8 @@ class Sha3Core_Std(sha3Type: SHA3_Type, dataWidth: BitCount = 32 bits) extends C
   /** IO */
   val io = slave(HashCoreIO(configCore))
 
-  val padding = new Pad_10_1_Std(PaddingConfig(dataWidth, sha3Type.r bits))
-  val sponge  = new SpongeCore_Std(capacity = sha3Type.c, rate = sha3Type.r, d = sha3Type.hashWidth)
+  val padding = new Pad_xB_1_Std(Padding_xB_1_Config(dataInWidth = dataWidth, dataOutWidth = sha3Type.r bits, pad_xB = 0x06))
+  val sponge  = new SpongeCore_Std(capacity = sha3Type.c, rate = sha3Type.r, d = sha3Type.hashComputationWidth)
   val func    = new KeccakF_Std(sha3Type.c + sha3Type.r)
 
 
@@ -78,13 +76,7 @@ class Sha3Core_Std(sha3Type: SHA3_Type, dataWidth: BitCount = 32 bits) extends C
 
   // sponge <-> io
   io.rsp.valid  := padding.io.cmd.ready & sponge.io.cmd.last
-  io.rsp.digest := Cat(sponge.io.rsp.z.subdivideIn(64 bits).map(EndiannessSwap(_)))
+  io.rsp.digest := Cat(sponge.io.rsp.z.subdivideIn(64 bits).map(EndiannessSwap(_))).asBits.resizeLeft(sha3Type.hashWidth)
 }
 
 
-object PlayWithSha3 extends App{
-
-  SpinalConfig(
-    mode = VHDL
-  ).generate(new Sha3Core_Std(SHA3_512, 32 bits))
-}

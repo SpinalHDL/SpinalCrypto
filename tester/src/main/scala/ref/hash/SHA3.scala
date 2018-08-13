@@ -3,7 +3,6 @@ package ref.hash
 import org.bouncycastle.jcajce.provider.digest.SHA3.DigestSHA3
 
 
-
 object SHA3 {
   def digest(sizeSha: Int)(inputString: String): Array[Byte] = {
 
