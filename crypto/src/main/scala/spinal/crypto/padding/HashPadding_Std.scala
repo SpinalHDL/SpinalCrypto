@@ -1,3 +1,28 @@
+/*                                                                           *\
+**        _____ ____  _____   _____    __                                    **
+**       / ___// __ \/  _/ | / /   |  / /   Crypto                           **
+**       \__ \/ /_/ // //  |/ / /| | / /    (c) Dolu, All rights reserved    **
+**      ___/ / ____// // /|  / ___ |/ /___                                   **
+**     /____/_/   /___/_/ |_/_/  |_/_____/  MIT Licence                      **
+**                                                                           **
+** Permission is hereby granted, free of charge, to any person obtaining a   **
+** copy of this software and associated documentation files (the "Software"),**
+** to deal in the Software without restriction, including without limitation **
+** the rights to use, copy, modify, merge, publish, distribute, sublicense,  **
+** and/or sell copies of the Software, and to permit persons to whom the     **
+** Software is furnished to do so, subject to the following conditions:      **
+**                                                                           **
+** The above copyright notice and this permission notice shall be included   **
+** in all copies or substantial portions of the Software.                    **
+**                                                                           **
+** THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS   **
+** OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF                **
+** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.    **
+** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY      **
+** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT **
+** OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR  **
+** THE USE OR OTHER DEALINGS IN THE SOFTWARE.                                **
+\*                                                                           */
 package spinal.crypto.padding
 
 import spinal.core._
@@ -27,8 +52,9 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
   assert(configCore.dataWidth.value == 32, "Currently Hash padding supports only 32 bits")
 
   val io = new Bundle{
-    val core    = slave(HashCoreIO(configCore))
-    val engine  = master(HashEngineIO(configCore.hashBlockWidth , configCore.hashWidth))
+    val init = in Bool
+    val cmd  = slave(Stream(Fragment(PaddingIO_Cmd(configCore.dataWidth, 8 bits))))
+    val rsp  = master(Stream(Fragment(PaddingIO_Rsp(configCore.hashBlockWidth))))
   }
 
   val nbrWordInBlock = configCore.hashBlockWidth.value / configCore.dataWidth.value
@@ -38,15 +64,19 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
   val block      = Reg(Vec(Bits(configCore.dataWidth), nbrWordInBlock))
   val indexWord  = Reg(UInt(log2Up(nbrWordInBlock) bits))
 
+  // default value
+  io.rsp.data   := block.asBits
+  io.rsp.valid  := False // default value
+  io.cmd.ready  := False // default value
 
-  val maskMsg = io.core.cmd.size.mux(
+  val maskMsg = io.cmd.size.mux(
     U"00"  -> (if(configPadding.endianess == LITTLE_endian) B"x000000FF" else B"xFF000000"),
     U"01"  -> (if(configPadding.endianess == LITTLE_endian) B"x0000FFFF" else B"xFFFF0000"),
     U"10"  -> (if(configPadding.endianess == LITTLE_endian) B"x00FFFFFF" else B"xFFFFFF00"),
     U"11"  ->  B"xFFFFFFFF"
   )
 
-  val maskSet1 = io.core.cmd.size.mux(
+  val maskSet1 = io.cmd.size.mux(
     U"00"  -> (if(configPadding.endianess == LITTLE_endian) B"x00008000" else B"x00800000"),
     U"01"  -> (if(configPadding.endianess == LITTLE_endian) B"x00800000" else B"x00008000"),
     U"10"  -> (if(configPadding.endianess == LITTLE_endian) B"x80000000" else B"x00000080"),
@@ -62,10 +92,10 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
     val isBiggerThan448    = Reg(Bool)
     val fillNewBlock       = Reg(Bool)
 
-    val isLastFullWordInBlock = indexWord === 0 && io.core.cmd.size === (nbrByteInWord - 1)
+    val isLastFullWordInBlock = indexWord === 0 && io.cmd.size === (nbrByteInWord - 1)
 
     always{
-      when(io.core.init){
+      when(io.init){
         cntBit    := 0
         indexWord := nbrWordInBlock - 1
         block.map(_ := 0)
@@ -80,13 +110,13 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
         isBiggerThan448    := False
         fillNewBlock       := False
 
-        when(io.core.cmd.valid){
+        when(io.cmd.valid){
 
-          block(indexWord) := io.core.cmd.msg
+          block(indexWord) := io.cmd.data
 
-          when(io.core.cmd.last){
+          when(io.cmd.last){
 
-            cntBit := cntBit + io.core.cmd.size.mux(
+            cntBit := cntBit + io.cmd.size.mux(
               U"00"  ->  8,
               U"01"  -> 16,
               U"10"  -> 24,
@@ -95,7 +125,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
             when(isLastFullWordInBlock){
               goto(sProcessing)
             }otherwise{
-              isBiggerThan448 := indexWord < 2 || (indexWord === 2 && io.core.cmd.size === (nbrByteInWord - 1))
+              isBiggerThan448 := indexWord < 2 || (indexWord === 2 && io.cmd.size === (nbrByteInWord - 1))
               goto(sPadding)
             }
           }otherwise{
@@ -106,7 +136,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
             when(indexWord === 0){
               goto(sProcessing)
             }otherwise{
-              io.core.cmd.ready := True
+              io.cmd.ready := True
             }
           }
         }
@@ -119,9 +149,9 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
             indexWord     := nbrWordInBlock - 1
             fillNewBlock  := False
           }otherwise{
-            block(indexWord) := (io.core.cmd.msg & maskMsg) | maskSet1
+            block(indexWord) := (io.cmd.data & maskMsg) | maskSet1
             when(indexWord =/= 0)  { indexWord := indexWord - 1 }
-            when(io.core.cmd.size =/= (nbrByteInWord - 1)){ addPaddingNextWord := False }
+            when(io.cmd.size =/= (nbrByteInWord - 1)){ addPaddingNextWord := False }
           }
         }
 
@@ -162,9 +192,9 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
 
       val sProcessing: State = new State {    /* Run Hash Engine */
         whenIsActive{
-          io.engine.cmd.valid := True
+          io.rsp.valid := True
 
-          when(io.engine.cmd.ready){
+          when(io.rsp.ready){
 
             block.map(_ := 0)
 
@@ -172,7 +202,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
               isBiggerThan448 := False
               goto(sPadding)
             } otherwise {
-              io.core.cmd.ready := True
+              io.cmd.ready := True
               goto(sLoad)
             }
           }
@@ -180,13 +210,4 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
       }
     }
   }
-
-  io.engine.cmd.message := block.asBits
-  io.engine.cmd.valid   := False // default value
-  io.engine.init        := io.core.init
-
-  io.core.cmd.ready  := False // default value
-
-  io.core.rsp.digest := io.engine.rsp.digest
-  io.core.rsp.valid  := io.engine.rsp.valid && io.core.cmd.last && !sm.isBiggerThan448 && !sm.isLastFullWordInBlock
 }

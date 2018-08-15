@@ -58,16 +58,33 @@ class SHA2Core_Std(mode: SHA2_Type, dataWidth: BitCount = 32 bits) extends Compo
   val engine  = new SHA2Engine_Std(mode)
   val padding = new HashPadding_Std(configCore, configPadding)
 
-  padding.io.engine  <> engine.io
-  padding.io.core    <> io
+  // Connect IO <-> padding
+  padding.io.init      := io.init
+  padding.io.cmd.valid := io.cmd.valid
+  padding.io.cmd.data  := io.cmd.msg
+  padding.io.cmd.last  := io.cmd.last
+  padding.io.cmd.size  := io.cmd.size
+
+  io.cmd.ready := padding.io.cmd.ready
+
+  // Connect padding <-> engine
+  engine.io.cmd.valid   := padding.io.rsp.valid
+  engine.io.cmd.message := padding.io.rsp.data
+
+  padding.io.rsp.ready := engine.io.cmd.ready
+
+  // Connect Engine <-> io
+  io.rsp.valid   := engine.io.rsp.valid && io.cmd.last && io.cmd.ready
+  io.rsp.digest  := engine.io.rsp.digest
+  engine.io.init := io.init
 }
 
 
 
 /**
   * SHA-2 engine
-  *
   * Round : 64 or 80
+  *
   *
   * Extension :
   *
