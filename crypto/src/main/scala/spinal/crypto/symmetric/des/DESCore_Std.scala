@@ -47,15 +47,15 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlock
 class DESCore_Std() extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
-    keyWidth    = DESCoreSpec.keyWidth + DESCoreSpec.keyWidthParity,
-    blockWidth  = DESCoreSpec.blockWidth,
+    keyWidth    = DES.keyWidth + DES.keyWidthParity,
+    blockWidth  = DES.blockWidth,
     useEncDec   = true
   )
 
   val io = slave(SymmetricCryptoBlockIO(gIO))
 
-  val roundNbr    = UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)
-  val lastRound   = io.cmd.enc ? (roundNbr === (DESCoreSpec.nbrRound-2)) | (roundNbr === 2)
+  val roundNbr    = UInt(log2Up(DES.nbrRound) + 1 bits)
+  val lastRound   = io.cmd.enc ? (roundNbr === (DES.nbrRound-2)) | (roundNbr === 2)
 
 
   /**
@@ -104,10 +104,10 @@ class DESCore_Std() extends Component {
     *   - Decryption 16 -> 1
     */
   val ctnRound = new Area {
-    val round = Reg(UInt(log2Up(DESCoreSpec.nbrRound) + 1 bits)) init(0)
+    val round = Reg(UInt(log2Up(DES.nbrRound) + 1 bits)) init(0)
 
     when(sm.isInit){
-      round := io.cmd.enc ? U(0) | DESCoreSpec.nbrRound
+      round := io.cmd.enc ? U(0) | DES.nbrRound
     }
 
     when(sm.isProcessing){
@@ -122,7 +122,7 @@ class DESCore_Std() extends Component {
     * Initial permutation
     */
   val initialBlockPermutation = new Area {
-    val block = DESCoreSpec.permutation(DESCoreSpec.initialPermutation, io.cmd.block)
+    val block = DES.permutation(DES.initialPermutation, io.cmd.block)
   }
 
 
@@ -156,15 +156,15 @@ class DESCore_Std() extends Component {
     */
   val keyScheduling = new Area {
 
-    val shiftKey   = Reg(Bits(DESCoreSpec.keyWidth))
+    val shiftKey   = Reg(Bits(DES.keyWidth))
 
     // parity drop : 64bits -> 56 bits
-    when(sm.isInit){ shiftKey := DESCoreSpec.compression(DESCoreSpec.pc_1, io.cmd.key) }
+    when(sm.isInit){ shiftKey := DES.compression(DES.pc_1, io.cmd.key) }
 
     // rotate the key (left for encryption and right for decryption)(key is divided into two groups of 28 bits)
-    val shiftRes   = Bits(DESCoreSpec.keyWidth)
+    val shiftRes   = Bits(DES.keyWidth)
 
-    when(DESCoreSpec.oneShiftRound.map(index => ctnRound.round === (index - 1)).reduce(_ || _) ){
+    when(DES.oneShiftRound.map(index => ctnRound.round === (index - 1)).reduce(_ || _) ){
       when(io.cmd.enc){
         shiftRes  := shiftKey(55 downto 28).rotateLeft(1) ## shiftKey(27 downto 0).rotateLeft(1)
       }otherwise{
@@ -177,7 +177,7 @@ class DESCore_Std() extends Component {
 
         shiftRes  := shiftKey(55 downto 28).rotateRight(2) ## shiftKey(27 downto 0).rotateRight(2)
 
-        when(ctnRound.round === DESCoreSpec.nbrRound){
+        when(ctnRound.round === DES.nbrRound){
           shiftRes  := shiftKey
         }
       }
@@ -187,7 +187,7 @@ class DESCore_Std() extends Component {
     when(sm.isProcessing){ shiftKey := shiftRes }
 
     // compression : (56bits -> 48 bits)
-    val keyRound = DESCoreSpec.compression(DESCoreSpec.pc_2, shiftRes)
+    val keyRound = DES.compression(DES.pc_2, shiftRes)
   }
 
 
@@ -214,26 +214,26 @@ class DESCore_Std() extends Component {
   val funcDES = new Area {
 
     // list of SBox ROM 1 to 8
-    val sBox     = List(Mem(Bits(4 bits), DESCoreSpec.sBox_8.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_7.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_6.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_5.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_4.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_3.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_2.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DESCoreSpec.sBox_1.map(B(_, 4 bits))))
+    val sBox     = List(Mem(Bits(4 bits), DES.sBox_8.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_7.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_6.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_5.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_4.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_3.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_2.map(B(_, 4 bits))),
+                        Mem(Bits(4 bits), DES.sBox_1.map(B(_, 4 bits))))
 
     val rightRound   = Bits(32 bits) // set in feistelNetwork Area
 
     // xor the key with the right block expanded(32 bits -> 48 bits)
-    val xorRes = keyScheduling.keyRound ^ DESCoreSpec.expansion(DESCoreSpec.expansion, rightRound)
+    val xorRes = keyScheduling.keyRound ^ DES.expansion(DES.expansion, rightRound)
 
     // sBox stage
     val addrSBox = xorRes.subdivideIn(6 bits)
     val boxRes   = for(i <- 0 until sBox.size) yield sBox(i)((addrSBox(i)(5) ## addrSBox(i)(0) ## addrSBox(i)(4 downto 1)).asUInt)
 
     // fixed permutation
-    val rResult = DESCoreSpec.permutation(DESCoreSpec.fixedPermutation, boxRes.asBits)
+    val rResult = DES.permutation(DES.fixedPermutation, boxRes.asBits)
   }
 
 
@@ -256,7 +256,7 @@ class DESCore_Std() extends Component {
     */
   val feistelNetwork = new Area {
 
-    val inBlock  = Reg(Bits(DESCoreSpec.blockWidth))
+    val inBlock  = Reg(Bits(DES.blockWidth))
 
     val outBlock = inBlock(31 downto 0) ## (inBlock(63 downto 32) ^ funcDES.rResult)
 
@@ -272,7 +272,7 @@ class DESCore_Std() extends Component {
     *    ( swap outBlock in order to have the same feistel network for each round )
     */
   val finalBlockPermutation = new Area{
-    val block = DESCoreSpec.permutation(DESCoreSpec.finalPermutation, feistelNetwork.outBlock(31 downto 0) ## feistelNetwork.outBlock(63 downto 32) )
+    val block = DES.permutation(DES.finalPermutation, feistelNetwork.outBlock(31 downto 0) ## feistelNetwork.outBlock(63 downto 32) )
   }
 
 

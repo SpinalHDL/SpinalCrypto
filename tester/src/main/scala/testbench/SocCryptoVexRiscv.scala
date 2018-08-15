@@ -83,7 +83,7 @@ object CryptoVexRiscvConfig{
         separatedAddSub = false,
         executeInsertion = true
       ),
-      new FullBarrielShifterPlugin,
+   //   new FullBarrielShifterPlugin,
       new MulPlugin,
       new DivPlugin,
       new HazardSimplePlugin(

@@ -18,6 +18,7 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 
 - MD5Core_Std
 - SHA2Core_Std
+- SHA3Core_Std
 
 
 ### MAC
@@ -33,6 +34,7 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 ### Misc
 
 - LFSR (Galois & Fibonacci)
+- Keccak
 
 
 

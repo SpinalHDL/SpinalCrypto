@@ -79,12 +79,12 @@ object HashIOsim {
       if (isLast){
         waitUntil(dut.rsp.valid.toBoolean == true)
 
-        val rtlDigest = CastByteArray(dut.rsp.digest.toBigInt.toByteArray, dut.cmd.msg.getWidth)
+        val rtlDigest = CastByteArray(dut.rsp.digest.toBigInt.toByteArray, dut.rsp.digest.getWidth)
 
         if(endianess == LITTLE_endian){
-          assert(CastByteArray(refDigest, dut.cmd.msg.getWidth).sameElements(Endianness(rtlDigest)), s"REF != RTL ${BigIntToHexString(BigInt(refDigest))} != ${BigIntToHexString(BigInt(Endianness(rtlDigest)))}")
+          assert(CastByteArray(refDigest, dut.rsp.digest.getWidth).sameElements(Endianness(rtlDigest)), s"REF != RTL ${BigIntToHexString(BigInt(refDigest))} != ${BigIntToHexString(BigInt(Endianness(rtlDigest)))}")
         }else{
-          assert(CastByteArray(refDigest, dut.cmd.msg.getWidth).sameElements(rtlDigest), s"REF != RTL ${BigIntToHexString(BigInt(refDigest))} != ${BigIntToHexString(BigInt(rtlDigest))}")
+          assert(CastByteArray(refDigest, dut.rsp.digest.getWidth).sameElements(rtlDigest), s"REF != RTL ${BigIntToHexString(BigInt(refDigest))} != ${BigIntToHexString(BigInt(rtlDigest))}")
         }
 
 
