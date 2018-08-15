@@ -38,7 +38,7 @@ import spinal.lib._
   * @param sha3Type     SHA3 type
   * @param dataWidth    Input data width
   */
-class Sha3Core_Std(sha3Type: SHA3_Type, dataWidth: BitCount = 32 bits) extends Component {
+class SHA3Core_Std(sha3Type: SHA3_Type, dataWidth: BitCount = 32 bits) extends Component {
 
   val configCore =  HashCoreConfig(
     dataWidth      = dataWidth,

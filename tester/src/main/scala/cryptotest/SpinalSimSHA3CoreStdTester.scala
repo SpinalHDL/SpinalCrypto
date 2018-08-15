@@ -17,7 +17,7 @@ import spinal.crypto.hash.sha3._
   * Pattern : https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
   *
   */
-class SpinalSimSha3CoreStdTester extends FunSuite {
+class SpinalSimSHA3CoreStdTester extends FunSuite {
 
 
   /**
@@ -25,7 +25,7 @@ class SpinalSimSha3CoreStdTester extends FunSuite {
     */
   test("SHA3CoreStd_512") {
 
-    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new Sha3Core_Std(SHA3_512))
+    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new SHA3Core_Std(SHA3_512))
 
     compiledRTL.doSim{ dut =>
 
@@ -53,7 +53,7 @@ class SpinalSimSha3CoreStdTester extends FunSuite {
     */
   test("SHA3CoreStd_384") {
 
-    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new Sha3Core_Std(SHA3_384))
+    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new SHA3Core_Std(SHA3_384))
 
     compiledRTL.doSim{ dut =>
 
@@ -81,7 +81,7 @@ class SpinalSimSha3CoreStdTester extends FunSuite {
     */
   test("SHA3CoreStd_256") {
 
-    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new Sha3Core_Std(SHA3_256))
+    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new SHA3Core_Std(SHA3_256))
 
     compiledRTL.doSim{ dut =>
 
@@ -109,7 +109,7 @@ class SpinalSimSha3CoreStdTester extends FunSuite {
     */
   test("SHA3CoreStd_224") {
 
-    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new Sha3Core_Std(SHA3_224))
+    val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new SHA3Core_Std(SHA3_224))
 
     compiledRTL.doSim{ dut =>
 
