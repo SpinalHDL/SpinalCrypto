@@ -4,6 +4,7 @@ import spinal.core._
 import spinal.sim._
 import spinal.core.sim._
 import org.scalatest.FunSuite
+import ref.constructor.Sponge
 import spinal.crypto.{BigIntToHexString, CastByteArray}
 import spinal.crypto.construtor.{SpongeCoreCmd_Std, SpongeCoreRsp_Std, SpongeCore_Std}
 import spinal.crypto.primitive.keccak.{FuncIO_Std, KeccakF_Std}
@@ -13,67 +14,6 @@ import scala.util.Random
 
 
 class SpinalSimSpongeStdTester extends FunSuite {
-
-
-  def sponge(msg: Array[Byte], c: Int, r: Int, d: Int): Array[Byte] ={
-
-    val msgCut = msg.sliding(r / 8, r / 8)
-    val rReg = Array.fill(r / 8)(0x00.toByte)
-    val cReg = Array.fill(c / 8)(0x00.toByte)
-
-    /**
-      * Absorbing
-      */
-    for(m <- msgCut){
-
-      //println("msg", msg.length,  m.map(x => f"$x%02X").mkString(","))
-
-      // XOR
-      val xored = rReg.zip(m).map{case(a,b) => (a ^ b).toByte}
-      //println("xor", xored.length, xored.map(x => f"$x%02X").mkString(","))
-
-      // SHIFT
-      val shift = (xored ++ cReg).slice(1, xored.length + cReg.length) :+ 0x00.toByte
-      //println("shift", shift.length, shift.map(x => f"$x%02X").mkString(","))
-
-      //println(rReg.length, cReg.length, shift.length)
-
-      // COPY
-      for(i <- 0 until rReg.length) rReg(i) = shift(i)
-      for(i <- 0 until cReg.length) cReg(i) = shift(i + rReg.length - 1)
-    }
-
-
-    //println("rReg", rReg.length, rReg.map(x => f"$x%02X").mkString(","))
-    //println("cReg", cReg.length, cReg.map(x => f"$x%02X").mkString(","))
-
-    /**
-      * Squeezing
-      */
-    val nbrSqueeze = scala.math.floor(d / r.toDouble).toInt
-    val zReg = Array.fill((nbrSqueeze + 1) * (r / 8))(0x00.toByte)
-    
-    if(d > r){
-
-      for(x <- 0 until nbrSqueeze){
-        for(i <- 0 until rReg.length) zReg(i + x * (r/8)) = rReg(i)
-
-        // SHIFT
-        val shift = (rReg ++ cReg).slice(1, rReg.length + cReg.length) :+ 0x00.toByte
-        //println("shift", shift.length, shift.map(x => f"$x%02X").mkString(","))
-
-        // COPY
-        for(i <- 0 until rReg.length) rReg(i) = shift(i)
-        for(i <- 0 until cReg.length) cReg(i) = shift(i + rReg.length - 1)
-      }
-
-      for(i <- 0 until rReg.length) zReg(i + nbrSqueeze * (r/8)) = rReg(i)
-    }
-
-
-
-    return if(d > r) zReg.slice(0, d / 8) else rReg.slice(0, d / 8)
-  }
 
 
   class FakeSponge(d: Int) extends Component {
@@ -132,7 +72,7 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
         val pIn = List.fill(nbrBlock)(BigInt(Array.fill(72)(Random.nextInt(256).toByte).map(x => f"$x%02X").mkString(""), 16))
 
-        val refState_out = sponge(pIn.map(x => CastByteArray(x.toByteArray, 72)).reduce(_ ++ _), 1024, 576, 512)
+        val refState_out = Sponge(pIn.map(x => CastByteArray(x.toByteArray, 72)).reduce(_ ++ _), 1024, 576, 512)
 
         var indexBlock = 0
 
@@ -193,7 +133,7 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
         val pIn = List.fill(nbrBlock)(BigInt(Array.fill(72)(Random.nextInt(256).toByte).map(x => f"$x%02X").mkString(""), 16))
 
-        val refState_out = sponge(pIn.map(x => CastByteArray(x.toByteArray, 72)).reduce(_ ++ _), 1024, 576, 1024)
+        val refState_out = Sponge(pIn.map(x => CastByteArray(x.toByteArray, 72)).reduce(_ ++ _), 1024, 576, 1024)
 
         var indexBlock = 0
 
