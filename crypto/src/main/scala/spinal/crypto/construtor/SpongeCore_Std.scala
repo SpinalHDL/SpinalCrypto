@@ -82,11 +82,12 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
 
   val rReg = Reg(Bits(rate bits))
   val cReg = Reg(Bits(capacity bits))
-  val zReg = if(nbrSqueeze != 0) Reg(Bits(rate * nbrSqueeze bits)) else null
+  val zReg = if(nbrSqueeze != 0) Reg(Bits(rate * (nbrSqueeze + 1) bits)) else null
 
   val isProcessing = RegInit(False)
   val isSqueezing  = RegInit(False)
-  val cntSqueeze   = if(nbrSqueeze != 0) Reg(UInt(log2Up(nbrSqueeze) bits)) else null
+  val cntSqueeze   = if(nbrSqueeze != 0) Reg(UInt(log2Up(nbrSqueeze + 1) bits)) else null
+  val saveInR      = if(nbrSqueeze != 0) False else null
 
   // Cmd func component
   io.func.cmd.valid   := isProcessing
@@ -99,6 +100,16 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
   io.rsp.valid := RegNext(spg_rspValid, False)
   io.cmd.ready := RegNext(spg_cmdReady, False)
   io.rsp.z     := (if(nbrSqueeze != 0) zReg else rReg).resizeLeft(d)
+
+
+  /**
+    * Save func.rsp.data in rReg
+    */
+  if(nbrSqueeze != 0){
+    when(saveInR){
+      zReg.subdivideIn(rate bits).reverse(cntSqueeze.resized) := io.func.rsp.payload.resizeLeft(rate)
+    }
+  }
 
 
   /**
@@ -130,15 +141,15 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
     rReg  := io.func.rsp.payload(b - 1        downto capacity)
     cReg  := io.func.rsp.payload(capacity - 1 downto 0)
 
-
     /**
-      * Squeezing  TODO Squeezing sequence not tested not tested
+      * Squeezing
       */
     if(nbrSqueeze != 0){
-      when(isSqueezing){                // Squeezing
+
+      when(isSqueezing){
 
         cntSqueeze := cntSqueeze + 1
-        zReg.subdivideIn(rate bits)(cntSqueeze.resized) := io.func.rsp.payload(b - 1 downto capacity)
+        saveInR    := True
 
         when(cntSqueeze === nbrSqueeze ){
           isSqueezing  := False
@@ -154,11 +165,18 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
       */
     when(!isSqueezing){
 
-      isProcessing := False
-
       if(nbrSqueeze == 0){
-        spg_rspValid   := io.cmd.last
-        spg_cmdReady   := True
+        spg_rspValid := io.cmd.last
+        spg_cmdReady := True
+        isProcessing := False
+      }else{
+        spg_cmdReady := !io.cmd.last
+        isProcessing := io.cmd.last
+        isSqueezing  := io.cmd.last
+        saveInR      := io.cmd.last
+        when(io.cmd.last){
+          cntSqueeze := cntSqueeze + 1
+        }
       }
     }
   }
