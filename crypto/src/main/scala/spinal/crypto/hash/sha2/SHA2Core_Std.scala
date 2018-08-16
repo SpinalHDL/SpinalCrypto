@@ -28,7 +28,7 @@ package spinal.crypto.hash.sha2
 import spinal.core._
 import spinal.lib._
 import spinal.crypto.hash._
-import spinal.crypto.padding.{HashPadding_Std, HashPaddingConfig}
+import spinal.crypto.padding.{HashPadding_Config, HashPadding_Std}
 
 
 
@@ -51,12 +51,16 @@ class SHA2Core_Std(mode: SHA2_Type, dataWidth: BitCount = 32 bits) extends Compo
     hashBlockWidth = SHA2.blockWidth(mode) bits
   )
 
-  val configPadding = HashPaddingConfig(endianess = BIG_endian)
+  val configPadding = HashPadding_Config(
+    dataInWidth  = dataWidth ,
+    dataOutWidth = SHA2.blockWidth(mode) bits,
+    endianess    = BIG_endian
+  )
 
   val io = slave(HashCoreIO(configCore))
 
   val engine  = new SHA2Engine_Std(mode)
-  val padding = new HashPadding_Std(configCore, configPadding)
+  val padding = new HashPadding_Std(configPadding)
 
   // Connect IO <-> padding
   padding.io.init      := io.init

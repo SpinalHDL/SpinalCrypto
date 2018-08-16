@@ -29,6 +29,25 @@ import spinal.core._
 import spinal.lib._
 
 
+/**
+  * Base class for the padding configuration
+  * @param dataInWidth    width of the data from the command
+  * @param dataOutWidth   width of the data from the response
+  * @param symbolInWidth  symbol width of the command data
+  */
+class PaddingConfig(
+  dataInWidth   : BitCount,
+  dataOutWidth  : BitCount,
+  symbolInWidth : BitCount
+){
+  def getPaddingIOConfig = PaddingIOConfig(
+    dataCmdWidth = dataInWidth,
+    dataRspWidth = dataOutWidth,
+    symbolWidth  = symbolInWidth
+  )
+}
+
+
 case class PaddingIOConfig (
   dataCmdWidth  : BitCount,
   dataRspWidth  : BitCount,

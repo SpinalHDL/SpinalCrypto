@@ -28,7 +28,7 @@ package spinal.crypto.hash.md5
 import spinal.core._
 import spinal.lib._
 import spinal.crypto.hash._
-import spinal.crypto.padding.{HashPadding_Std, HashPaddingConfig}
+import spinal.crypto.padding.{HashPadding_Config, HashPadding_Std}
 
 
 /**
@@ -47,12 +47,16 @@ class MD5Core_Std(dataWidth: BitCount = 32 bits) extends Component {
     hashBlockWidth = MD5.blockWidth
   )
 
-  val configPadding = HashPaddingConfig(endianess = LITTLE_endian)
+  val configPadding = HashPadding_Config(
+    dataInWidth  = dataWidth ,
+    dataOutWidth = MD5.blockWidth,
+    endianess    = LITTLE_endian
+  )
 
   val io = slave(HashCoreIO(configCore))
 
   val engine  = new MD5Engine_Std()
-  val padding = new HashPadding_Std(configCore, configPadding)
+  val padding = new HashPadding_Std(configPadding)
 
   // Connect IO <-> padding
   padding.io.init      := io.init

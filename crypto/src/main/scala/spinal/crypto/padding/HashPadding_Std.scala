@@ -34,9 +34,13 @@ import spinal.lib._
 /**
   * Configuration of the Hash Padding core
   */
-case class HashPaddingConfig(
-  endianess : EndiannessMode
-)
+case class HashPadding_Config(
+  dataInWidth  : BitCount,
+  dataOutWidth : BitCount ,
+  endianess    : EndiannessMode,
+  symbolWidth  : BitCount = 8 bits
+) extends PaddingConfig(dataInWidth, dataOutWidth, symbolWidth)
+
 
 /**
   * Hash Padding
@@ -47,17 +51,17 @@ case class HashPaddingConfig(
   *    - Write the size in bits of the message on 64 bits (l0 l1) e.g : 24 bits => 00000018 00000000
   *
   */
-class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConfig) extends Component {
+class HashPadding_Std(config: HashPadding_Config) extends Component {
 
-  assert(configCore.dataWidth.value == 32, "Currently Hash padding supports only 32 bits")
+  assert(config.dataInWidth.value == 32, "Currently Hash padding supports only 32 bits")
 
-  val io = slave(PaddingIO(configCore.getPaddingIOConfig))
+  val io = slave(PaddingIO(config.getPaddingIOConfig))
 
-  val nbrWordInBlock = configCore.hashBlockWidth.value / configCore.dataWidth.value
-  val nbrByteInWord  = configCore.dataWidth.value / 8
+  val nbrWordInBlock = config.dataOutWidth.value / config.dataInWidth.value
+  val nbrByteInWord  = config.dataInWidth.value / 8
 
   val cntBit     = Reg(UInt(64 bits))
-  val block      = Reg(Vec(Bits(configCore.dataWidth), nbrWordInBlock))
+  val block      = Reg(Vec(Bits(config.dataInWidth), nbrWordInBlock))
   val indexWord  = Reg(UInt(log2Up(nbrWordInBlock) bits))
 
   // default value
@@ -66,16 +70,16 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
   io.cmd.ready  := False // default value
 
   val maskMsg = io.cmd.size.mux(
-    U"00"  -> (if(configPadding.endianess == LITTLE_endian) B"x000000FF" else B"xFF000000"),
-    U"01"  -> (if(configPadding.endianess == LITTLE_endian) B"x0000FFFF" else B"xFFFF0000"),
-    U"10"  -> (if(configPadding.endianess == LITTLE_endian) B"x00FFFFFF" else B"xFFFFFF00"),
+    U"00"  -> (if(config.endianess == LITTLE_endian) B"x000000FF" else B"xFF000000"),
+    U"01"  -> (if(config.endianess == LITTLE_endian) B"x0000FFFF" else B"xFFFF0000"),
+    U"10"  -> (if(config.endianess == LITTLE_endian) B"x00FFFFFF" else B"xFFFFFF00"),
     U"11"  ->  B"xFFFFFFFF"
   )
 
   val maskSet1 = io.cmd.size.mux(
-    U"00"  -> (if(configPadding.endianess == LITTLE_endian) B"x00008000" else B"x00800000"),
-    U"01"  -> (if(configPadding.endianess == LITTLE_endian) B"x00800000" else B"x00008000"),
-    U"10"  -> (if(configPadding.endianess == LITTLE_endian) B"x80000000" else B"x00000080"),
+    U"00"  -> (if(config.endianess == LITTLE_endian) B"x00008000" else B"x00800000"),
+    U"01"  -> (if(config.endianess == LITTLE_endian) B"x00800000" else B"x00008000"),
+    U"10"  -> (if(config.endianess == LITTLE_endian) B"x80000000" else B"x00000080"),
     U"11"  -> B"x00000000"
   )
 
@@ -126,7 +130,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
             }
           }otherwise{
 
-            cntBit     := cntBit + configCore.dataWidth.value
+            cntBit     := cntBit + config.dataInWidth.value
             indexWord  := indexWord - 1
 
             when(indexWord === 0){
@@ -158,7 +162,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
             indexWord := indexWord - 1
 
             when(addPaddingNextWord){
-              block(indexWord)   := (if(configPadding.endianess == LITTLE_endian) B"x00000080" else B"x80000000")
+              block(indexWord)   := (if(config.endianess == LITTLE_endian) B"x00000080" else B"x80000000")
               addPaddingNextWord := False
             }otherwise{
               when(indexWord =/= 0){
@@ -173,7 +177,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
 
           }otherwise{
 
-            if(configPadding.endianess == LITTLE_endian){
+            if(config.endianess == LITTLE_endian){
               block(1) := cntBit(31 downto 0).asBits
               block(0) := cntBit(63 downto 32).asBits
             }else{

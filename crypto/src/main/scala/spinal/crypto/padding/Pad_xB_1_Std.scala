@@ -29,19 +29,13 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
-
 case class Padding_xB_1_Config(
   dataInWidth  : BitCount,
   dataOutWidth : BitCount ,
   pad_xB       : Byte,
   symbolWidth  : BitCount = 8 bits
-){
-  def getPaddingIOConfig = PaddingIOConfig(
-    dataCmdWidth = dataInWidth,
-    dataRspWidth = dataOutWidth,
-    symbolWidth  = symbolWidth
-  )
-}
+) extends PaddingConfig(dataInWidth, dataOutWidth, symbolWidth)
+
 
 
 /**
