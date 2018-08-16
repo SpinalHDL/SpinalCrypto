@@ -35,7 +35,7 @@ import spinal.lib._
   * Configuration of the Hash Padding core
   */
 case class HashPaddingConfig(
-  endianess  : EndiannessMode
+  endianess : EndiannessMode
 )
 
 /**
@@ -51,11 +51,7 @@ class HashPadding_Std(configCore: HashCoreConfig, configPadding: HashPaddingConf
 
   assert(configCore.dataWidth.value == 32, "Currently Hash padding supports only 32 bits")
 
-  val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave(Stream(Fragment(PaddingIO_Cmd(configCore.dataWidth, 8 bits))))
-    val rsp  = master(Stream(Fragment(PaddingIO_Rsp(configCore.hashBlockWidth))))
-  }
+  val io = slave(PaddingIO(configCore.getPaddingIOConfig))
 
   val nbrWordInBlock = configCore.hashBlockWidth.value / configCore.dataWidth.value
   val nbrByteInWord  = configCore.dataWidth.value / 8

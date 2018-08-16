@@ -26,6 +26,14 @@
 package spinal.crypto.padding
 
 import spinal.core._
+import spinal.lib._
+
+
+case class PaddingIOConfig (
+  dataCmdWidth  : BitCount,
+  dataRspWidth  : BitCount,
+  symbolWidth   : BitCount = 8 bits
+)
 
 case class PaddingIO_Cmd(dataWidth: BitCount, symbolWidth: BitCount) extends Bundle{
   val data = Bits(dataWidth)
@@ -34,4 +42,18 @@ case class PaddingIO_Cmd(dataWidth: BitCount, symbolWidth: BitCount) extends Bun
 
 case class PaddingIO_Rsp(dataWidth: BitCount) extends Bundle{
   val data = Bits(dataWidth)
+}
+
+
+case class PaddingIO(config: PaddingIOConfig) extends Bundle with IMasterSlave{
+
+  val init = Bool
+  val cmd  = Stream(Fragment(PaddingIO_Cmd(config.dataCmdWidth, config.symbolWidth)))
+  val rsp  = Stream(Fragment(PaddingIO_Rsp(config.dataRspWidth)))
+
+  override def asMaster(): Unit = {
+    out(init)
+    master(cmd)
+    slave(rsp)
+  }
 }

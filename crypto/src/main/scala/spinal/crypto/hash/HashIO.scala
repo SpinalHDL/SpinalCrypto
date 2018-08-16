@@ -26,6 +26,7 @@
 package spinal.crypto.hash
 
 import spinal.core._
+import spinal.crypto.padding.PaddingIOConfig
 import spinal.lib._
 import spinal.lib.bus.misc.BusSlaveFactory
 import spinal.lib.fsm._
@@ -41,7 +42,13 @@ case class HashCoreConfig (
   dataWidth      : BitCount,
   hashWidth      : BitCount,
   hashBlockWidth : BitCount
-)
+){
+  def getPaddingIOConfig = PaddingIOConfig(
+    dataCmdWidth = dataWidth,
+    dataRspWidth = hashBlockWidth,
+    symbolWidth  = 8 bits
+  )
+}
 
 
 /**

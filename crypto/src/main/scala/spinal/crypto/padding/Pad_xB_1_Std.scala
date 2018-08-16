@@ -35,7 +35,13 @@ case class Padding_xB_1_Config(
   dataOutWidth : BitCount ,
   pad_xB       : Byte,
   symbolWidth  : BitCount = 8 bits
-)
+){
+  def getPaddingIOConfig = PaddingIOConfig(
+    dataCmdWidth = dataInWidth,
+    dataRspWidth = dataOutWidth,
+    symbolWidth  = symbolWidth
+  )
+}
 
 
 /**
@@ -57,11 +63,7 @@ class Pad_xB_1_Std(config: Padding_xB_1_Config) extends Component {
   assert(config.dataInWidth.value == 32, "Currently padding supports only 32 bits")
   assert(config.symbolWidth.value == 8,  "Padding works in byte")
 
-  val io = new Bundle{
-    val init = in Bool
-    val cmd  = slave(Stream(Fragment(PaddingIO_Cmd(config.dataInWidth, config.symbolWidth))))
-    val rsp  = master(Stream(Fragment(PaddingIO_Rsp(config.dataOutWidth))))
-  }
+  val io = slave(PaddingIO(config.getPaddingIOConfig))
 
   val nbrElementInBlock = config.dataOutWidth.value / config.dataInWidth.value
   val buffer            = Reg(Vec(Bits(config.dataInWidth), nbrElementInBlock))
