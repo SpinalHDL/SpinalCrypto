@@ -12,8 +12,10 @@ import scala.collection.mutable.ListBuffer
 
 
 case class AxiShared2ApbConfig(
-  axiConfig: Axi4Config,
-  addUartSlave: Boolean = false
+  axiConfig  : Axi4Config,
+  enableUART : Boolean = false,
+  enableGPIO : Boolean = false,
+  nbrGPIO    : Int     = 32
 )
 
 
@@ -22,7 +24,7 @@ object AxiShared2Apb_TB{
     AxiShared2ApbConfig(
       axiConfig = Axi4Config(addressWidth = 32,
         dataWidth    = 32,
-        idWidth      = 2,
+        idWidth      = 12,
         useId        = true,
         useRegion    = false,
         useBurst     = true,
@@ -44,14 +46,14 @@ class AxiShared2Apb_TB(val config: AxiShared2ApbConfig)(apbSlaves: (() => ApbCry
 
   val io = new Bundle{
     val axiShared = slave(Axi4Shared(config.axiConfig))
-    val gpioA     = master(TriStateArray(32 bits))
-    val uart      = if(config.addUartSlave) master(Uart()) else null
+    val gpioA     = if(config.enableGPIO) master(TriStateArray(config.nbrGPIO bits)) else null
+    val uart      = if(config.enableUART) master(Uart()) else null
   }
 
   val apbBridge = Axi4SharedToApb3Bridge(
     addressWidth = 32,
     dataWidth    = 32,
-    idWidth      = 2
+    idWidth      = config.axiConfig.idWidth
   )
 
   apbBridge.io.axi <> io.axiShared
@@ -59,9 +61,9 @@ class AxiShared2Apb_TB(val config: AxiShared2ApbConfig)(apbSlaves: (() => ApbCry
   // Instantiate all slaves
   val cores = apbSlaves.map(_())
 
-  val gpioACtrl = Apb3Gpio(
-    gpioWidth = 32
-  )
+  val gpioACtrl = if(config.enableGPIO) Apb3Gpio(
+    gpioWidth = config.nbrGPIO
+  ) else null
 
 
   val uartCtrlConfig = UartCtrlMemoryMappedConfig(
@@ -75,15 +77,16 @@ class AxiShared2Apb_TB(val config: AxiShared2ApbConfig)(apbSlaves: (() => ApbCry
     txFifoDepth = 16,
     rxFifoDepth = 16
   )
-  val uartCtrl = if(config.addUartSlave) Apb3UartCtrl(uartCtrlConfig) else null
+  val uartCtrl = if(config.enableUART) Apb3UartCtrl(uartCtrlConfig) else null
 
   val preSlave = new ListBuffer[(Apb3, SizeMapping)]()
-  preSlave += gpioACtrl.io.apb -> SizeMapping(0x0000, 1 kB)
-
-  if(config.addUartSlave){
-    preSlave += uartCtrl.io.apb -> SizeMapping(0x1000, 1 kB)
+  if(config.enableGPIO){
+    preSlave += gpioACtrl.io.apb -> SizeMapping(0x0000, 1 kB)
   }
 
+  if(config.enableUART){
+    preSlave += uartCtrl.io.apb -> SizeMapping(0x1000, 1 kB)
+  }
 
   val apbDecoder = Apb3Decoder(
     master  = apbBridge.io.apb,
@@ -93,9 +96,11 @@ class AxiShared2Apb_TB(val config: AxiShared2ApbConfig)(apbSlaves: (() => ApbCry
       }.toList
   )
 
-  io.gpioA <> gpioACtrl.io.gpio
+  if(config.enableGPIO){
+    io.gpioA <> gpioACtrl.io.gpio
+  }
 
-  if(config.addUartSlave) io.uart <> uartCtrl.io.uart
+  if(config.enableUART) io.uart <> uartCtrl.io.uart
 }
 
 

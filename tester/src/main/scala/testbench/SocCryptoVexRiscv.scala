@@ -19,7 +19,9 @@ case class CryptoCPUConfig(
     onChipRamSize: BigInt,
     sdramLayout  : SdramLayout,
     sdramTimings : SdramTimings,
-    enableUart   : Boolean
+    enableUart   : Boolean,
+    enableGPIO   : Boolean,
+    nbrGPIO      : Int
 )
 
 object CryptoCPUConfig{
@@ -28,7 +30,9 @@ object CryptoCPUConfig{
       onChipRamSize  = 4 kB,
       sdramLayout    = IS42x320D.layout,
       sdramTimings   = IS42x320D.timingGrade7,
-      enableUart     = true
+      enableUart     = true,
+      enableGPIO     = true,
+      nbrGPIO        = 2
   )
 }
 
@@ -149,7 +153,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig)(apbSlaves: (() => ApbCryptoComp
     val sdram      = master(SdramInterface(sdramLayout))
 
     //Peripherals IO
-    val gpioA         = master(TriStateArray(32 bits))
+    val gpioA         = if(config.enableGPIO) master(TriStateArray(32 bits)) else null
     val uart          = if(config.enableUart) master(Uart()) else null
 
     val coreInterrupt = in Bool
@@ -215,7 +219,7 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig)(apbSlaves: (() => ApbCryptoComp
     )
 
 
-    val apbBridge = new AxiShared2Apb_TB(AxiShared2Apb_TB.defaultConfig.copy(addUartSlave = enableUart))(apbSlaves:_*)
+    val apbBridge = new AxiShared2Apb_TB(AxiShared2Apb_TB.defaultConfig.copy(enableUART = enableUart))(apbSlaves:_*)
 
     val core = new ClockingArea(coreClockDomain){
 
@@ -289,10 +293,10 @@ class SocCryptoVexRiscv(config: CryptoCPUConfig)(apbSlaves: (() => ApbCryptoComp
     io.jtag <> core.debugBus.fromJtag()
   }
 
-  io.gpioA          <>  axi.apbBridge.io.gpioA 
+  if(config.enableGPIO) io.gpioA <>  axi.apbBridge.io.gpioA
 
   if(config.enableUart) io.uart <> axi.apbBridge.io.uart
 
-  io.sdram          <> axi.sdramCtrl.io.sdram
+  io.sdram <> axi.sdramCtrl.io.sdram
 }
 

@@ -3,13 +3,23 @@ package testbench
 import spinal.core._
 import spinal.crypto.checksum._
 import spinal.lib._
-import spinal.lib.bus.amba4.axi.{Axi4, Axi4ToAxi4Shared}
+import spinal.lib.bus.amba4.axi.{Axi4, Axi4SpecRenamer, Axi4ToAxi4Shared}
 import spinal.lib.com.uart.Uart
 
 
+case class AxiCryptoTB_Config(
+                               enableUART : Boolean,
+                               enableGPIO : Boolean,
+                               nbrGPIO    : Int
+                             )
+
 object Generate_TB extends App {
 
-  val enableUART = true
+  // Configuration
+  val enableUART = false
+  val enableGPIO = false
+  val nbrGPIO    = 2
+
 
   val listAlgo = List(
     () => new Apb3_DESCore_Std(),
@@ -28,25 +38,30 @@ object Generate_TB extends App {
     defaultClockDomainFrequency  = FixedFrequency(50 MHz)
   )
 
-
-  spinalConfig.generate(new SocCryptoVexRiscv(CryptoCPUConfig.de1_soc.copy(enableUart = enableUART))(listAlgo: _*))
-  spinalConfig.generate(new AxiCrypto_TB(enableUART)(listAlgo: _*))
+  spinalConfig.generate(new SocCryptoVexRiscv(CryptoCPUConfig.de1_soc.copy(enableUart = enableUART, enableGPIO = enableGPIO, nbrGPIO = nbrGPIO))(listAlgo: _*))
+  spinalConfig.generate(new AxiCrypto_TB(AxiCryptoTB_Config(enableUART = enableUART, enableGPIO = enableGPIO, nbrGPIO = nbrGPIO))(listAlgo: _*))
 }
 
 
 
-class AxiCrypto_TB(enableUART: Boolean)(apbSlaves: (() => ApbCryptoComponent)*) extends Component {
+class AxiCrypto_TB(config: AxiCryptoTB_Config)(apbSlaves: (() => ApbCryptoComponent)*) extends Component {
 
-  val cryptoCore =  new AxiShared2Apb_TB(AxiShared2Apb_TB.defaultConfig.copy(addUartSlave = enableUART))(apbSlaves: _*)
+  val cryptoCore =  new AxiShared2Apb_TB(AxiShared2Apb_TB.defaultConfig.copy(enableUART = config.enableGPIO, enableGPIO = config.enableGPIO, nbrGPIO = config.nbrGPIO))(apbSlaves: _*)
 
   val io = new Bundle{
     val axi    = slave(Axi4(cryptoCore.config.axiConfig))
-    val gpioA  = out Bits(32 bits)
-    val uart   = if(enableUART) master(Uart()) else null
+    val gpioA  = if(config.enableGPIO) out Bits(config.nbrGPIO bits) else null
+    val uart   = if(config.enableUART) master(Uart()) else null
   }
 
+  Axi4SpecRenamer(io.axi)
+
   cryptoCore.io.axiShared << Axi4ToAxi4Shared(io.axi)
-  io.gpioA := cryptoCore.io.gpioA.write
-  cryptoCore.io.gpioA.read := 0
-  if(enableUART) io.uart <> cryptoCore.io.uart
+
+  if(config.enableGPIO){
+    io.gpioA := cryptoCore.io.gpioA.write
+    cryptoCore.io.gpioA.read := 0
+  }
+
+  if(config.enableUART) io.uart <> cryptoCore.io.uart
 }
