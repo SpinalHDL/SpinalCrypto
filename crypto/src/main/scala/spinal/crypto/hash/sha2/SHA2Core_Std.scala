@@ -154,6 +154,7 @@ class SHA2Engine_Std(mode: SHA2_Type) extends Component {
   val memK = Mem(UInt(SHA2.variableWidth(mode) bits), SHA2.K(mode).map(U(_, SHA2.variableWidth(mode) bits)))
   val hash = Reg(Vec(UInt(SHA2.variableWidth(mode) bits), SHA2.InitHash(mode).length))
 
+  val initHashValue = Vec(SHA2.InitHash(mode).map(U(_, SHA2.variableWidth(mode) bits)))
 
   /**
     * Command received
@@ -185,7 +186,7 @@ class SHA2Engine_Std(mode: SHA2_Type) extends Component {
 
     when(io.init){
 
-      hash := Vec(SHA2.InitHash(mode).map(U(_, SHA2.variableWidth(mode) bits)))
+      hash := initHashValue
 
       finalProcessing := False
       startProcessing := False
