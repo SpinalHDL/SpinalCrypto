@@ -141,10 +141,10 @@ object LFSR{
 
       if(extendsPeriod){
         val isEqual = isEqualToX(that, mode)
-        ret := (that << 1)(that.high downto 1) ## operator(feedback ^ isEqual, mode)
+        ret := (that)(that.high - 1 downto 0) ## operator(feedback ^ isEqual, mode)
 
       }else{
-        ret := (that << 1)(that.high downto 1) ## operator(feedback, mode)
+        ret := (that)(that.high - 1 downto 0) ## operator(feedback, mode)
       }
 
       ret

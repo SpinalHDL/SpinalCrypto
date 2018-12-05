@@ -102,30 +102,10 @@ object CryptoVexRiscvConfig{
       new DebugPlugin(axiClockDomain),
       new BranchPlugin(
         earlyBranch = false,
-        catchAddressMisaligned = true,
-        prediction = STATIC
+        catchAddressMisaligned = true
       ),
       new CsrPlugin(
-        config = CsrPluginConfig(
-          catchIllegalAccess = false,
-          mvendorid      = null,
-          marchid        = null,
-          mimpid         = null,
-          mhartid        = null,
-          misaExtensionsInit = 66,
-          misaAccess     = CsrAccess.NONE,
-          mtvecAccess    = CsrAccess.NONE,
-          mtvecInit      = 0x00000020l,
-          mepcAccess     = CsrAccess.READ_WRITE,
-          mscratchGen    = false,
-          mcauseAccess   = CsrAccess.READ_ONLY,
-          mbadaddrAccess = CsrAccess.READ_ONLY,
-          mcycleAccess   = CsrAccess.NONE,
-          minstretAccess = CsrAccess.NONE,
-          ecallGen       = false,
-          wfiGen         = false,
-          ucycleAccess   = CsrAccess.NONE
-        )
+        config = CsrPluginConfig.small(0x00000020l)
       ),
       new YamlPlugin("cpu0.yaml")
     )
