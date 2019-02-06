@@ -12,7 +12,6 @@ import spinal.sim._
 import spinal.core.sim._
 
 import scala.util.Random
-import scala.util.continuations.cpsParam
 
 
 class HMACCoreStd_MD5_Tester() extends Component {
@@ -58,8 +57,8 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
         var msgStr = (List.fill(lenMsg)(Random.nextPrintableChar()).mkString(""))
         val keyStr = (List.fill(64)(Random.nextPrintableChar()).mkString(""))
 
-//        var msgStr = """RYWc/tA]1iG"""
-//        val keyStr = """0,m,U/s_^}<.|?<&DnTk#0q_R5-:,L*"""
+        //        var msgStr = """RYWc/tA]1iG"""
+        //        val keyStr = """0,m,U/s_^}<.|?<&DnTk#0q_R5-:,L*"""
 
         val msgStrOrginal = msgStr
 
