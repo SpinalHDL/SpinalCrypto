@@ -31,6 +31,7 @@ import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
 import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlockIO}
 import spinal.crypto.devtype._
+import spinal.crypto._
 
 
 /**
@@ -332,6 +333,8 @@ class AESEngine_Std(keyWidth: BitCount) extends Component {
     *   C3 = 0B * B0 XOR 0D * B1 XOR 09 * B2 XOR 0E * B3
     */
   val mixColumn = new Area {
+
+    implicit val polyGF8 = p"x^8+x^4+x^3+x+1"
 
     val cntColumn = Reg(UInt(log2Up(16) bits))
     sm.mixCol_cmd.ready := cntColumn === 3*4

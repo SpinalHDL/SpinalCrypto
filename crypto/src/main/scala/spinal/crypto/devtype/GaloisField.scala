@@ -113,7 +113,7 @@ abstract class GaloisField(val value: Bits, val poly: PolynomialGF2) extends Bun
 }
 
 
-case class GF4(v: Bits) extends GaloisField(v, p"x^4+x+1"){
+case class GF4(v: Bits)(implicit poly: PolynomialGF2) extends GaloisField(v, poly){
 
   override type T = GF4
 
@@ -121,7 +121,7 @@ case class GF4(v: Bits) extends GaloisField(v, p"x^4+x+1"){
 }
 
 
-case class GF8(v: Bits) extends GaloisField(v, p"x^8+x^4+x^3+x+1"){
+case class GF8(v: Bits)(implicit poly: PolynomialGF2) extends GaloisField(v, poly){
 
   override type T = GF8
 
