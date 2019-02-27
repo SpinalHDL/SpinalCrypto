@@ -32,6 +32,7 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
   // RTL to simulate
   val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new HMACCoreStd_MD5_Tester())
 
+  val NBR_ITERATION = 200
 
   /**
     * Test
@@ -52,7 +53,7 @@ class SpinalSimHMACCoreStdTester extends FunSuite {
 
       var lenMsg = 1
 
-      Suspendable.repeat(200){
+      for(_ <- 0 to NBR_ITERATION){
 
         var msgStr = (List.fill(lenMsg)(Random.nextPrintableChar()).mkString(""))
         val keyStr = (List.fill(64)(Random.nextPrintableChar()).mkString(""))

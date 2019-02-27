@@ -14,6 +14,7 @@ import scala.util.Random
 
 class SpinalSimDESCoreTester extends FunSuite {
 
+  val NBR_ITERATION = 20
 
   /**
     * Test - DESCore_STD
@@ -29,7 +30,7 @@ class SpinalSimDESCoreTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(20){
+      for(_ <- 0 to NBR_ITERATION){
 
         SymmetricCryptoBlockIOSim.doSim(dut.io, dut.clockDomain, enc = Random.nextBoolean())(DES.block(verbose = false))
       }

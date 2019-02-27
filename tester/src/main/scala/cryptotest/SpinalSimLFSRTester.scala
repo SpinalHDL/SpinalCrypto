@@ -41,7 +41,8 @@ object LFSR_IO_SIM{
 
     // iteration
     val iteration = if(extended) math.pow(2, order_poly).toInt else math.pow(2, order_poly).toInt - 1
-    Suspendable.repeat(iteration){
+
+    for(_ <- 0 until iteration){
       clockDomain.waitActiveEdge()
 
       val value = dut.value.toBigInt

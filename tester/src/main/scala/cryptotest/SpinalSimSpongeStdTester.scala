@@ -15,6 +15,8 @@ import scala.util.Random
 
 class SpinalSimSpongeStdTester extends FunSuite {
 
+  val NBR_ITERATION = 10
+
 
   class FakeSponge(d: Int) extends Component {
 
@@ -63,10 +65,9 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
       dut.clockDomain.forkStimulus(2)
 
-      var iteration = 10
 
       // send differnt pattern
-      while(iteration != 0){
+      for(_ <- 0 to NBR_ITERATION){
 
         val nbrBlock = Random.nextInt(5) + 1
 
@@ -109,7 +110,6 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
         dut.clockDomain.waitActiveEdge(5)
 
-        iteration -= 1
       }
     }
   }
@@ -124,10 +124,9 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
       dut.clockDomain.forkStimulus(2)
 
-      var iteration = 10
 
       // send differnt pattern
-      while(iteration != 0){
+      for(_ <- 0 to NBR_ITERATION){
 
         val nbrBlock = Random.nextInt(5) + 1
 
@@ -170,7 +169,6 @@ class SpinalSimSpongeStdTester extends FunSuite {
 
         dut.clockDomain.waitActiveEdge(5)
 
-        iteration -= 1
       }
     }
   }

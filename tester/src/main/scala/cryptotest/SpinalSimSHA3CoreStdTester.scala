@@ -19,6 +19,7 @@ import spinal.crypto.hash.sha3._
   */
 class SpinalSimSHA3CoreStdTester extends FunSuite {
 
+  val NBR_ITERATION = 100
 
   /**
     *  SHA3CoreStd_512
@@ -35,13 +36,8 @@ class SpinalSimSHA3CoreStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      var iteration = 100
-
-      while(iteration != 0){
-
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian)(SHA3.digest(512))
-
-        iteration -= 1
+      for(i <- 0 to NBR_ITERATION){
+        HashIOsim.doSim(dut.io, dut.clockDomain, i, BIG_endian)(SHA3.digest(512))
       }
 
       dut.clockDomain.waitActiveEdge(5)
@@ -63,13 +59,9 @@ class SpinalSimSHA3CoreStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      var iteration = 100
 
-      while(iteration != 0){
-
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian)(SHA3.digest(384))
-
-        iteration -= 1
+      for(i <- 0 to NBR_ITERATION){
+        HashIOsim.doSim(dut.io, dut.clockDomain, i, BIG_endian)(SHA3.digest(384))
       }
 
       dut.clockDomain.waitActiveEdge(5)
@@ -91,13 +83,9 @@ class SpinalSimSHA3CoreStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      var iteration = 100
 
-      while(iteration != 0){
-
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian)(SHA3.digest(256))
-
-        iteration -= 1
+      for(i <- 0 to NBR_ITERATION){
+        HashIOsim.doSim(dut.io, dut.clockDomain, i, BIG_endian)(SHA3.digest(256))
       }
 
       dut.clockDomain.waitActiveEdge(5)
@@ -113,19 +101,16 @@ class SpinalSimSHA3CoreStdTester extends FunSuite {
 
     compiledRTL.doSim{ dut =>
 
+
       dut.clockDomain.forkStimulus(2)
 
       HashIOsim.initializeIO(dut.io)
 
       dut.clockDomain.waitActiveEdge()
 
-      var iteration = 100
 
-      while(iteration != 0){
-
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, BIG_endian)(SHA3.digest(224))
-
-        iteration -= 1
+      for(i <- 0 to NBR_ITERATION){
+        HashIOsim.doSim(dut.io, dut.clockDomain, i, BIG_endian)(SHA3.digest(224))
       }
 
       dut.clockDomain.waitActiveEdge(5)

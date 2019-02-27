@@ -34,30 +34,27 @@ class SpinalSimKeccakFStdTester extends FunSuite {
         BigInt("D1AED9E3149CF176FA5784FB1CD05D62410AD4C334AC5843FD5D711A3619C022EF3C5A52A19521C388CA427AD4093D4030CAE0756CCB675DF1BC6D1003600450551E54846019C2740F0E2C4EED72C02E7FA05C108E09CA188A77C0D124F5E5B35BFCB30FC8DE496DEADC837994534B200B81F95E44D6BB58DAD404401A489506D60AB885FE20EBF52EB0F3A94432ABCF0186261253FAA874691B683FD0CEB84A26DE0E2E35F2AD7A5F559030137AD5FEB372861AA4A3C6AF1AA9D09D3BA9A957FA7EAA90728CA360", 16)
       )
 
-      var index = 0
-
       // initialize value
       dut.io.cmd.valid  #= false
       dut.io.cmd.payload.randomize()
 
-      while(index != pOut.length){
+      for((dIn, dOut) <- pIn.zip(pOut)){
 
         dut.clockDomain.waitActiveEdge()
 
-        dut.io.cmd.valid #= true
-        dut.io.cmd.payload #= pIn(index)
+        dut.io.cmd.valid   #= true
+        dut.io.cmd.payload #= dIn
 
         dut.clockDomain.waitActiveEdgeWhere(dut.io.rsp.valid.toBoolean)
         dut.io.cmd.valid #= false
 
         val rtlState_out = BigInt(dut.io.rsp.payload.toBigInt.toByteArray.takeRight(dut.io.rsp.payload.getWidth / 8))
-        val refState_out = BigInt(pOut(index).toByteArray.takeRight(dut.io.rsp.payload.getWidth / 8))
+        val refState_out = BigInt(dOut.toByteArray.takeRight(dut.io.rsp.payload.getWidth / 8))
 
         assert(rtlState_out == refState_out , s"Wrong result RTL ${BigIntToHexString(rtlState_out)} !=  REF ${BigIntToHexString(refState_out)}")
 
         dut.clockDomain.waitActiveEdge(5)
 
-        index += 1
       }
     }
   }

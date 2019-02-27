@@ -23,6 +23,7 @@ class SpinalSimMD5CoreStdTester extends FunSuite {
   // RTL to simulate
   val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new MD5Core_Std())
 
+  val NBR_ITERATION = 100
 
   /**
     * Test 1
@@ -37,13 +38,8 @@ class SpinalSimMD5CoreStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      var iteration = 100
-
-      while(iteration != 0){
-
-        HashIOsim.doSim(dut.io, dut.clockDomain, iteration, LITTLE_endian)(MD5.digest)
-
-        iteration -=1
+      for(i <- 0 to NBR_ITERATION){
+        HashIOsim.doSim(dut.io, dut.clockDomain, i, LITTLE_endian)(MD5.digest)
       }
     }
   }
@@ -89,13 +85,8 @@ class SpinalSimMD5EngineStdTester extends FunSuite {
         BigInt("A2F4ED5755C9E32B2EDA49AC7AB60721", 16)
       )
 
-      var index = 0
-
-      while(index < refDigest.length){
-
-        HashEngineIOsim.doSim(dut.io, dut.clockDomain, messages(index), refDigest(index))
-
-        index += 1
+      for((ref, msg) <- refDigest.zip(messages)){
+        HashEngineIOsim.doSim(dut.io, dut.clockDomain, msg, ref)
       }
     }
   }
