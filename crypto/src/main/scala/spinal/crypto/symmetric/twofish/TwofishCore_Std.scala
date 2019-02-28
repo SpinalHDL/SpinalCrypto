@@ -35,9 +35,10 @@ import spinal.lib.fsm._
 
 
 /**
-  * doc = https://pdfs.semanticscholar.org/cf73/81ecd26b57687837ae679b4108f8cc33b200.pdf
-  * https://www.schneier.com/academic/paperfiles/paper-twofish-paper.pdf
-  * pattern = https://www.schneier.com/code/ecb_ival.txt
+  * doc          = https://pdfs.semanticscholar.org/cf73/81ecd26b57687837ae679b4108f8cc33b200.pdf
+  *                https://www.schneier.com/academic/paperfiles/paper-twofish-paper.pdf
+  * pattern      = https://www.schneier.com/code/ecb_ival.txt
+  * online tools = http://twofish.online-domain-tools.com/
   */
 
 
@@ -160,8 +161,8 @@ class S_Box() extends Component{
 
   }
 
-  val q0 = for(i <- 0 until 7) yield new Qoperation(0)
-  val q1 = for(i <- 0 until 7) yield new Qoperation(1)
+  val q0 = for(i <- 0 until 6) yield new Qoperation(0)
+  val q1 = for(i <- 0 until 6) yield new Qoperation(1)
 
   q0(0).io.input := io.b1
   q1(0).io.input := io.b1
@@ -182,10 +183,10 @@ class S_Box() extends Component{
   q1(4).io.input := xor1(15 downto  8)
   q0(4).io.input := xor1( 7 downto  0)
 
-  io.c1 := q1(5).io.output
-  io.c2 := q0(5).io.output
-  io.c3 := q1(6).io.output
-  io.c4 := q0(6).io.output
+  io.c1 := q1(3).io.output
+  io.c2 := q0(3).io.output
+  io.c3 := q1(4).io.output
+  io.c4 := q0(4).io.output
 }
 
 /*
@@ -215,7 +216,7 @@ class MDS() extends Component{
 class HOperation extends Component {
 
   val io = new Bundle {
-    val input = in Bits(8 bits)
+    val input  = in Bits(8 bits)
     val output = out Bits(32 bits)
     val s0, s1 = in Bits(32 bits)
   }
@@ -323,27 +324,28 @@ class TwoFishKeySchedule_128() extends Component {
   // replace by subdividIn 32 bits
   val bytes = io.in_key_tk128.subdivideIn(8 bits)
 
-  val m0 = Cat(List(0,1,2,3).map(bytes(_)))
-  val m1 = Cat(List(4,5,6,7).map(bytes(_)))
-  val m2 = Cat(List(8,9,10,11).map(bytes(_)))
+  val m0 = Cat(List( 0, 1, 2, 3).map(bytes(_)))
+  val m1 = Cat(List( 4, 5, 6, 7).map(bytes(_)))
+  val m2 = Cat(List( 8, 9,10,11).map(bytes(_)))
   val m3 = Cat(List(12,13,14,15).map(bytes(_)))
 
-  val upper_h, lower_h = new HOperation()
-  upper_h.io.s0 := m2
-  upper_h.io.s1 := m0
+  val upper_h = new HOperation()
+  upper_h.io.s0    := m2
+  upper_h.io.s1    := m0
   upper_h.io.input := io.even_in_tk128
 
-  lower_h.io.s0 := m3
-  lower_h.io.s1 := m1
+  val lower_h = new HOperation()
+  lower_h.io.s0    := m3
+  lower_h.io.s1    := m1
   lower_h.io.input := io.odd_in_tk128
 
 
   val pht = new PHT()
 
-  pht.io.in_up := upper_h.io.output
+  pht.io.in_up   := upper_h.io.output
   pht.io.in_down := lower_h.io.output.rotateLeft(8)
 
-  io.out_key_up_tk128 := pht.io.out_up
+  io.out_key_up_tk128   := pht.io.out_up
   io.out_key_down_tk128 := pht.io.out_down.rotateLeft(9)
 
 }
@@ -415,7 +417,7 @@ class TwofishCore_Std() extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
     keyWidth    = 128 bits,
-    blockWidth  = 128 bits,
+    blockWidth  = 64 bits,
     useEncDec   = true
   )
 
@@ -423,9 +425,18 @@ class TwofishCore_Std() extends Component {
 
   io.cmd.ready := True
   io.rsp.valid := True
-  io.rsp.block := 0
+  //io.rsp.block := 0
+
+  val counter = Reg(UInt(8 bits)) init(0)
+  counter := (counter + 1) |<< 2
 
   val keySchedule = new TwoFishKeySchedule_128()
+  keySchedule.io.odd_in_tk128  := counter.asBits
+  keySchedule.io.even_in_tk128 := (counter + 1).asBits
+  keySchedule.io.in_key_tk128  := 0
+
+  io.rsp.block := keySchedule.io.out_key_up_tk128 ## keySchedule.io.out_key_down_tk128
+
 
   val sm = new StateMachine{
     val sIdle: State = new State with EntryPoint{
