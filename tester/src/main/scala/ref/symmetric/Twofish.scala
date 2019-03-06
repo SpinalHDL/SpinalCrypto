@@ -189,7 +189,8 @@ object RefTwoFish {
             q1((q1( (q0(x(2)) ^ y(2)).toByte) ^ z(2)).toByte),
             q0((q1( (q1(x(3)) ^ y(3)).toByte) ^ z(3)).toByte)
         )
-        return fromBytes(multiply(galua256, MDS, input11))
+        val multiplication = multiply(galua256, MDS, input11)
+        return fromBytes(multiplication)
     }
 
 

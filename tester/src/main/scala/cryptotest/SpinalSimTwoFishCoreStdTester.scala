@@ -3,11 +3,14 @@ package cryptotest
 import spinal.core.SpinalConfig
 import spinal.core.sim.SimConfig
 import org.scalatest.FunSuite
+import ref.symmetric.RefTwoFish
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 import spinal.sim._
 import spinal.core.sim._
-import spinal.crypto.symmetric.twofish.TwofishCore_Std
+import spinal.crypto.symmetric.twofish._
+
+import scala.util.Random
 
 
 
@@ -63,7 +66,7 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
     */
   test("TwoFishCoreStd_256"){
 
-    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(5).compile(new TwofishCore_Std()).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(6).compile(new TwofishCore_Std()).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -98,6 +101,108 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       dut.io.cmd.valid #= false
 */
       dut.clockDomain.waitActiveEdge(20)
+    }
+  }
+
+
+
+  test("test_Hoperaton"){
+
+    class ComponentHOperation extends Component {
+      val io = new Bundle {
+        val input  = in Bits(32 bits)
+        val output = out Bits(32 bits)
+        val s0, s1 = in Bits(32 bits)
+      }
+
+      val h = new HOperation()
+      h.io.input := io.input
+      h.io.s0    := io.s0
+      h.io.s1    := io.s1
+      io.output  := RegNext(h.io.output)
+    }
+
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(3).compile(new ComponentHOperation).doSim{ dut =>
+
+      dut.clockDomain.forkStimulus(2)
+
+      // initialize value
+      dut.io.input.randomize()
+      dut.io.s0.randomize()
+      dut.io.s1.randomize()
+
+      dut.clockDomain.waitActiveEdge(2)
+
+      for(i <- 0 until 50){
+
+        val ioInput = if (i == 0)  0x00 else Random.nextInt(45000)
+        val s0 = 0
+        val s1 = 0
+
+        dut.io.input #= ioInput
+        dut.io.s0 #= s0
+        dut.io.s1 #= s1
+
+        dut.clockDomain.waitSampling(2)
+
+        val rtlResult = dut.io.output.toBigInt.toInt
+        val model =  RefTwoFish.h(ioInput, s0, s1)
+
+        println(f"Input ${ioInput}%08X => Model ${model}%08X , rtl ${rtlResult}%08X")
+
+        dut.clockDomain.waitSampling()
+
+    //    assert(model == rtlResult)
+      }
+
+      dut.clockDomain.waitActiveEdge(10)
+    }
+  }
+
+  /**
+    * Test Q0 et Q1
+    */
+  test("test_Qoperation"){
+
+    class ComponentQOperation(val number: Int) extends Component{
+      val io = new Bundle{
+        val input = in Bits(8 bits)
+        val output = out Bits(8 bits)
+      }
+
+      val q = new Qoperation(number)
+      q.io.input := io.input
+      io.output  := RegNext(q.io.output)
+    }
+
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(2).compile(new ComponentQOperation(1)).doSim{ dut =>
+
+      dut.clockDomain.forkStimulus(2)
+
+      // initialize value
+      dut.io.input.randomize()
+
+      dut.clockDomain.waitActiveEdge(2)
+
+      for(i <- 0 until 50){
+
+        val random = if (i == 0)  0 else Random.nextInt(255)
+
+        dut.io.input #= random
+
+        dut.clockDomain.waitSampling(2)
+
+        val rtlResult = dut.io.output.toBigInt.toByte
+        val model = if(dut.number == 0) RefTwoFish.q0(random.toByte) else RefTwoFish.q1(random.toByte)
+
+        println(f"Input ${random}%02X => Model ${model}%02X , rtl ${rtlResult}%02X")
+
+        dut.clockDomain.waitSampling()
+
+        assert(model == rtlResult)
+      }
+
+      dut.clockDomain.waitActiveEdge(10)
     }
   }
 

@@ -58,17 +58,16 @@ import spinal.lib.fsm._
   *         |                   |      |                |
   *         |                   ----> XOR <-------------
   *         |                          |
-  *         |                         >>> 1
   *         |                          |
   *        t0                         t1
   *         | (a')                     | (b')
-  *         x--------------------------|------------------
-  *         |                          |                 |
-  *         |                    ------x                 |
-  *         |                    |     |                 |
-  *         |                    |   >>> 1          a'(0),0,0,0
-  *         |                    |     |                 |
-  *        XOR <-----------------x--> XOR <---------------
+  *         x--------------x-----------|------------------
+  *         |              |           |                 |
+  *        XOR <---------- | ----------x                 |
+  *         |              |           |                 |
+  *         |              |         >>> 1          a'(0),0,0,0
+  *         |              |           |                 |
+  *         |              |--------> XOR <---------------
   *         |                          |
   *        t2                         t3
   *         |                          |
@@ -85,8 +84,8 @@ class Qoperation(i: Int) extends Component {
     val output = out Bits(8 bits)
   }
 
-  def a  = io.input(7 downto 4)
-  def b  = io.input(3 downto 0)
+  val a  = io.input(7 downto 4)
+  val b  = io.input(3 downto 0)
 
   val memT0 = Mem(Bits(4 bits), Twofish.qxT0(i).map(B(_, 4 bits)))
   val memT1 = Mem(Bits(4 bits), Twofish.qxT1(i).map(B(_, 4 bits)))
@@ -95,13 +94,10 @@ class Qoperation(i: Int) extends Component {
 
   val a_prime = memT0((a ^ b).asUInt)
 
-  val b1       = b ^ (b.rotateRight(1)) ^ B(4 bits, 3->a(3), default -> False)
-  val b1_shift = b1.rotateRight(1)
-  val b1_prime = memT1(b1_shift.asUInt)
+  val b1       = a ^ b.rotateRight(1) ^ B(4 bits, 3 -> a(0), default -> False)
+  val b1_prime = memT1(b1.asUInt)
 
-
-  val b1tmp  = (b1_prime.rotateRight(1)) ^ b1_prime ^ B(4 bits, 3 -> a_prime(3), default -> False)
-
+  val b1tmp  = a_prime ^ b1_prime.rotateRight(1)  ^ B(4 bits, 3 -> a_prime(0), default -> False)
 
   val a2 = a_prime ^ b1_prime
   io.output(3 downto 0) := memT2(a2.asUInt)
@@ -140,7 +136,7 @@ class SBox(keySize: Int) extends Component{
 
 /**
   * S-BOX (128)
-  *                 S0                   S1
+  *                 S1                   S0
   *                  |                    |
   *   --- q0 ---     |    --- q0 ---      |     --- q1 ---
   *             |    |    |          |    |    |
@@ -153,40 +149,40 @@ class SBox(keySize: Int) extends Component{
 class S_Box() extends Component{
 
   val io = new Bundle {
-    val s0 = in Bits(32 bits)
-    val s1 = in Bits(32 bits)
+    val s0, s1 = in Bits(32 bits)
 
-    val b1          = in Bits(8 bits)
+
+    val b1,b2,b3,b4 = in Bits(8 bits)
     val c1,c2,c3,c4 = out Bits(8 bits)
 
   }
 
-  val q0 = for(i <- 0 until 6) yield new Qoperation(0)
-  val q1 = for(i <- 0 until 6) yield new Qoperation(1)
+  val q0 = for(_ <- 0 until 6) yield new Qoperation(0)
+  val q1 = for(_ <- 0 until 6) yield new Qoperation(1)
 
   q0(0).io.input := io.b1
-  q1(0).io.input := io.b1
-  //q0(1).io.input := io.b1
-  //q1(1).io.input := io.b1
+  q1(0).io.input := io.b2
+  q0(1).io.input := io.b3
+  q1(1).io.input := io.b4
 
-  val xor = io.s0 ^ (q0(0).io.output ## q1(0).io.output ## q0(0).io.output ## q1(0).io.output)
+  val xor1 = io.s1 ^ (q0(0).io.output ## q1(0).io.output ## q0(1).io.output ## q1(1).io.output)
 
-  q0(1).io.input := xor(31 downto 24)
-  q0(2).io.input := xor(23 downto 16)
-  q1(1).io.input := xor(15 downto  8)
-  q1(2).io.input := xor( 7 downto  0)
-
-  val xor1 = io.s1 ^ (q0(1).io.output ## q0(2).io.output ## q1(1).io.output ## q1(2).io.output)
-
-  q1(3).io.input := xor1(31 downto 24)
+  q0(2).io.input := xor1(31 downto 24)
   q0(3).io.input := xor1(23 downto 16)
-  q1(4).io.input := xor1(15 downto  8)
-  q0(4).io.input := xor1( 7 downto  0)
+  q1(2).io.input := xor1(15 downto  8)
+  q1(3).io.input := xor1( 7 downto  0)
 
-  io.c1 := q1(3).io.output
-  io.c2 := q0(3).io.output
-  io.c3 := q1(4).io.output
-  io.c4 := q0(4).io.output
+  val xor2 = io.s0 ^ (q0(2).io.output ## q0(3).io.output ## q1(2).io.output ## q1(3).io.output)
+
+  q1(4).io.input := xor2(31 downto 24)
+  q0(4).io.input := xor2(23 downto 16)
+  q1(5).io.input := xor2(15 downto  8)
+  q0(5).io.input := xor2( 7 downto  0)
+
+  io.c1 := q1(4).io.output
+  io.c2 := q0(4).io.output
+  io.c3 := q1(5).io.output
+  io.c4 := q0(5).io.output
 }
 
 /*
@@ -216,7 +212,7 @@ class MDS() extends Component{
 class HOperation extends Component {
 
   val io = new Bundle {
-    val input  = in Bits(8 bits)
+    val input  = in Bits(32 bits)
     val output = out Bits(32 bits)
     val s0, s1 = in Bits(32 bits)
   }
@@ -224,7 +220,10 @@ class HOperation extends Component {
   val sBox = new S_Box()
 
 
-  sBox.io.b1 := io.input
+  sBox.io.b1 := io.input( 7 downto  0)
+  sBox.io.b2 := io.input(15 downto  8)
+  sBox.io.b3 := io.input(23 downto 16)
+  sBox.io.b4 := io.input(31 downto 24)
   sBox.io.s0 := io.s0
   sBox.io.s1 := io.s1
 
@@ -257,7 +256,7 @@ class HOperation extends Component {
     val z0 = (GF8(y0)        + y1_ef          + GF8(y2) * 0x5B + y3_5b).toBits()
     val z1 = (GF8(y0) * 0x5B + y1_ef          + y2_ef          + GF8(y3)).toBits()
     val z2 = (y0_ef          + GF8(y1) * 0x5B + GF8(y2)        + GF8(y3) * 0xEF).toBits()
-    val z3 = (y0_ef          + GF8(y1) * 0x5B + y2_ef          + GF8(y3) * 0x5B).toBits()
+    val z3 = (y0_ef          + GF8(y1)        + y2_ef          + GF8(y3) * 0x5B).toBits()
   }
 
 
@@ -332,12 +331,12 @@ class TwoFishKeySchedule_128() extends Component {
   val upper_h = new HOperation()
   upper_h.io.s0    := m2
   upper_h.io.s1    := m0
-  upper_h.io.input := io.even_in_tk128
+  upper_h.io.input := io.even_in_tk128.resized
 
   val lower_h = new HOperation()
   lower_h.io.s0    := m3
   lower_h.io.s1    := m1
-  lower_h.io.input := io.odd_in_tk128
+  lower_h.io.input := io.odd_in_tk128.resized
 
 
   val pht = new PHT()
