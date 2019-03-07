@@ -77,6 +77,20 @@ import scala.collection.mutable.ListBuffer
   *     Significant                Significant
   *      4 bits                      4 bits
   */
+object Q0{
+  def apply(input: Bits): Bits = {
+    val op = new Qoperation(0)
+    op.io.input := input
+    return op.io.output
+  }
+}
+object Q1{
+  def apply(input: Bits): Bits = {
+    val op = new Qoperation(1)
+    op.io.input := input
+    return op.io.output
+  }
+}
 class Qoperation(i: Int) extends Component {
 
   assert(i == 0 || i == 1, "")
@@ -204,56 +218,18 @@ class S_Box() extends Component{
     val output = out Bits(32 bits)
   }
 
-  val q0 = for(_ <- 0 until 6) yield new Qoperation(0)
-  val q1 = for(_ <- 0 until 6) yield new Qoperation(1)
 
-  q0(0).io.input := io.input( 7 downto  0)
-  q1(0).io.input := io.input(15 downto  8)
-  q0(1).io.input := io.input(23 downto 16)
-  q1(1).io.input := io.input(31 downto 24)
+  val xor1 = io.s1 ^ (Q1(io.input(31 downto 24)) ## Q0(io.input(23 downto 16)) ## Q1(io.input(15 downto  8)) ## Q0(io.input( 7 downto  0)))
 
-  val xor1 = io.s1 ^ (q1(1).io.output ## q0(1).io.output ## q1(0).io.output ## q0(0).io.output)
+  val xor2 = io.s0 ^ (Q1(xor1(31 downto 24)) ## Q1(xor1(23 downto 16)) ## Q0(xor1(15 downto  8)) ## Q0(xor1( 7 downto  0)))
 
-  q0(2).io.input := xor1( 7 downto  0)
-  q0(3).io.input := xor1(15 downto  8)
-  q1(2).io.input := xor1(23 downto 16)
-  q1(3).io.input := xor1(31 downto 24)
-
-  val xor2 = io.s0 ^ (q1(3).io.output ## q1(2).io.output ## q0(3).io.output ## q0(2).io.output)
-
-  q1(4).io.input := xor2( 7 downto  0)
-  q0(4).io.input := xor2(15 downto  8)
-  q1(5).io.input := xor2(23 downto 16)
-  q0(5).io.input := xor2(31 downto 24)
-
-  io.output( 7 downto  0) := q1(4).io.output
-  io.output(15 downto  8) := q0(4).io.output
-  io.output(23 downto 16) := q1(5).io.output
-  io.output(31 downto 24) := q0(5).io.output
+  io.output( 7 downto  0) := Q1(xor2( 7 downto  0))
+  io.output(15 downto  8) := Q0(xor2(15 downto  8))
+  io.output(23 downto 16) := Q1(xor2(23 downto 16))
+  io.output(31 downto 24) := Q0(xor2(31 downto 24))
 }
 
-/*
-class MDS() extends Component{
 
-  implicit val polyGF8 = p"x^8+x^6+x^5+x^3+1"
-
-  val io = new Bundle {
-    val y0, y1, y2, y3 = in  Bits(8 bits)
-    val z0, z1, z2, z3 = out Bits(8 bits)
-  }
-
-  val y3_5b = GF8(io.y3) * 0x5B
-  val y0_ef = GF8(io.y0) * 0xEF
-  val y1_ef = GF8(io.y1) * 0xEF
-  val y2_ef = GF8(io.y2) * 0xEF
-
-  io.z0 := (GF8(io.y0) * 0x01 + y1_ef             + GF8(io.y2) * 0x5B + y3_5b).toBits()
-  io.z1 := (GF8(io.y0) * 0x5B + y1_ef             + y2_ef             + GF8(io.y3)).toBits()
-  io.z2 := (y0_ef             + GF8(io.y1) * 0x5B + GF8(io.y2)        + GF8(io.y3) * 0xEF).toBits()
-  io.z3 := (y0_ef             + GF8(io.y1) * 0x5B + y2_ef             + GF8(io.y3) * 0x5B).toBits()
-
-}
-*/
 
 
 class HOperation extends Component {
@@ -309,6 +285,17 @@ class HOperation extends Component {
 
 }
 
+object CarryAdder{
+
+  def apply(size: Int)(a: Bits, b: Bits): Bits = {
+    val adder = new CarryAdder(size)
+    adder.io.a := a
+    adder.io.b := b
+    return adder.io.result
+  }
+
+}
+
 class CarryAdder(size : Int) extends Component{
   val io = new Bundle{
     val a = in Bits(size bits)
@@ -335,28 +322,16 @@ class CarryAdder(size : Int) extends Component{
 class PHT extends Component {
 
   val io = new Bundle {
-    val in_up    = in Bits(32 bits)
-    val in_down  = in Bits(32 bits)
-    val out_up   = out Bits(32 bits)
-    val out_down = out Bits(32 bits)
+    val in_up,  in_down   = in Bits(32 bits)
+    val out_up, out_down  = out Bits(32 bits)
   }
 
-  val adders = for(i <- 0 until 2) yield new CarryAdder(32)
-
-  adders(0).io.a := io.in_up
-  adders(0).io.b := io.in_down
-
-  adders(1).io.a := io.in_down
-  adders(1).io.b := adders(0).io.result
-
-  io.out_up   := adders(0).io.result
-  io.out_down := adders(1).io.result
-
-
+  io.out_up   := CarryAdder(32)(io.in_up,   io.in_down)
+  io.out_down := CarryAdder(32)(io.in_down, io.out_up)
 }
 
 /**
-  * Key scheduler 
+  * Key scheduler
   */
 class TwoFishKeySchedule_128() extends Component {
 
@@ -403,9 +378,8 @@ class F_128 extends Component {
 
   val io = new Bundle{
     val up_in_f128, low_in_f128, s0_in_f128, s1_in_f128, up_key_f128, low_key_f128 = in Bits(32 bits)
-    val up_out_f128, low_out_f128 = out Bits(128 bits)
+    val up_out_f128, low_out_f128 = out Bits(32 bits)
   }
-
 
   val h_upper_128 = new HOperation()
   h_upper_128.io.input := io.up_in_f128
@@ -420,23 +394,16 @@ class F_128 extends Component {
 
   val pht = new PHT()
   pht.io.in_up := h_upper_128.io.output
-  pht.io.out_up := h_lower_128.io.output
+  pht.io.in_down := h_lower_128.io.output
 
-
-  val adder0 = new CarryAdder(32)
-  adder0.io.a := pht.io.out_up
-  adder0.io.b := io.up_key_f128
-  io.up_out_f128 := adder0.io.result
-
-  val adder1 = new CarryAdder(32)
-  adder1.io.a := pht.io.out_down
-  adder1.io.b := io.low_key_f128
-  io.low_out_f128 := adder1.io.result
+  io.up_out_f128  := CarryAdder(32)(pht.io.out_up,   io.up_key_f128)
+  io.low_out_f128 := CarryAdder(32)(pht.io.out_down, io.low_key_f128)
 
 }
 
 
 class TwoFish_round extends Component{
+
   val io = new Bundle{
     val in1, in2, in3, in4     = in Bits(32 bits)
     val sFirst, sSecond        = in Bits(32 bits)
@@ -452,7 +419,7 @@ class TwoFish_round extends Component{
   funcF.io.up_key_f128  := io.in_key_up
   funcF.io.low_key_f128 := io.in_key_down
 
-  io.out1 := (funcF.io.up_out_f128 ^ io.in3).rotateLeft(1)
+  io.out1 := (funcF.io.up_out_f128 ^ io.in3).rotateRight(1)
 
   io.out2 := io.in4.rotateLeft(1) ^ funcF.io.low_out_f128
   io.out3 := io.in1
@@ -465,7 +432,7 @@ class TwofishCore_Std() extends Component {
 
   val gIO  = SymmetricCryptoBlockConfig(
     keyWidth    = 128 bits,
-    blockWidth  = 64 bits,
+    blockWidth  = 128 bits,
     useEncDec   = true
   )
 
@@ -473,16 +440,12 @@ class TwofishCore_Std() extends Component {
 
   io.cmd.ready := True
   io.rsp.valid := True
-  //io.rsp.block := 0
+  io.rsp.block := 0
 
   val counter = Reg(UInt(8 bits)) init(0)
-  counter := (counter + 1) |<< 2
 
   val keySchedule = new TwoFishKeySchedule_128()
-  keySchedule.io.round  := counter
-  keySchedule.io.inKey  := 0
 
-  io.rsp.block := keySchedule.io.out_key_up ## keySchedule.io.out_key_down
 
 
   val sm = new StateMachine{

@@ -261,4 +261,87 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
   }
 
 
+
+  /**
+    * Test encryption round
+    */
+  test("test_Encryption_Round"){
+
+    class ComponentTwoFishEncRound_128() extends Component{
+
+      val io = new Bundle{
+        val in1, in2, in3, in4     = in Bits(32 bits)
+        val sFirst, sSecond        = in Bits(32 bits)
+        val in_key_up, in_key_down = in Bits(32 bits)
+        val out1, out2, out3, out4 = out Bits(32 bits)
+      }
+
+      val encRound = new TwoFish_round()
+
+      encRound.io.in1 := io.in1
+      encRound.io.in2 := io.in2
+      encRound.io.in3 := io.in3
+      encRound.io.in4 := io.in4
+
+      encRound.io.sFirst := io.sFirst
+      encRound.io.sSecond := io.sSecond
+
+      encRound.io.in_key_up := io.in_key_up
+      encRound.io.in_key_down := io.in_key_down
+
+
+      io.out1 := RegNext(encRound.io.out1)
+      io.out2 := RegNext(encRound.io.out2)
+      io.out3 := RegNext(encRound.io.out3)
+      io.out4 := RegNext(encRound.io.out4)
+    }
+
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(5).compile(new ComponentTwoFishEncRound_128()).doSim{ dut =>
+
+      dut.clockDomain.forkStimulus(2)
+
+      // initialize value
+      dut.io.in1.randomize()
+      dut.io.in2.randomize()
+      dut.io.in3.randomize()
+      dut.io.in4.randomize()
+      dut.io.sFirst.randomize()
+      dut.io.sSecond.randomize()
+      dut.io.in_key_down.randomize()
+      dut.io.in_key_up.randomize()
+
+      dut.clockDomain.waitActiveEdge(2)
+
+      for(round <- 0 until 16){
+
+        dut.io.in1         #= 0x00
+        dut.io.in2         #= 0x00
+        dut.io.in3         #= 0x00
+        dut.io.in4         #= 0x00
+        dut.io.sFirst      #= 0x00
+        dut.io.sSecond     #= 0x00
+
+        val key = RefTwoFish.roundKeys(Array(0x00,0x00,0x00,0x00), round )
+
+        dut.io.in_key_up   #= BigInt("F98FFEF9", 16)
+        dut.io.in_key_down #= BigInt("9C5B3C17", 16)
+
+        dut.clockDomain.waitSampling(2)
+
+        val rtlOut1   = dut.io.out1.toBigInt
+        val rtlOut2   = dut.io.out2.toBigInt
+        val rtlOut3   = dut.io.out3.toBigInt
+        val rtlOut4   = dut.io.out4.toBigInt
+        val model     = RefTwoFish.encryptionRound(Array(0x00,0x00,0x00,0x00), Array(0x00,0x00,0x00,0x00), round)
+
+        println(f"Round ${round} => Model ${model.map(a => f"$a%08X").mkString(" ")}  , rtl ${rtlOut4}%08X ${rtlOut3}%08X ${rtlOut2}%08X ${rtlOut1}%08X")
+
+        dut.clockDomain.waitSampling()
+
+      }
+
+      dut.clockDomain.waitActiveEdge(10)
+    }
+  }
+
 }
