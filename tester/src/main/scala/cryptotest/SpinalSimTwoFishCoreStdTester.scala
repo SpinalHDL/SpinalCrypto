@@ -136,8 +136,8 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       for(i <- 0 until 50){
 
         val ioInput = if (i == 0)  0x00 else Random.nextInt(45000)
-        val s0 = 0
-        val s1 = 0
+        val s0 = 0x11223344
+        val s1 = 0x33BBCCDD
 
         dut.io.input #= ioInput
         dut.io.s0 #= s0
@@ -205,5 +205,60 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       dut.clockDomain.waitActiveEdge(10)
     }
   }
+
+
+  /**
+    * Test KeySchdeule
+    */
+  test("test_KeySchedule_128"){
+
+    class ComponentTwoFishKeySchedule_128() extends Component{
+
+      val io = new Bundle{
+        val round                    = in  UInt(8 bits)
+        val inKey                    = in  Bits(128 bits)
+        val out_key_up, out_key_down = out Bits(32 bits)
+      }
+
+      val keySchedule = new TwoFishKeySchedule_128()
+
+      keySchedule.io.round := io.round
+      keySchedule.io.inKey := io.inKey
+
+      io.out_key_up   := RegNext(keySchedule.io.out_key_up)
+      io.out_key_down := RegNext(keySchedule.io.out_key_down)
+    }
+
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(3).compile(new ComponentTwoFishKeySchedule_128()).doSim{ dut =>
+
+      dut.clockDomain.forkStimulus(2)
+
+      // initialize value
+      dut.io.inKey.randomize()
+      dut.io.round.randomize()
+
+      dut.clockDomain.waitActiveEdge(2)
+
+      for(round <- 0 until 16){
+
+        dut.io.inKey #= 0x10
+        dut.io.round #= round
+
+        dut.clockDomain.waitSampling(2)
+
+        val rtlOutKeyUp   = dut.io.out_key_up.toBigInt
+        val rtlOutKeyDown = dut.io.out_key_down.toBigInt
+        val model         = RefTwoFish.roundKeys(Array(0x00,0x00,0x00,0x10), round)
+
+        println(f"Round ${round} => Model ${model(0)}%08X ${model(1)}%08X , rtl ${rtlOutKeyUp}%08X ${rtlOutKeyDown}%08X")
+
+        dut.clockDomain.waitSampling()
+
+      }
+
+      dut.clockDomain.waitActiveEdge(10)
+    }
+  }
+
 
 }

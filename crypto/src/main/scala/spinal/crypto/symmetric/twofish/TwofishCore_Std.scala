@@ -32,6 +32,8 @@ import spinal.crypto.symmetric.{SymmetricCryptoBlockConfig, SymmetricCryptoBlock
 import spinal.crypto._
 import spinal.lib.fsm._
 
+import scala.collection.mutable.ListBuffer
+
 
 
 /**
@@ -110,79 +112,124 @@ class Qoperation(i: Int) extends Component {
   *  128 =>                                        q0q1q0q1 -> XOR -> q0q0q1q1 -> XOR -> q1q0q1q0
   *  192 =>                     q1q1q0q0 -> XOR -> q0q1q0q1 -> XOR -> q0q0q1q1 -> XOR -> q1q0q1q0
   *  256 =>  q1q0q0q1 -> XOR -> q1q1q0q0 -> XOR -> q0q1q0q1 -> XOR -> q0q0q1q1 -> XOR -> q1q0q1q0
+  *
+  * S-BOX (128)
+  *                  S1                   S0
+  *                   |                    |
+  *    --- q0 ---     |     --- q0 ---     |     --- q1 ---
+  *              |    |    |          |    |    |
+  *    --- q1 ---x    |    x--- q0 ---x    |    x--- q0 ---
+  *              x-- XOR --x          x-- XOR --x
+  *    --- q0 ---x         x--- q1 ---x         x--- q1 ---
+  *              |         |          |         |
+  *    --- q1 ---           --- q1 ---           --- q0 ---
   */
 class SBox(keySize: Int) extends Component{
 
 
   def nbrSx(keySize: Int) = keySize match{
-    case 128 => 3
-    case 192 => 4
-    case 256 => 5
+    case 128 => 2
+    case 192 => 3
+    case 256 => 4
   }
 
+  val index_128 = List(List(0,1,0,1), List(0,0,1,1), List(1,0,1,0))
+  val index_192 = List(List(1,1,0,0)) ++ index_128
+  val index_256 = List(List(1,0,0,1)) ++ index_192
+
   def qIndex(keySize: Int) = keySize match{
-    case 128 => List(List(0,1,0,1), List(0,0,1,1), List(1,0,1,0))
-    case 192 => List(List(1,1,0,0), List(0,1,0,1), List(0,0,1,1), List(1,0,1,0))
-    case 256 => List(List(1,0,0,1), List(1,1,0,0), List(0,1,0,1), List(0,0,1,1), List(1,0,1,0))
+    case 128 => index_128
+    case 192 => index_192
+    case 256 => index_256
   }
 
   val io = new Bundle{
-    val in0                    = in Bits(8 bits)
+    val in0, in1, in2, in3     = in  Bits(8 bits)
     val out0, out1, out2, out3 = out Bits(8 bits)
 
     val sX = Vec(Bits(32 bits), nbrSx(keySize))
   }
+
+
+  val index = qIndex(keySize)
+
+  val nbrQ0 = index.flatten.count(_ == 0)
+  val nbrQ1 = index.flatten.count(_ == 1)
+
+  val q0 = for(_ <- 0 until nbrQ0) new Qoperation(0)
+  val q1 = for(_ <- 0 until nbrQ1) new Qoperation(1)
+
+  // assign index to each
+  var iQ0 = 0
+  var iQ1 = 0
+  val indexQQ = ListBuffer[ListBuffer[(Int, Int)]]()
+  for(i <- 0 until index.size){
+    val inner = ListBuffer[(Int, Int)]()
+
+  }
+
+
+  for(i <- 0 until index.size){
+    var tmpInput : Bits = 0
+
+    if(i == 0){
+      tmpInput = (io.in0 ## io.in1 ## io.in2 ## io.in3)
+    }else{
+
+    }
+
+
+  }
+
 }
 
 /**
   * S-BOX (128)
-  *                 S1                   S0
-  *                  |                    |
-  *   --- q0 ---     |    --- q0 ---      |     --- q1 ---
-  *             |    |    |          |    |    |
-  *   --- q1 ---x    |    x--- q0 ---x    |    x--- q0 ---
-  *             x-- XOR --x          x-- XOR --x
-  *   --- q0 ---x         x--- q1 ---x         x--- q1 ---
-  *             |         |          |         |
-  *   --- q1 ---           --- q1 ---           --- q0 ---
+  *                                   S1                    S0
+  *                                    |                    |
+  *                     --- q0 ---     |     --- q0 ---     |     --- q1 ---
+  *                    |          |    |    |          |    |    |          |
+  *                    x--- q1 ---x    |    x--- q0 ---x    |    x--- q0 ---x
+  *  input(32 bits) ---x          x-- XOR --x          x-- XOR --x          x--- output(32 bits)
+  *                    x--- q0 ---x         x--- q1 ---x         x--- q1 ---x
+  *                    |          |         |          |         |          |
+  *                     --- q1 ---           --- q1 ---           --- q0 ---
   */
 class S_Box() extends Component{
 
   val io = new Bundle {
     val s0, s1 = in Bits(32 bits)
 
-
-    val b1,b2,b3,b4 = in Bits(8 bits)
-    val c1,c2,c3,c4 = out Bits(8 bits)
-
+    val input  = in  Bits(32 bits)
+    val output = out Bits(32 bits)
   }
 
   val q0 = for(_ <- 0 until 6) yield new Qoperation(0)
   val q1 = for(_ <- 0 until 6) yield new Qoperation(1)
 
-  q0(0).io.input := io.b1
-  q1(0).io.input := io.b2
-  q0(1).io.input := io.b3
-  q1(1).io.input := io.b4
+  q0(0).io.input := io.input( 7 downto  0)
+  q1(0).io.input := io.input(15 downto  8)
+  q0(1).io.input := io.input(23 downto 16)
+  q1(1).io.input := io.input(31 downto 24)
 
-  val xor1 = io.s1 ^ (q0(0).io.output ## q1(0).io.output ## q0(1).io.output ## q1(1).io.output)
+  val xor1 = io.s1 ^ (q1(1).io.output ## q0(1).io.output ## q1(0).io.output ## q0(0).io.output)
 
-  q0(2).io.input := xor1(31 downto 24)
-  q0(3).io.input := xor1(23 downto 16)
-  q1(2).io.input := xor1(15 downto  8)
-  q1(3).io.input := xor1( 7 downto  0)
+  q0(2).io.input := xor1( 7 downto  0)
+  q0(3).io.input := xor1(15 downto  8)
+  q1(2).io.input := xor1(23 downto 16)
+  q1(3).io.input := xor1(31 downto 24)
 
-  val xor2 = io.s0 ^ (q0(2).io.output ## q0(3).io.output ## q1(2).io.output ## q1(3).io.output)
+  val xor2 = io.s0 ^ (q1(3).io.output ## q1(2).io.output ## q0(3).io.output ## q0(2).io.output)
 
-  q1(4).io.input := xor2(31 downto 24)
-  q0(4).io.input := xor2(23 downto 16)
-  q1(5).io.input := xor2(15 downto  8)
-  q0(5).io.input := xor2( 7 downto  0)
+  q1(4).io.input := xor2( 7 downto  0)
+  q0(4).io.input := xor2(15 downto  8)
+  q1(5).io.input := xor2(23 downto 16)
+  q0(5).io.input := xor2(31 downto 24)
 
-  io.c1 := q1(4).io.output
-  io.c2 := q0(4).io.output
-  io.c3 := q1(5).io.output
-  io.c4 := q0(5).io.output
+  io.output( 7 downto  0) := q1(4).io.output
+  io.output(15 downto  8) := q0(4).io.output
+  io.output(23 downto 16) := q1(5).io.output
+  io.output(31 downto 24) := q0(5).io.output
 }
 
 /*
@@ -220,10 +267,8 @@ class HOperation extends Component {
   val sBox = new S_Box()
 
 
-  sBox.io.b1 := io.input( 7 downto  0)
-  sBox.io.b2 := io.input(15 downto  8)
-  sBox.io.b3 := io.input(23 downto 16)
-  sBox.io.b4 := io.input(31 downto 24)
+  sBox.io.input := io.input
+
   sBox.io.s0 := io.s0
   sBox.io.s1 := io.s1
 
@@ -243,10 +288,10 @@ class HOperation extends Component {
 
     implicit val polyGF8 = p"x^8+x^6+x^5+x^3+1"
 
-    val y0 = sBox.io.c1
-    val y1 = sBox.io.c2
-    val y2 = sBox.io.c3
-    val y3 = sBox.io.c4
+    val y0 = sBox.io.output( 7 downto  0)
+    val y1 = sBox.io.output(15 downto  8)
+    val y2 = sBox.io.output(23 downto 16)
+    val y3 = sBox.io.output(31 downto 24)
 
     val y3_5b = GF8(y3) * 0x5B
     val y0_ef = GF8(y0) * 0xEF
@@ -260,7 +305,7 @@ class HOperation extends Component {
   }
 
 
-  io.output := mds.z0 ## mds.z1 ## mds.z2 ## mds.z3
+  io.output := mds.z3 ## mds.z2 ## mds.z1 ## mds.z0
 
 }
 
@@ -310,33 +355,37 @@ class PHT extends Component {
 
 }
 
-
+/**
+  * Key scheduler 
+  */
 class TwoFishKeySchedule_128() extends Component {
 
   val io = new Bundle {
-    val odd_in_tk128, even_in_tk128          = in Bits(8 bits)
-    val in_key_tk128                         = in Bits(128 bits)
-    val out_key_up_tk128, out_key_down_tk128 = out Bits(32 bits)
+    val round                    = in  UInt(8 bits)
+    val inKey                    = in  Bits(128 bits)
+    val out_key_up, out_key_down = out Bits(32 bits)
   }
 
+  val round = io.round |<< 1
 
   // replace by subdividIn 32 bits
-  val bytes = io.in_key_tk128.subdivideIn(8 bits)
+  val bytes = io.inKey.subdivideIn(32 bits).reverse
 
-  val m0 = Cat(List( 0, 1, 2, 3).map(bytes(_)))
-  val m1 = Cat(List( 4, 5, 6, 7).map(bytes(_)))
-  val m2 = Cat(List( 8, 9,10,11).map(bytes(_)))
-  val m3 = Cat(List(12,13,14,15).map(bytes(_)))
+  val m0 = bytes(0)
+  val m1 = bytes(1)
+  val m2 = bytes(2)
+  val m3 = bytes(3)
 
   val upper_h = new HOperation()
-  upper_h.io.s0    := m2
-  upper_h.io.s1    := m0
-  upper_h.io.input := io.even_in_tk128.resized
+  upper_h.io.s0    := m0
+  upper_h.io.s1    := m2
+  upper_h.io.input := (round ## round ## round ## round).asBits.resized
 
   val lower_h = new HOperation()
-  lower_h.io.s0    := m3
-  lower_h.io.s1    := m1
-  lower_h.io.input := io.odd_in_tk128.resized
+  lower_h.io.s0    := m1
+  lower_h.io.s1    := m3
+  val round_nxt    = round + 1
+  lower_h.io.input := (round_nxt ## round_nxt ## round_nxt ## round_nxt).asBits.resized
 
 
   val pht = new PHT()
@@ -344,8 +393,8 @@ class TwoFishKeySchedule_128() extends Component {
   pht.io.in_up   := upper_h.io.output
   pht.io.in_down := lower_h.io.output.rotateLeft(8)
 
-  io.out_key_up_tk128   := pht.io.out_up
-  io.out_key_down_tk128 := pht.io.out_down.rotateLeft(9)
+  io.out_key_up   := pht.io.out_up
+  io.out_key_down := pht.io.out_down.rotateLeft(9)
 
 }
 
@@ -430,11 +479,10 @@ class TwofishCore_Std() extends Component {
   counter := (counter + 1) |<< 2
 
   val keySchedule = new TwoFishKeySchedule_128()
-  keySchedule.io.odd_in_tk128  := counter.asBits
-  keySchedule.io.even_in_tk128 := (counter + 1).asBits
-  keySchedule.io.in_key_tk128  := 0
+  keySchedule.io.round  := counter
+  keySchedule.io.inKey  := 0
 
-  io.rsp.block := keySchedule.io.out_key_up_tk128 ## keySchedule.io.out_key_down_tk128
+  io.rsp.block := keySchedule.io.out_key_up ## keySchedule.io.out_key_down
 
 
   val sm = new StateMachine{
