@@ -407,19 +407,19 @@ class F_128 extends Component {
 class TwoFish_round extends Component{
 
   val io = new Bundle{
-    val in1, in2, in3, in4     = in Bits(32 bits)
-    val sFirst, sSecond        = in Bits(32 bits)
-    val in_key_up, in_key_down = in Bits(32 bits)
+    val in1, in2, in3, in4     = in  Bits(32 bits)
+    val s0, s1                 = in  Bits(32 bits)
+    val keyEven, keyOdd        = in  Bits(32 bits)
     val out1, out2, out3, out4 = out Bits(32 bits)
   }
 
   val funcF = new F_128()
   funcF.io.up_in_f128   := io.in1
   funcF.io.low_in_f128  := io.in2
-  funcF.io.s0   := io.sFirst
-  funcF.io.s1   := io.sSecond
-  funcF.io.keyEven  := io.in_key_up
-  funcF.io.keyOdd := io.in_key_down
+  funcF.io.s0       := io.s0
+  funcF.io.s1       := io.s1
+  funcF.io.keyEven  := io.keyEven
+  funcF.io.keyOdd   := io.keyOdd
 
   io.out1 := (funcF.io.up_out_f128 ^ io.in3).rotateRight(1)
 
@@ -451,9 +451,24 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
   val data_1, data_2, data_3, data_4 = Reg(Bits(32 bits))
 
 
-  io.cmd.ready := False
-  io.rsp.valid := False
-  io.rsp.block := (data_1 ## data_2 ## data_3 ## data_4)
+  val rs = new Area{
+    implicit val polyGF8 = p"x^8+x^6+x^3+x^2+1"
+
+    val m = io.cmd.key.subdivideIn(8 bits)
+
+    val s0_0 = (GF8(m(0))        + GF8(m(1)) * 0xA4 + GF8(m(2)) * 0x55 + GF8(m(3)) * 0x87 + GF8(m(4)) * 0x5A + GF8(m(5)) * 0x58 + GF8(m(6)) * 0xDB + GF8(m(7)) * 0x9E).toBits()
+    val s0_1 = (GF8(m(0)) * 0xA4 + GF8(m(1)) * 0x56 + GF8(m(2)) * 0x82 + GF8(m(3)) * 0xF3 + GF8(m(4)) * 0x1E + GF8(m(5)) * 0xC6 + GF8(m(6)) * 0x68 + GF8(m(7)) * 0xE5).toBits()
+    val s0_2 = (GF8(m(0)) * 0X02 + GF8(m(1)) * 0xA1 + GF8(m(2)) * 0xFC + GF8(m(3)) * 0xC1 + GF8(m(4)) * 0x47 + GF8(m(5)) * 0xAE + GF8(m(6)) * 0x3D + GF8(m(7)) * 0x19).toBits()
+    val s0_3 = (GF8(m(0)) * 0XA4 + GF8(m(1)) * 0x55 + GF8(m(2)) * 0x87 + GF8(m(3)) * 0x5A + GF8(m(4)) * 0x58 + GF8(m(5)) * 0xDB + GF8(m(6)) * 0x9E + GF8(m(7)) * 0x03).toBits()
+
+    val s1_0 = (GF8(m(8))        + GF8(m(9)) * 0xA4 + GF8(m(10)) * 0x55 + GF8(m(11)) * 0x87 + GF8(m(12)) * 0x5A + GF8(m(13)) * 0x58 + GF8(m(14)) * 0xDB + GF8(m(15)) * 0x9E).toBits()
+    val s1_1 = (GF8(m(8)) * 0xA4 + GF8(m(9)) * 0x56 + GF8(m(10)) * 0x82 + GF8(m(11)) * 0xF3 + GF8(m(12)) * 0x1E + GF8(m(13)) * 0xC6 + GF8(m(14)) * 0x68 + GF8(m(15)) * 0xE5).toBits()
+    val s1_2 = (GF8(m(8)) * 0X02 + GF8(m(9)) * 0xA1 + GF8(m(10)) * 0xFC + GF8(m(11)) * 0xC1 + GF8(m(12)) * 0x47 + GF8(m(13)) * 0xAE + GF8(m(14)) * 0x3D + GF8(m(15)) * 0x19).toBits()
+    val s1_3 = (GF8(m(8)) * 0XA4 + GF8(m(9)) * 0x55 + GF8(m(10)) * 0x87 + GF8(m(11)) * 0x5A + GF8(m(12)) * 0x58 + GF8(m(13)) * 0xDB + GF8(m(14)) * 0x9E + GF8(m(15)) * 0x03).toBits()
+
+    val s0 = (s0_3 ## s0_2 ## s0_1 ## s0_0)
+    val s1 = (s1_3 ## s1_2 ## s1_1 ## s1_0)
+  }
 
 
   val inputWhitening = new Area {
@@ -474,43 +489,48 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
 
     val enable = False
 
-    val f = new F_128()
+    val f = new TwoFish_round()
 
-    f.io.up_in_f128   := data_1
-    f.io.low_in_f128  := data_2
-    f.io.s0 := 0
-    f.io.s1 := 0
+    f.io.in1     := data_1
+    f.io.in2     := data_2
+    f.io.in3     := data_3
+    f.io.in4     := data_4
+    f.io.s0      := rs.s0
+    f.io.s1      := rs.s1
     f.io.keyEven := keySchedule.io.outKeyEven
     f.io.keyOdd  := keySchedule.io.outKeyOdd
 
     when(enable){
-      data_3 := data_1
-      data_4 := data_2
-      data_1 := (f.io.up_out_f128 ^ data_3).rotateRight(1)
-      data_2 := data_4.rotateRight(1) ^ f.io.low_out_f128
+      data_3 := f.io.out3
+      data_4 := f.io.out4
+      data_1 := f.io.out1
+      data_2 := f.io.out2
     }
 
   }
 
   val outputWhitening = new Area {
-    val enable = False
+    val enable    = False
     val firstPass = False
 
     when(enable && firstPass){
-      data_1 := data_1 ^ keySchedule.io.outKeyEven
-      data_2 := data_2 ^ keySchedule.io.outKeyOdd
-    }
-    when(enable && !firstPass){
       data_3 := data_3 ^ keySchedule.io.outKeyEven
       data_4 := data_4 ^ keySchedule.io.outKeyOdd
+    }
+    when(enable && !firstPass){
+      data_1 := data_1 ^ keySchedule.io.outKeyEven
+      data_2 := data_2 ^ keySchedule.io.outKeyOdd
     }
   }
 
 
   val sm = new StateMachine{
+
+    val rspValid = False
+
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-        when(io.cmd.valid){
+        when(io.cmd.valid && io.cmd.ready){
           round := 0
           goto(sInWhitening_1)
         }
@@ -526,7 +546,7 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
     }
     val sInWhitening_2: State = new State{
       whenIsActive{
-        round := round + 1
+        round := 4
         inputWhitening.enable := True
         goto(sRound)
       }
@@ -535,31 +555,33 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
       whenIsActive{
         roundArea.enable := True
         round := round + 1
-        when(round === 15){
+        when(round === 19){
           round := 2
           goto(sOutWhitening_1)
         }
       }
     }
-    val sOutWhitening_1 : State = new State{
+    val sOutWhitening_1: State = new State{
       whenIsActive{
         round := round + 1
         outputWhitening.enable := True
         outputWhitening.firstPass := True
-        goto(sOutWhitening_1)
+        goto(sOutWhitening_2)
       }
     }
-    val sOutWhitening_2 : State = new State{
+    val sOutWhitening_2: State = new State{
       whenIsActive{
         outputWhitening.enable := True
-        io.rsp.valid := True
-        io.cmd.ready := True
+        rspValid := True
         goto(sIdle)
       }
     }
   }
 
 
+  io.cmd.ready := RegNext(sm.rspValid, False)
+  io.rsp.valid := RegNext(sm.rspValid, False)
+  io.rsp.block := (EndiannessSwap(data_3) ## EndiannessSwap(data_4) ## EndiannessSwap(data_1) ## EndiannessSwap(data_2))
 
 
 }

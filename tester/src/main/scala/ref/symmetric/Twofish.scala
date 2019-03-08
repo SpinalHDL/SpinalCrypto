@@ -81,7 +81,7 @@ object RefTwoFish {
 
         }
         // Swapping
-        whitened = Array(whitened(2), whitened(3), whitened(0), whitened(1)) 
+        //whitened = Array(whitened(2), whitened(3), whitened(0), whitened(1))
         whitened = whitening(whitened, roundKey45(0), roundKey45(1), roundKey67(0), roundKey67(1))
         return whitened
     }

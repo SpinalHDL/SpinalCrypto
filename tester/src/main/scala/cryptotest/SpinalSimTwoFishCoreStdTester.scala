@@ -73,10 +73,14 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       // initialize value
       dut.io.cmd.valid #= false
       dut.io.cmd.block.randomize()
-      dut.io.cmd.key #= 0
+      dut.io.cmd.key.randomize()
       if(dut.io.config.useEncDec) dut.io.cmd.enc.randomize()
 
       dut.clockDomain.waitActiveEdge()
+
+      dut.io.cmd.valid #= true
+      dut.io.cmd.block #= 0x00
+      dut.io.cmd.key   #= 0x00
 
   /*    for((key, plain, cipher) <- (ref_key_256, ref_plain_256, ref_cipher_256).zipped){
 
@@ -100,7 +104,7 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       // Release the valid signal at the end of the simulation
       dut.io.cmd.valid #= false
 */
-      dut.clockDomain.waitActiveEdge(20)
+      dut.clockDomain.waitActiveEdge(40)
     }
   }
 
@@ -283,11 +287,11 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       encRound.io.in3 := io.in3
       encRound.io.in4 := io.in4
 
-      encRound.io.sFirst := io.sFirst
-      encRound.io.sSecond := io.sSecond
+      encRound.io.s0 := io.sFirst
+      encRound.io.s1 := io.sSecond
 
-      encRound.io.in_key_up := io.in_key_up
-      encRound.io.in_key_down := io.in_key_down
+      encRound.io.keyEven := io.in_key_up
+      encRound.io.keyOdd := io.in_key_down
 
 
       io.out1 := RegNext(encRound.io.out1)
