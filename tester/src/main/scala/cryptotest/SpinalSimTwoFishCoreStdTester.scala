@@ -66,7 +66,7 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
     */
   test("TwoFishCoreStd_256"){
 
-    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(6).compile(new TwofishCore_Std()).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(6).compile(new TwofishCore_Std(128 bits)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
@@ -225,8 +225,8 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       keySchedule.io.round := io.round
       keySchedule.io.inKey := io.inKey
 
-      io.out_key_up   := RegNext(keySchedule.io.out_key_up)
-      io.out_key_down := RegNext(keySchedule.io.out_key_down)
+      io.out_key_up   := RegNext(keySchedule.io.outKeyEven)
+      io.out_key_down := RegNext(keySchedule.io.outKeyOdd)
     }
 
     SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(3).compile(new ComponentTwoFishKeySchedule_128()).doSim{ dut =>

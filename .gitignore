@@ -4,6 +4,7 @@
 *.gtkw
 *.yaml
 *.bin
+.DS_Store
 
 # sbt specific
 .cache/

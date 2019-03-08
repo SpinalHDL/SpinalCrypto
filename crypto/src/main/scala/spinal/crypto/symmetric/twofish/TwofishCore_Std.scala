@@ -338,7 +338,7 @@ class TwoFishKeySchedule_128() extends Component {
   val io = new Bundle {
     val round                    = in  UInt(8 bits)
     val inKey                    = in  Bits(128 bits)
-    val out_key_up, out_key_down = out Bits(32 bits)
+    val outKeyEven, outKeyOdd = out Bits(32 bits)
   }
 
   val round = io.round |<< 1
@@ -368,8 +368,8 @@ class TwoFishKeySchedule_128() extends Component {
   pht.io.in_up   := upper_h.io.output
   pht.io.in_down := lower_h.io.output.rotateLeft(8)
 
-  io.out_key_up   := pht.io.out_up
-  io.out_key_down := pht.io.out_down.rotateLeft(9)
+  io.outKeyEven := pht.io.out_up
+  io.outKeyOdd := pht.io.out_down.rotateLeft(9)
 
 }
 
@@ -377,27 +377,29 @@ class TwoFishKeySchedule_128() extends Component {
 class F_128 extends Component {
 
   val io = new Bundle{
-    val up_in_f128, low_in_f128, s0_in_f128, s1_in_f128, up_key_f128, low_key_f128 = in Bits(32 bits)
+    val up_in_f128, low_in_f128   = in Bits(32 bits)
+    val s0, s1    = in Bits(32 bits)
+    val keyEven, keyOdd = in Bits(32 bits)
     val up_out_f128, low_out_f128 = out Bits(32 bits)
   }
 
   val h_upper_128 = new HOperation()
   h_upper_128.io.input := io.up_in_f128
-  h_upper_128.io.s0 := io.s0_in_f128
-  h_upper_128.io.s1 := io.s1_in_f128
+  h_upper_128.io.s0 := io.s0
+  h_upper_128.io.s1 := io.s1
 
 
   val h_lower_128 = new HOperation()
   h_lower_128.io.input := io.low_in_f128.rotateLeft(8)
-  h_lower_128.io.s0 := io.s0_in_f128
-  h_lower_128.io.s1 := io.s1_in_f128
+  h_lower_128.io.s0 := io.s0
+  h_lower_128.io.s1 := io.s1
 
   val pht = new PHT()
   pht.io.in_up := h_upper_128.io.output
   pht.io.in_down := h_lower_128.io.output
 
-  io.up_out_f128  := CarryAdder(32)(pht.io.out_up,   io.up_key_f128)
-  io.low_out_f128 := CarryAdder(32)(pht.io.out_down, io.low_key_f128)
+  io.up_out_f128  := CarryAdder(32)(pht.io.out_up,   io.keyEven)
+  io.low_out_f128 := CarryAdder(32)(pht.io.out_down, io.keyOdd)
 
 }
 
@@ -414,10 +416,10 @@ class TwoFish_round extends Component{
   val funcF = new F_128()
   funcF.io.up_in_f128   := io.in1
   funcF.io.low_in_f128  := io.in2
-  funcF.io.s0_in_f128   := io.sFirst
-  funcF.io.s1_in_f128   := io.sSecond
-  funcF.io.up_key_f128  := io.in_key_up
-  funcF.io.low_key_f128 := io.in_key_down
+  funcF.io.s0   := io.sFirst
+  funcF.io.s1   := io.sSecond
+  funcF.io.keyEven  := io.in_key_up
+  funcF.io.keyOdd := io.in_key_down
 
   io.out1 := (funcF.io.up_out_f128 ^ io.in3).rotateRight(1)
 
@@ -428,61 +430,137 @@ class TwoFish_round extends Component{
 
 
 
-class TwofishCore_Std() extends Component {
+class TwofishCore_Std(keyWidth: BitCount) extends Component {
+
+  assert(keyWidth.value == 128)
 
   val gIO  = SymmetricCryptoBlockConfig(
-    keyWidth    = 128 bits,
+    keyWidth    = keyWidth,
     blockWidth  = 128 bits,
     useEncDec   = true
   )
 
   val io = slave(SymmetricCryptoBlockIO(gIO))
 
-  io.cmd.ready := True
-  io.rsp.valid := True
-  io.rsp.block := 0
-
-  val counter = Reg(UInt(8 bits)) init(0)
+  val round = Reg(UInt(8 bits)) init(0)
 
   val keySchedule = new TwoFishKeySchedule_128()
+  keySchedule.io.inKey := io.cmd.key
+  keySchedule.io.round := round
 
+  val data_1, data_2, data_3, data_4 = Reg(Bits(32 bits))
+
+
+  io.cmd.ready := False
+  io.rsp.valid := False
+  io.rsp.block := (data_1 ## data_2 ## data_3 ## data_4)
+
+
+  val inputWhitening = new Area {
+    val enable = False
+    val firstPass = False
+
+    when(enable && firstPass){
+      data_1 := io.cmd.block(127 downto 96) ^ keySchedule.io.outKeyEven
+      data_2 := io.cmd.block( 95 downto 64) ^ keySchedule.io.outKeyOdd
+    }
+    when(enable && !firstPass){
+      data_3 := io.cmd.block( 63 downto 32) ^ keySchedule.io.outKeyEven
+      data_4 := io.cmd.block( 31 downto  0) ^ keySchedule.io.outKeyOdd
+    }
+  }
+
+  val roundArea = new Area{
+
+    val enable = False
+
+    val f = new F_128()
+
+    f.io.up_in_f128   := data_1
+    f.io.low_in_f128  := data_2
+    f.io.s0 := 0
+    f.io.s1 := 0
+    f.io.keyEven := keySchedule.io.outKeyEven
+    f.io.keyOdd  := keySchedule.io.outKeyOdd
+
+    when(enable){
+      data_3 := data_1
+      data_4 := data_2
+      data_1 := (f.io.up_out_f128 ^ data_3).rotateRight(1)
+      data_2 := data_4.rotateRight(1) ^ f.io.low_out_f128
+    }
+
+  }
+
+  val outputWhitening = new Area {
+    val enable = False
+    val firstPass = False
+
+    when(enable && firstPass){
+      data_1 := data_1 ^ keySchedule.io.outKeyEven
+      data_2 := data_2 ^ keySchedule.io.outKeyOdd
+    }
+    when(enable && !firstPass){
+      data_3 := data_3 ^ keySchedule.io.outKeyEven
+      data_4 := data_4 ^ keySchedule.io.outKeyOdd
+    }
+  }
 
 
   val sm = new StateMachine{
     val sIdle: State = new State with EntryPoint{
       whenIsActive{
-
+        when(io.cmd.valid){
+          round := 0
+          goto(sInWhitening_1)
+        }
       }
     }
-    val sInWhitening: State = new State{
+    val sInWhitening_1: State = new State{
       whenIsActive{
-
+        round := round + 1
+        inputWhitening.enable := True
+        inputWhitening.firstPass := True
+        goto(sInWhitening_2)
+      }
+    }
+    val sInWhitening_2: State = new State{
+      whenIsActive{
+        round := round + 1
+        inputWhitening.enable := True
+        goto(sRound)
       }
     }
     val sRound: State = new State{
       whenIsActive{
-
+        roundArea.enable := True
+        round := round + 1
+        when(round === 15){
+          round := 2
+          goto(sOutWhitening_1)
+        }
       }
     }
-    val sOutWhitening: State = new State{
+    val sOutWhitening_1 : State = new State{
       whenIsActive{
-
+        round := round + 1
+        outputWhitening.enable := True
+        outputWhitening.firstPass := True
+        goto(sOutWhitening_1)
+      }
+    }
+    val sOutWhitening_2 : State = new State{
+      whenIsActive{
+        outputWhitening.enable := True
+        io.rsp.valid := True
+        io.cmd.ready := True
+        goto(sIdle)
       }
     }
   }
 
 
-  val inputWhitening = new Area {
 
-  }
-
-  val round = new Area{
-
-  }
-
-  val outputWhitening = new Area {
-
-  }
 
 }
 
@@ -490,5 +568,5 @@ class TwofishCore_Std() extends Component {
 object PlayWithTwoFish extends App{
   SpinalConfig(
     mode = VHDL
-  ).generate(new TwofishCore_Std())
+  ).generate(new TwofishCore_Std(128 bits))
 }
