@@ -16,6 +16,25 @@ import scala.util.Random
 
 class SpinalSimTwoFishCoreStdTester extends FunSuite {
 
+  val ref_key_128     = List(
+    BigInt("00000000000000000000000000000000", 16),
+    BigInt("00000000000000000000000000000000", 16),
+    BigInt("9F589F5CF6122C32B6BFEC2F2AE8C35A", 16)
+  )
+
+  val ref_plain_128  = List(
+    BigInt("00000000000000000000000000000000", 16),
+    BigInt("9F589F5CF6122C32B6BFEC2F2AE8C35A", 16),
+    BigInt("D491DB16E7B1C39E86CB086B789F5419", 16)
+  )
+
+  val ref_cipher_128  = List(
+    BigInt("9F589F5CF6122C32B6BFEC2F2AE8C35A", 16),
+    BigInt("D491DB16E7B1C39E86CB086B789F5419", 16),
+    BigInt("019F9809DE1711858FAAC3A3BA20FBC3", 16)
+  )
+
+
   val ref_key_256     = List(
     BigInt("B00DACFFF50660170A43C7277D2745902C8E0854AEAF451096A96A96EB1F010E", 16),
     BigInt("563DA55F0825E3450F886BD32CF18DC772214D008E095877AD2189393EEC955D", 16),
@@ -62,6 +81,46 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
   )
 
   /**
+    * Test - TwoFish (128-bit)
+    */
+  test("TwoFishCoreStd_128"){
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).withWave(6).compile(new TwofishCore_Std(128 bits)).doSim { dut =>
+
+      dut.clockDomain.forkStimulus(2)
+
+      // initialize value
+      dut.io.cmd.valid #= false
+      dut.io.cmd.block.randomize()
+      dut.io.cmd.key.randomize()
+      if (dut.io.config.useEncDec) dut.io.cmd.enc.randomize()
+
+      dut.clockDomain.waitActiveEdge()
+
+      dut.io.cmd.valid #= false
+      dut.io.cmd.block #= 0x00
+      dut.io.cmd.key #= 0x00
+
+      for ((key, plain, cipher) <- (ref_key_128, ref_plain_128, ref_cipher_128).zipped) {
+
+
+        SymmetricCryptoBlockIOSim.doSim(
+          dut = dut.io,
+          clockDomain = dut.clockDomain,
+          enc = true,
+          blockIn = plain,
+          keyIn = key)((a: BigInt, b: BigInt, c: Boolean) => cipher)
+
+      }
+
+      // Release the valid signal at the end of the simulation
+      dut.io.cmd.valid #= false
+
+      dut.clockDomain.waitActiveEdge(40)
+    }
+  }
+
+
+  /**
     * Test - TwoFish (256-bit)
     */
   test("TwoFishCoreStd_256"){
@@ -79,8 +138,8 @@ class SpinalSimTwoFishCoreStdTester extends FunSuite {
       dut.clockDomain.waitActiveEdge()
 
       dut.io.cmd.valid #= true
-      dut.io.cmd.block #= 0x00
-      dut.io.cmd.key   #= 0x00
+      dut.io.cmd.block #= BigInt("D491DB16E7B1C39E86CB086B789F5419", 16)//0x00
+      dut.io.cmd.key   #= BigInt("9F589F5CF6122C32B6BFEC2F2AE8C35A", 16)
 
   /*    for((key, plain, cipher) <- (ref_key_256, ref_plain_256, ref_cipher_256).zipped){
 

@@ -127,3 +127,34 @@ case class GF8(v: Bits)(implicit poly: PolynomialGF2) extends GaloisField(v, pol
 
   def newGF(v: Bits): GF8 = new GF8(v)
 }
+
+
+// TEST
+
+object Matrix{
+  def apply[T](items: Array[Array[T]]) = new Matrix[T](items)
+}
+
+class Matrix[T](items: Array[Array[T]]){
+
+}
+
+object TestMatrix extends App{
+
+
+
+  val a = Matrix[Int](Array (Array(1, 2, 3),
+                            Array(4, 5, 6),
+                            Array(7, 8, 9 )))
+}
+/*
+val a = Matrix[Int]((1, 2, 3),
+                    (4, 5, 6),
+                    (7, 8, 9 ))
+
+val b = Matrix[GF8](
+(GF8())
+)
+*/
+
+
