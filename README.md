@@ -12,6 +12,7 @@ This repository contains cryptographic Spinal IPs. This work is currently in pro
 - AESCore_Std (128/192/256-bit)
 - DESCore_Std
 - TripleDESCore_Std
+- TwofishCore_Std (128/192/256-bit)
 
 
 ### Hash

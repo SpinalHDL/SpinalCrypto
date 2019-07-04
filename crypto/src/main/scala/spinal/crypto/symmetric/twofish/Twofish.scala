@@ -25,9 +25,20 @@
 \*                                                                           */
 package spinal.crypto.symmetric.twofish
 
+import spinal.core._
+
 object Twofish {
 
+  def blockWidth  = 128 bits
+
+
   def nbrRound = 16
+
+  def getWidthOfS(keySize: Int) = keySize match{
+    case 128 => 2
+    case 192 => 3
+    case 256 => 4
+  }
 
 
   def rs = List(
