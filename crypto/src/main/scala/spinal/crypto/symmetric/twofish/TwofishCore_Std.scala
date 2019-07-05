@@ -79,21 +79,21 @@ import scala.collection.mutable.ListBuffer
   */
 object Q0{
   def apply(input: Bits): Bits = {
-    val op = new QOperation(0)
+    val op = new QOperation_Std(0)
     op.io.input := input
-    return op.io.output
+    op.io.output
   }
 }
 
 object Q1{
   def apply(input: Bits): Bits = {
-    val op = new QOperation(1)
+    val op = new QOperation_Std(1)
     op.io.input := input
-    return op.io.output
+    op.io.output
   }
 }
 
-class QOperation(i: Int) extends Component {
+class QOperation_Std(i: Int) extends Component {
 
   assert(i == 0 || i == 1, "")
 
@@ -102,8 +102,8 @@ class QOperation(i: Int) extends Component {
     val output = out Bits(8 bits)
   }
 
-  def a  = io.input(7 downto 4)
-  def b  = io.input(3 downto 0)
+  def a: Bits  = io.input(7 downto 4)
+  def b: Bits  = io.input(3 downto 0)
 
   val memT0 = Mem(Bits(4 bits), Twofish.qxT0(i).map(B(_, 4 bits)))
   val memT1 = Mem(Bits(4 bits), Twofish.qxT1(i).map(B(_, 4 bits)))
@@ -115,7 +115,7 @@ class QOperation(i: Int) extends Component {
   val b1       = a ^ b.rotateRight(1) ^ B(4 bits, 3 -> a(0), default -> False)
   val b1_prime = memT1(b1.asUInt)
 
-  val b1tmp  = a_prime ^ b1_prime.rotateRight(1)  ^ B(4 bits, 3 -> a_prime(0), default -> False)
+  val b1tmp  = a_prime ^ b1_prime.rotateRight(1) ^ B(4 bits, 3 -> a_prime(0), default -> False)
 
   val a2 = a_prime ^ b1_prime
   io.output(3 downto 0) := memT2(a2.asUInt)
@@ -138,7 +138,7 @@ class QOperation(i: Int) extends Component {
   *         \-->|_SBox 3_|---|______|
   *
   */
-class HOperation(keyWidth: Int) extends Component {
+class HOperation_Std(keyWidth: Int) extends Component {
 
   val io = new Bundle {
     val s      = in  Vec(Bits(32 bits), Twofish.getWidthOfS(keyWidth))
@@ -173,15 +173,15 @@ class HOperation(keyWidth: Int) extends Component {
     /* 192 */
     val xor2 = ifGen(keyWidth > 128) {
       val input2 = if (keyWidth != 192) xor3 else io.input
+
       io.s(2) ^ (Q0(input2(31 downto 24)) ## Q0(input2(23 downto 16)) ## Q1(input2(15 downto  8)) ## Q1(input2( 7 downto  0)))
     }
 
     /* 128 */
     val input_1 = if (keyWidth > 128) xor2 else io.input
 
-    val xor1 = io.s(1) ^ (Q1(input_1(31 downto 24)) ## Q0(input_1(23 downto 16)) ## Q1(input_1(15 downto  8)) ## Q0(input_1( 7 downto  0)))
-    val xor0 = io.s(0) ^ (Q1(xor1(31 downto 24)) ## Q1(xor1(23 downto 16)) ## Q0(xor1(15 downto  8)) ## Q0(xor1( 7 downto  0)))
-
+    val xor1   = io.s(1) ^ (Q1(input_1(31 downto 24)) ## Q0(input_1(23 downto 16)) ## Q1(input_1(15 downto  8)) ## Q0(input_1( 7 downto  0)))
+    val xor0   = io.s(0) ^ (Q1(xor1(31 downto 24)) ## Q1(xor1(23 downto 16)) ## Q0(xor1(15 downto  8)) ## Q0(xor1( 7 downto  0)))
     val output = Q0(xor0(31 downto 24)) ## Q1(xor0(23 downto 16)) ## Q0(xor0(15 downto  8)) ## Q1(xor0( 7 downto  0))
   }
 
@@ -201,10 +201,10 @@ class HOperation(keyWidth: Int) extends Component {
 
     implicit val polyGF8 = p"x^8+x^6+x^5+x^3+1"
 
-    val y0 = sBox.output( 7 downto  0)
-    val y1 = sBox.output(15 downto  8)
-    val y2 = sBox.output(23 downto 16)
-    val y3 = sBox.output(31 downto 24)
+    def y0: Bits = sBox.output( 7 downto  0)
+    def y1: Bits = sBox.output(15 downto  8)
+    def y2: Bits = sBox.output(23 downto 16)
+    def y3: Bits = sBox.output(31 downto 24)
 
     val y3_5b = GF8(y3) * 0x5B
     val y0_ef = GF8(y0) * 0xEF
@@ -272,8 +272,22 @@ class PHT extends Component {
 
 /**
   * Key scheduler
+  *
+  *           m(2,0)
+  *           __|_               _____
+  *          |    |             |     |
+  * 2i ----> | H0 |------------>|     |------------> Subkey 2i
+  *          |____|             |     |
+  *                             | PHT |
+  *           ____              |     |
+  *          |    |             |     |
+  * 2i+1 --> | H1 |--> <<< 8 -->|     |--> <<< 9 --> Subkey 2i+1
+  *          |____|             |_____|
+  *             |
+  *           m(1,3)
+  *
   */
-class TwofishKeySchedule(keyWidth: Int) extends Component {
+class TwofishKeySchedule_Std(keyWidth: Int) extends Component {
 
   val io = new Bundle {
     val round   = in  UInt(8 bits)
@@ -281,25 +295,27 @@ class TwofishKeySchedule(keyWidth: Int) extends Component {
     val outKey  = out Vec(Bits(32 bits), 2)
   }
 
+  // round * 2
   val round = io.round |<< 1
 
+  // m
   val m = io.inKey.subdivideIn(32 bits).reverse.map(EndiannessSwap(_))
 
   /** H Operation */
-  val h = List.fill(2)(new HOperation(keyWidth))
+  val h = List.fill(2)(new HOperation_Std(keyWidth))
 
   keyWidth match {
-    case 128 =>  h(0).io.s     := Vec(m(0), m(2))
-    case 192 =>  h(0).io.s     := Vec(m(0), m(2), m(4))
-    case 256 =>  h(0).io.s     := Vec(m(0), m(2), m(4), m(6))
+    case 128 =>  h(0).io.s  := Vec(m(0), m(2))
+    case 192 =>  h(0).io.s  := Vec(m(0), m(2), m(4))
+    case 256 =>  h(0).io.s  := Vec(m(0), m(2), m(4), m(6))
   }
 
   h(0).io.input := (round ## round ## round ## round).asBits.resized
 
   keyWidth match {
-    case 128 =>  h(1).io.s     := Vec(m(1), m(3))
-    case 192 =>  h(1).io.s     := Vec(m(1), m(3), m(5))
-    case 256 =>  h(1).io.s     := Vec(m(1), m(3), m(5), m(7))
+    case 128 =>  h(1).io.s  := Vec(m(1), m(3))
+    case 192 =>  h(1).io.s  := Vec(m(1), m(3), m(5))
+    case 256 =>  h(1).io.s  := Vec(m(1), m(3), m(5), m(7))
   }
 
   val round_nxt    = round + 1
@@ -313,22 +329,21 @@ class TwofishKeySchedule(keyWidth: Int) extends Component {
 
   io.outKey(0) := pht.io.dout(0)
   io.outKey(1) := pht.io.dout(1).rotateLeft(9)
-
 }
 
 
 /**
   * F operation
-  *                            ____     ____________   K2r+8
+  *                            ____     ____________   Key 2r+8
   *                           |    |   |    PHT    |     |
-  *   up_in ----------------> | H  |-->|--> + -----|---> + ------> up_out
+  *     din ----------------> | H0 |-->|--> + -----|---> + ------> dout
   *                           |____|   |   |   |   |
-  *                            ____    |   |   |   |    K2r+9
+  *                            ____    |   |   |   |    Key 2r+9
   *             ________      |    |   |   |   |   |     |
-  *   low_in --|_<<< 1__|---> | H  |-->|-----> + --|---> + ------> low_out
+  *     din  --|_<<< 1__|---> | H1 |-->|-----> + --|---> + ------> dout
   *                           |____|   |___________|
   */
-class FOperation(keyWidth: Int) extends Component {
+class FOperation_Std(keyWidth: Int) extends Component {
 
   val io = new Bundle{
     val din  = in  Vec(Bits(32 bits), 2)
@@ -337,7 +352,8 @@ class FOperation(keyWidth: Int) extends Component {
     val dout = out Vec(Bits(32 bits), 2)
   }
 
-  val h = List.fill(2)(new HOperation(keyWidth))
+  /** H */
+  val h = List.fill(2)(new HOperation_Std(keyWidth))
 
   h(0).io.input := io.din(0)
   h(0).io.s     := io.s
@@ -346,6 +362,7 @@ class FOperation(keyWidth: Int) extends Component {
   h(1).io.s     := io.s
 
 
+  /** PHT */
   val pht = new PHT()
   pht.io.din(0) := h(0).io.output
   pht.io.din(1) := h(1).io.output
@@ -360,7 +377,7 @@ class FOperation(keyWidth: Int) extends Component {
   *
   * @param keyWidth
   */
-class Twofish_round(keyWidth: Int) extends Component{
+class TwofishRound_Std(keyWidth: Int) extends Component{
 
   val io = new Bundle{
     val din               = in  Vec(Bits(32 bits), 4)
@@ -370,11 +387,14 @@ class Twofish_round(keyWidth: Int) extends Component{
     val encryption        = in  Bool
   }
 
-  val fOp = new FOperation(keyWidth)
+  /** F operation */
+  val fOp = new FOperation_Std(keyWidth)
   fOp.io.din := Vec(io.din(0), io.din(1))
   fOp.io.s   := io.s
   fOp.io.key := io.key
 
+
+  /** output */
   when(io.encryption) {
     io.dout(0) := (fOp.io.dout(0) ^ io.din(2)).rotateRight(1)
     io.dout(1) := io.din(3).rotateLeft(1) ^ fOp.io.dout(1)
@@ -391,6 +411,27 @@ class Twofish_round(keyWidth: Int) extends Component{
 /**
   * TwoFishCore_Std
   *
+  *
+  *     _________________________________________________________
+  *    |                                                         |
+  *    |                   Data(128 bits)                        |
+  *    |_________________________________________________________|
+  *           |     |                               |     |
+  *   K0 --> XOR   XOR <-- K1               K2 --> XOR   XOR <-- K3
+  *           |     |     ____________________      |     |
+  *           |     x--->|                    |--> XOR   >>>1
+  *           |     |    |         F          |     |     |
+  *           x-----|--->|____________________|-----|--> XOR
+  *           |     |                              >>>1   |
+  *           \     \                               /    /
+  *                           15 rounds
+  *
+  *           |     |                               |     |
+  *   K4 --> XOR   XOR <-- K5               K6 --> XOR   XOR <-- K7
+  *     ______|_____|_______________________________|_____|______
+  *    |                                                         |
+  *    |                   output(128 bits)                      |
+  *    |_________________________________________________________|
   *
   * @param keyWidth
   */
@@ -413,7 +454,7 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
   val data   = Vec(Reg(Bits(32 bits)), 4)
 
   /** Key scheduler */
-  val keySchedule = new TwofishKeySchedule(keyWidth.value)
+  val keySchedule = new TwofishKeySchedule_Std(keyWidth.value)
   keySchedule.io.inKey := io.cmd.key
   keySchedule.io.round := round
 
@@ -435,7 +476,7 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
       s3 ## s2 ## s1 ## s0
     }
 
-    val s0 = matrixRSMultiplication(m(0), m(1), m(2), m(3), m(4), m(5), m(6), m(7))
+    val s0 = matrixRSMultiplication(m(0), m(1), m(2),  m(3),  m(4),  m(5),  m(6),  m(7))
     val s1 = matrixRSMultiplication(m(8), m(9), m(10), m(11), m(12), m(13), m(14), m(15))
 
     val s2 = ifGen(keyWidth.value > 128){
@@ -478,7 +519,7 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
 
     val enable = False
 
-    val opRound = new Twofish_round(keyWidth.value)
+    val opRound = new TwofishRound_Std(keyWidth.value)
 
     opRound.io.din        := data
     opRound.io.s          := rs.s
@@ -488,7 +529,6 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
     when(enable){
       data := opRound.io.dout
     }
-
   }
 
   /**

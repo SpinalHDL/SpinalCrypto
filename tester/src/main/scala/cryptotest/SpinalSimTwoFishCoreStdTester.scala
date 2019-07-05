@@ -3,14 +3,11 @@ package cryptotest
 import spinal.core.SpinalConfig
 import spinal.core.sim.SimConfig
 import org.scalatest.FunSuite
-import ref.symmetric.RefTwoFish
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
-import spinal.sim._
 import spinal.core.sim._
 import spinal.crypto.symmetric.twofish._
 
-import scala.util.Random
 
 
 

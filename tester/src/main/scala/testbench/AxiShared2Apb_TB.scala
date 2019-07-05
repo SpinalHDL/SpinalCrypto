@@ -62,7 +62,8 @@ class AxiShared2Apb_TB(val config: AxiShared2ApbConfig)(apbSlaves: (() => ApbCry
   val cores = apbSlaves.map(_())
 
   val gpioACtrl = if(config.enableGPIO) Apb3Gpio(
-    gpioWidth = config.nbrGPIO
+    gpioWidth = config.nbrGPIO,
+    withReadSync = true
   ) else null
 
 
