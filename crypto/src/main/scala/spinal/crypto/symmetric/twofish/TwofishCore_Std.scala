@@ -222,40 +222,6 @@ class HOperation_Std(keyWidth: Int) extends Component {
 
 
 /**
-  * Adder with carry
-  */
-object CarryAdder{
-
-  def apply(size: Int)(a: Bits, b: Bits): Bits = {
-    val adder = new CarryAdder(size)
-    adder.io.a := a
-    adder.io.b := b
-    return adder.io.result
-  }
-
-}
-
-class CarryAdder(size: Int) extends Component{
-
-  val io = new Bundle{
-    val a      = in Bits(size bits)
-    val b      = in Bits(size bits)
-    val result = out Bits(size bits)
-  }
-
-  var c = False
-  for (i <- 0 until size) {
-
-    val a = io.a(i)
-    val b = io.b(i)
-
-    io.result(i) := a ^ b ^ c
-    c \= (a & b) | (c & (a ^ b))
-  }
-}
-
-
-/**
   * Pseudo-Hadamard Transform (PHT)
   */
 class PHT extends Component {
@@ -265,8 +231,8 @@ class PHT extends Component {
     val dout  = out Vec(Bits(32 bits), 2)
   }
 
-  io.dout(0) := CarryAdder(32)(io.din(0), io.din(1))
-  io.dout(1) := CarryAdder(32)(io.din(1), io.dout(0))
+  io.dout(0) := (io.din(0).asUInt + io.din(1).asUInt).asBits
+  io.dout(1) := (io.din(1).asUInt + io.dout(0).asUInt).asBits
 }
 
 
@@ -367,13 +333,34 @@ class FOperation_Std(keyWidth: Int) extends Component {
   pht.io.din(0) := h(0).io.output
   pht.io.din(1) := h(1).io.output
 
-  io.dout(0) := CarryAdder(32)(pht.io.dout(0), io.key(0))
-  io.dout(1) := CarryAdder(32)(pht.io.dout(1), io.key(1))
+  io.dout(0) := (pht.io.dout(0).asUInt + io.key(0).asUInt).asBits
+  io.dout(1) := (pht.io.dout(1).asUInt + io.key(1).asUInt).asBits
 }
 
 
 /**
   * TwoFish_round
+  *
+  *     _________________________________________________________
+  *    |                                                         |
+  *    |                   Data(128 bits)                        |
+  *    |_________________________________________________________|
+  *           |     |                               |     |
+  *   K0 --> XOR   XOR <-- K1               K2 --> XOR   XOR <-- K3
+  *           |     |     ____________________      |     |
+  *           |     x--->|                    |--> XOR   >>>1
+  *           |     |    |         F          |     |     |
+  *           x-----|--->|____________________|-----|--> XOR
+  *           |     |                              >>>1   |
+  *           \     \                               /    /
+  *                           15 rounds
+  *
+  *           |     |                               |     |
+  *   K4 --> XOR   XOR <-- K5               K6 --> XOR   XOR <-- K7
+  *     ______|_____|_______________________________|_____|______
+  *    |                                                         |
+  *    |                   output(128 bits)                      |
+  *    |_________________________________________________________|
   *
   * @param keyWidth
   */
@@ -411,28 +398,6 @@ class TwofishRound_Std(keyWidth: Int) extends Component{
 /**
   * TwoFishCore_Std
   *
-  *
-  *     _________________________________________________________
-  *    |                                                         |
-  *    |                   Data(128 bits)                        |
-  *    |_________________________________________________________|
-  *           |     |                               |     |
-  *   K0 --> XOR   XOR <-- K1               K2 --> XOR   XOR <-- K3
-  *           |     |     ____________________      |     |
-  *           |     x--->|                    |--> XOR   >>>1
-  *           |     |    |         F          |     |     |
-  *           x-----|--->|____________________|-----|--> XOR
-  *           |     |                              >>>1   |
-  *           \     \                               /    /
-  *                           15 rounds
-  *
-  *           |     |                               |     |
-  *   K4 --> XOR   XOR <-- K5               K6 --> XOR   XOR <-- K7
-  *     ______|_____|_______________________________|_____|______
-  *    |                                                         |
-  *    |                   output(128 bits)                      |
-  *    |_________________________________________________________|
-  *
   * @param keyWidth
   */
 class TwofishCore_Std(keyWidth: BitCount) extends Component {
@@ -464,17 +429,18 @@ class TwofishCore_Std(keyWidth: BitCount) extends Component {
     */
   val rs = new Area {
 
-    implicit val polyGF8 = p"x^8+x^6+x^3+x^2+1"
+    def matrixRSMultiplication(m0: Bits, m1: Bits, m2: Bits, m3: Bits, m4: Bits, m5: Bits, m6: Bits, m7: Bits): Bits = {
 
-    val m  = io.cmd.key.subdivideIn(8 bits).reverse
+      implicit val polyGF8 = p"x^8+x^6+x^3+x^2+1"
 
-    def matrixRSMultiplication(m0: Bits, m1: Bits, m2: Bits, m3: Bits, m4: Bits, m5: Bits, m6: Bits, m7: Bits): Bits ={
       val s0 = (GF8(m0)        + GF8(m1) * 0xA4 + GF8(m2) * 0x55 + GF8(m3) * 0x87 + GF8(m4) * 0x5A + GF8(m5) * 0x58 + GF8(m6) * 0xDB + GF8(m7) * 0x9E).toBits()
       val s1 = (GF8(m0) * 0xA4 + GF8(m1) * 0x56 + GF8(m2) * 0x82 + GF8(m3) * 0xF3 + GF8(m4) * 0x1E + GF8(m5) * 0xC6 + GF8(m6) * 0x68 + GF8(m7) * 0xE5).toBits()
       val s2 = (GF8(m0) * 0x02 + GF8(m1) * 0xA1 + GF8(m2) * 0xFC + GF8(m3) * 0xC1 + GF8(m4) * 0x47 + GF8(m5) * 0xAE + GF8(m6) * 0x3D + GF8(m7) * 0x19).toBits()
       val s3 = (GF8(m0) * 0xA4 + GF8(m1) * 0x55 + GF8(m2) * 0x87 + GF8(m3) * 0x5A + GF8(m4) * 0x58 + GF8(m5) * 0xDB + GF8(m6) * 0x9E + GF8(m7) * 0x03).toBits()
       s3 ## s2 ## s1 ## s0
     }
+
+    val m  = io.cmd.key.subdivideIn(8 bits).reverse
 
     val s0 = matrixRSMultiplication(m(0), m(1), m(2),  m(3),  m(4),  m(5),  m(6),  m(7))
     val s1 = matrixRSMultiplication(m(8), m(9), m(10), m(11), m(12), m(13), m(14), m(15))
