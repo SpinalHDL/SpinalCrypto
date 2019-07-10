@@ -95,7 +95,7 @@ object Q1{
 
 class QOperation_Std(i: Int) extends Component {
 
-  assert(i == 0 || i == 1, "")
+  assert(i == 0 || i == 1, "Only Q0 and Q1 is available")
 
   val io = new Bundle{
     val input  = in  Bits(8 bits)
@@ -105,21 +105,18 @@ class QOperation_Std(i: Int) extends Component {
   def a: Bits  = io.input(7 downto 4)
   def b: Bits  = io.input(3 downto 0)
 
-  val memT0 = Mem(Bits(4 bits), Twofish.qxT0(i).map(B(_, 4 bits)))
-  val memT1 = Mem(Bits(4 bits), Twofish.qxT1(i).map(B(_, 4 bits)))
-  val memT2 = Mem(Bits(4 bits), Twofish.qxT2(i).map(B(_, 4 bits)))
-  val memT3 = Mem(Bits(4 bits), Twofish.qxT3(i).map(B(_, 4 bits)))
+  val memT  = Twofish.qxT.map(tx => Mem(Bits(4 bits), tx(i).map(B(_, 4 bits))))
 
-  val a_prime = memT0((a ^ b).asUInt)
+  val a_prime = memT(0)((a ^ b).asUInt)
 
   val b1       = a ^ b.rotateRight(1) ^ B(4 bits, 3 -> a(0), default -> False)
-  val b1_prime = memT1(b1.asUInt)
+  val b1_prime = memT(1)(b1.asUInt)
 
   val b1tmp  = a_prime ^ b1_prime.rotateRight(1) ^ B(4 bits, 3 -> a_prime(0), default -> False)
 
   val a2 = a_prime ^ b1_prime
-  io.output(3 downto 0) := memT2(a2.asUInt)
-  io.output(7 downto 4) := memT3(b1tmp.asUInt)
+  io.output(3 downto 0) := memT(2)(a2.asUInt)
+  io.output(7 downto 4) := memT(3)(b1tmp.asUInt)
 }
 
 
@@ -398,12 +395,19 @@ class TwofishRound_Std(keyWidth: Int) extends Component{
 /**
   * TwoFishCore_Std
   *
+  *                       ____________
+  *                      |            |
+  *       Plaintext ---->|   Twofish  |--> Ciphertext
+  *       (128-bit)      |____________|   (128-bit)
+  *                            |
+  *                 Key (128,192,256-bit)
+  *
   * @param keyWidth
   */
 class TwofishCore_Std(keyWidth: BitCount) extends Component {
 
   // check the size of the input key width
-  assert(keyWidth.value == 128 || keyWidth.value == 192 || keyWidth.value == 256)
+  assert(keyWidth.value == 128 || keyWidth.value == 192 || keyWidth.value == 256, "Only key size of 128,192 and 256 are available")
 
   val gIO  = SymmetricCryptoBlockConfig(
     keyWidth    = keyWidth,
