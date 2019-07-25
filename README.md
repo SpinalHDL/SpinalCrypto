@@ -1,4 +1,4 @@
-# SpinalCrytpo
+# SpinalCrypto
 
 This repository contains cryptographic Spinal IPs. This work is currently in progress.  
 
