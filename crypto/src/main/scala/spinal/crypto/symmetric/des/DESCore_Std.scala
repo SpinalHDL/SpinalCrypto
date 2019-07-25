@@ -213,15 +213,8 @@ class DESCore_Std() extends Component {
     */
   val funcDES = new Area {
 
-    // list of SBox ROM 1 to 8
-    val sBox     = List(Mem(Bits(4 bits), DES.sBox_8.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_7.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_6.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_5.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_4.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_3.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_2.map(B(_, 4 bits))),
-                        Mem(Bits(4 bits), DES.sBox_1.map(B(_, 4 bits))))
+    // list of SBox ROM 8 to 1
+    val sBoxes = DES.sBoxes.map(sBox => Mem(Bits(4 bits), sBox.map(B(_, 4 bits))))
 
     val rightRound   = Bits(32 bits) // set in feistelNetwork Area
 
@@ -230,7 +223,7 @@ class DESCore_Std() extends Component {
 
     // sBox stage
     val addrSBox = xorRes.subdivideIn(6 bits)
-    val boxRes   = for(i <- 0 until sBox.size) yield sBox(i)((addrSBox(i)(5) ## addrSBox(i)(0) ## addrSBox(i)(4 downto 1)).asUInt)
+    val boxRes   = for(i <- 0 until sBoxes.size) yield sBoxes(i)((addrSBox(i)(5) ## addrSBox(i)(0) ## addrSBox(i)(4 downto 1)).asUInt)
 
     // fixed permutation
     val rResult = DES.permutation(DES.fixedPermutation, boxRes.asBits)

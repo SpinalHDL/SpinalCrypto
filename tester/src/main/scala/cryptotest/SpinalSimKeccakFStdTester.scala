@@ -12,7 +12,7 @@ class SpinalSimKeccakFStdTester extends FunSuite {
 
   test("KeccakF_1600"){
 
-    SimConfig.withWave(3).withConfig(SpinalConfig(inlineRom = true)).compile(new KeccakF_Std(1600)).doSim{ dut =>
+    SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new KeccakF_Std(1600)).doSim{ dut =>
 
       dut.clockDomain.forkStimulus(2)
 
