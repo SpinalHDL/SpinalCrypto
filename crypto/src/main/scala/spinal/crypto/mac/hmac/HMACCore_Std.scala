@@ -286,4 +286,3 @@ class HMACCore_Std(val config: HMACCoreStdConfig) extends Component {
     }
   }
 }
-

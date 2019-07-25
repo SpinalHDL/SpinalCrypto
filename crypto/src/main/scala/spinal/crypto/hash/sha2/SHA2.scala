@@ -31,7 +31,7 @@ import spinal.core._
 /**
   * Define all SHA2 families
   */
-trait SHA2_Type{ def hashWidth: Int}
+  trait SHA2_Type{ def hashWidth: Int }
 object SHA2_224     extends SHA2_Type { def hashWidth = 224 }
 object SHA2_256     extends SHA2_Type { def hashWidth = 256 }
 object SHA2_384     extends SHA2_Type { def hashWidth = 384 }
