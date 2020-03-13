@@ -4,7 +4,6 @@ import org.scalatest.FunSuite
 import ref.symmetric.TripleDES
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
-import spinal.sim._
 import spinal.core.sim._
 import spinal.crypto.symmetric.des.TripleDESCore_Std
 

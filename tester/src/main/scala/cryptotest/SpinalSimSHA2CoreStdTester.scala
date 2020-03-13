@@ -8,14 +8,8 @@ import spinal.core.SpinalConfig
 import spinal.crypto.hash.BIG_endian
 import spinal.crypto.hash.sim.{HashEngineIOsim, HashIOsim}
 
-import spinal.sim._
 import spinal.core.sim._
 import spinal.crypto.hash.sha2._
-import spinal.crypto._
-
-
-import scala.util.Random
-
 
 /**
   * Test SHA2Core_Std

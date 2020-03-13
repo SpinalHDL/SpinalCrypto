@@ -3,16 +3,15 @@ package cryptotest
 
 import org.scalatest.FunSuite
 import ref.hash.MD5
+
 import spinal.core._
+import spinal.core.sim._
+
 import spinal.crypto.hash.LITTLE_endian
 import spinal.crypto.hash.md5.{MD5Core_Std, MD5Engine_Std}
-import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
-import spinal.sim._
-import spinal.core.sim._
-import spinal.crypto.{BigIntToHexString, CastByteArray}
 import spinal.crypto.hash.sim.{HashEngineIOsim, HashIOsim}
 
-import scala.util.Random
+
 
 
 /**

@@ -1,6 +1,6 @@
 package cryptotest
 
-import spinal.core.{assert, _}
+import spinal.core._
 import spinal.core.sim._
 import org.scalatest.FunSuite
 import spinal.crypto.BigIntToHexString

@@ -3,7 +3,6 @@ package cryptotest
 
 import org.scalatest.FunSuite
 import spinal.core._
-import spinal.sim._
 import spinal.core.sim._
 import spinal.crypto.misc.LFSR
 

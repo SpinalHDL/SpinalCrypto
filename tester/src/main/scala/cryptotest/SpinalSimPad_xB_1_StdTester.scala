@@ -1,13 +1,12 @@
 package cryptotest
 
 import spinal.core._
-import spinal.sim._
 import spinal.core.sim._
 import org.scalatest.FunSuite
 import ref.padding.Pad_xB_1_Ref
 import spinal.crypto.{BigIntToHexString, CastByteArray}
 import spinal.crypto.padding.{Pad_xB_1_Std, Padding_xB_1_Config}
-import spinal.lib._
+
 
 import scala.util.Random
 
