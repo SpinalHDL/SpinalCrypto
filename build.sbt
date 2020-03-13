@@ -19,7 +19,9 @@ lazy val crypto = (project in file("crypto"))
     version  := SpinalVersion.crypto,
 
     libraryDependencies += "com.github.spinalhdl" % "spinalhdl-core_2.11" % "1.4.0",
-    libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11"  % "1.4.0"
+    libraryDependencies += "com.github.spinalhdl" % "spinalhdl-lib_2.11"  % "1.4.0",
+    libraryDependencies += compilerPlugin("com.github.spinalhdl" % "spinalhdl-idsl-plugin_2.11" % "1.4.0")
+
   )
 
 
