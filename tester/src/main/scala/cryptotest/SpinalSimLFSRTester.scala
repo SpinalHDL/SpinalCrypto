@@ -25,7 +25,7 @@ object LFSR_IO_SIM{
     dut.inc  #= false
   }
 
-  def doSim(dut: LFSR_IO_TEST, clockDomain: ClockDomain, order_poly: Int,  extended: Boolean): Unit@suspendable = {
+  def doSim(dut: LFSR_IO_TEST, clockDomain: ClockDomain, order_poly: Int,  extended: Boolean): Unit = {
 
     val lfsr_buf = new ListBuffer[BigInt]()
 

@@ -11,14 +11,14 @@ import scala.util.Random
 
 object HashEngineIOsim {
 
-  def initializeIO(dut: HashEngineIO): Unit@suspendable ={
+  def initializeIO(dut: HashEngineIO): Unit ={
     dut.init      #= false
     dut.cmd.valid #= false
     dut.cmd.message.randomize()
   }
 
 
-  def doSim(dut: HashEngineIO, clockDomain: ClockDomain, message: List[BigInt], refHash: BigInt): Unit@suspendable = {
+  def doSim(dut: HashEngineIO, clockDomain: ClockDomain, message: List[BigInt], refHash: BigInt): Unit = {
 
 
       dut.init #= true

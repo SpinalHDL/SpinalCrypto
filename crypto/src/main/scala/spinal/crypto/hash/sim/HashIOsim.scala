@@ -36,7 +36,7 @@ import scala.util.Random
 
 object HashIOsim {
 
-  def initializeIO(dut: HashCoreIO): Unit@suspendable ={
+  def initializeIO(dut: HashCoreIO): Unit ={
     dut.init      #= false
     dut.cmd.valid #= false
     dut.cmd.msg.randomize()
@@ -45,7 +45,7 @@ object HashIOsim {
   }
 
 
-  def doSim(dut: HashCoreIO, clockDomain: ClockDomain, lengthString: Int, endianess: EndiannessMode, msg: String = null)(refCrypto: (String) => Array[Byte]): Unit@suspendable = {
+  def doSim(dut: HashCoreIO, clockDomain: ClockDomain, lengthString: Int, endianess: EndiannessMode, msg: String = null)(refCrypto: (String) => Array[Byte]): Unit = {
 
     val byteSizeMsg = dut.cmd.msg.getWidth / 8
 

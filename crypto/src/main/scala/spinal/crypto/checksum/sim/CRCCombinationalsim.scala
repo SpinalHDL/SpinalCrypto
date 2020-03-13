@@ -23,12 +23,11 @@ package spinal.crypto.checksum.sim
 import spinal.core._
 import spinal.core.sim._
 import spinal.crypto.checksum.{CRCCombinationalCmdMode, CRCCombinationalIO}
-import spinal.sim.Suspendable
 
 
 object CRCCombinationalsim {
 
-  def doSim(dut: CRCCombinationalIO, clockDomain: ClockDomain, data: List[BigInt], verbose: Boolean = false)(result: BigInt): Unit@suspendable = {
+  def doSim(dut: CRCCombinationalIO, clockDomain: ClockDomain, data: List[BigInt], verbose: Boolean = false)(result: BigInt): Unit = {
 
     require(data.length > 0)
 
@@ -49,8 +48,7 @@ object CRCCombinationalsim {
     clockDomain.waitActiveEdge()
 
     // Send all data
-    Suspendable.repeat(data.length) {
-
+    for(_ <- 0 until data.length){
       dut.cmd.mode  #= CRCCombinationalCmdMode.UPDATE
       dut.cmd.valid #= true
       dut.cmd.data  #= data(index)

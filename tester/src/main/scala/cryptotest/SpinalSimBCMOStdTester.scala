@@ -118,7 +118,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(10){
+      for(_ <- 0 until 10){
 
         val key          = BigInt(dut.io.ecb.cmd.key.getWidth, Random)
         val blockIn      = BigInt(dut.io.ecb.cmd.block.getWidth, Random)
@@ -160,7 +160,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(10){
+      for(_ <- 0 until 10){
 
         val sizeBlock    = Random.nextInt(10) + 1
 
@@ -232,7 +232,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(10){
+      for(_ <- 0 until 10){
 
         val sizeBlock    = Random.nextInt(10) + 1
 
@@ -304,7 +304,7 @@ class SpinalSimBCMOStdTester extends FunSuite {
 
       dut.clockDomain.waitActiveEdge()
 
-      Suspendable.repeat(10){
+      for(_ <- 0 until 10){
 
         val sizeBlock    = Random.nextInt(10) + 1
 

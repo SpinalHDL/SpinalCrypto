@@ -7,6 +7,7 @@ import spinal.lib.com.jtag.Jtag
 import spinal.lib.com.uart.{Apb3UartCtrl, Uart, UartCtrlGenerics, UartCtrlMemoryMappedConfig}
 import spinal.lib.io.TriStateArray
 import spinal.lib.memory.sdram._
+import spinal.lib.memory.sdram.sdr._
 import spinal.lib.soc.pinsec.{PinsecTimerCtrl, PinsecTimerCtrlExternal}
 import spinal.lib.{BufferCC, master, slave}
 import vexriscv.{VexRiscv, VexRiscvConfig, plugin}
