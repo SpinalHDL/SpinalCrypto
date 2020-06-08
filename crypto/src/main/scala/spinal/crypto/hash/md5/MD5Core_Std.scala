@@ -225,17 +225,16 @@ class MD5Engine_Std extends Component {
 
     when(isProcessing & !io.init){
 
+      // round incrementation
       iterativeRound.i := iterativeRound.i + 1
 
-      when(iterativeRound.i < 16){
-        iterativeRound.selFunc := B"00"
-      }.elsewhen(iterativeRound.i < 32){
-        iterativeRound.selFunc := B"01"
-      }.elsewhen(iterativeRound.i < 48){
-        iterativeRound.selFunc := B"10"
-      }.otherwise{
-        iterativeRound.selFunc := B"11"
-      }
+       /*
+        * iterativeRound.i < 16 => selFunc = "00"
+        * iterativeRound.i < 32 => selFunc = "01"
+        * iterativeRound.i < 48 => selFunc = "10"
+        * iterativeRound.i < 64 => selFunc = "11"
+        */
+      iterativeRound.selFunc := B(iterativeRound.i(5 downto 4))
 
       when(iterativeRound.endIteration){
         isProcessing := False
