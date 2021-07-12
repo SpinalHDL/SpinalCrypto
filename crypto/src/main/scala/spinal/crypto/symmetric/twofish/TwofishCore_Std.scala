@@ -371,7 +371,7 @@ class TwofishRound_Std(keyWidth: Int) extends Component{
     val s                 = in  Vec(Bits(32 bits), Twofish.getWidthOfS(keyWidth))
     val key               = in  Vec(Bits(32 bits), 2)
     val dout              = out Vec(Bits(32 bits), 4)
-    val encryption        = in  Bool
+    val encryption        = in  Bool()
   }
 
   /** F operation */

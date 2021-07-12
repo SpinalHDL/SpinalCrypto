@@ -136,9 +136,9 @@ object PlayWithAESCore_Std{
 object PlayWithLFSR{
 
   case class LFSR_CMD() extends Bundle{
-    val init  = in Bool
+    val init  = in Bool()
     val seed  = in Bits(8 bits)
-    val inc   = in Bool
+    val inc   = in Bool()
     val value = out Bits(8 bits)
   }
 

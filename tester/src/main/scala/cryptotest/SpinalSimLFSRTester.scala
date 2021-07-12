@@ -10,9 +10,9 @@ import scala.collection.mutable.ListBuffer
 
 
 case class LFSR_IO_TEST() extends Bundle{
-  val init  = in Bool
+  val init  = in Bool()
   val seed  = in Bits(8 bits)
-  val inc   = in Bool
+  val inc   = in Bool()
   val value = out Bits(8 bits)
 }
 
