@@ -74,7 +74,7 @@ class SpongeCore_Std(capacity: Int, rate: Int, d: Int) extends Component {
     * IO
     */
   val io = new Bundle {
-    val init   = in Bool
+    val init   = in Bool()
     val cmd    = slave(Stream(Fragment(SpongeCoreCmd_Std(rate))))
     val rsp    = master(Flow(SpongeCoreRsp_Std(d)))
     val func   = master(FuncIO_Std(b, b))

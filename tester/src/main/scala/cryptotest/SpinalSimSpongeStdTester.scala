@@ -19,7 +19,7 @@ class SpinalSimSpongeStdTester extends FunSuite {
   class FakeSponge(d: Int) extends Component {
 
     val io =  new Bundle{
-      val init   = in Bool
+      val init   = in Bool()
       val cmd    = slave(Stream(Fragment(SpongeCoreCmd_Std(576))))
       val rsp    = master(Flow(SpongeCoreRsp_Std(d)))
     }

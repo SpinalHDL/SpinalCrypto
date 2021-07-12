@@ -73,7 +73,7 @@ case class HashCoreRsp(config: HashCoreConfig) extends Bundle {
   */
 case class HashCoreIO(config: HashCoreConfig) extends Bundle with IMasterSlave {
 
-  val init = in Bool
+  val init = in Bool()
   val cmd  = Stream(Fragment(HashCoreCmd(config)))
   val rsp  = Flow(HashCoreRsp(config))
 
