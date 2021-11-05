@@ -1,7 +1,7 @@
 package cryptotest
 
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.hash.SHA3
 import spinal.core._
 import spinal.crypto.hash.BIG_endian
@@ -17,7 +17,7 @@ import spinal.crypto.hash.sha3._
   * Pattern : https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values
   *
   */
-class SpinalSimSHA3CoreStdTester extends FunSuite {
+class SpinalSimSHA3CoreStdTester extends AnyFunSuite {
 
   val NBR_ITERATION = 100
 

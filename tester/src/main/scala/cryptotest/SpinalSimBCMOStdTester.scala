@@ -1,6 +1,6 @@
 package cryptotest
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.symmetric.DES
 import spinal.core._
 import spinal.lib._
@@ -103,7 +103,7 @@ class DES_CFB_Tester() extends Component{
 
 
 
-class SpinalSimBCMOStdTester extends FunSuite {
+class SpinalSimBCMOStdTester extends AnyFunSuite {
 
   test("ECB_DES") {
     SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new DES_ECB_Tester()).doSim { dut =>

@@ -2,7 +2,7 @@ package cryptotest
 
 
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.hash.SHA2
 import spinal.core.SpinalConfig
 import spinal.crypto.hash.BIG_endian
@@ -14,7 +14,7 @@ import spinal.crypto.hash.sha2._
 /**
   * Test SHA2Core_Std
   */
-class SpinalSimSHA2CoreStdTester extends FunSuite {
+class SpinalSimSHA2CoreStdTester extends AnyFunSuite {
 
   val NBR_ITERATION = 100
 
@@ -66,7 +66,7 @@ class SpinalSimSHA2CoreStdTester extends FunSuite {
   * Test Sha2Engine_Std
   *
   */
-class SpinalSimSHA2EngineStdTester extends FunSuite {
+class SpinalSimSHA2EngineStdTester extends AnyFunSuite {
 
   /**
     * SHA2Engine_Std_224

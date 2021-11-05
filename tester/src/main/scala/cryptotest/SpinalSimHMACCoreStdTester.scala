@@ -1,7 +1,7 @@
 package cryptotest
 
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.mac.HMAC
 import spinal.core._
 import spinal.crypto.{BigIntToHexString, CastByteArray, Endianness}
@@ -27,7 +27,7 @@ class HMACCoreStd_MD5_Tester() extends Component {
 
 
 
-class SpinalSimHMACCoreStdTester extends FunSuite {
+class SpinalSimHMACCoreStdTester extends AnyFunSuite {
 
   // RTL to simulate
   val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new HMACCoreStd_MD5_Tester())

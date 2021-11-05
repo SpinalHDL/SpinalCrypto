@@ -2,7 +2,7 @@ package cryptotest
 
 import spinal.core._
 import spinal.core.sim._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.padding.Pad_xB_1_Ref
 import spinal.crypto.{BigIntToHexString, CastByteArray}
 import spinal.crypto.padding.{Pad_xB_1_Std, Padding_xB_1_Config}
@@ -12,7 +12,7 @@ import scala.util.Random
 
 
 
-class SpinalSimPad_xB_1_StdTester extends FunSuite {
+class SpinalSimPad_xB_1_StdTester extends AnyFunSuite {
 
 
   /**

@@ -1,6 +1,6 @@
 package cryptotest
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.symmetric.DES
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
@@ -11,7 +11,7 @@ import scala.util.Random
 
 
 
-class SpinalSimDESCoreTester extends FunSuite {
+class SpinalSimDESCoreTester extends AnyFunSuite {
 
   val NBR_ITERATION = 20
 

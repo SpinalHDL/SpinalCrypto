@@ -1,10 +1,10 @@
 package cryptotest
 
-import org.scalatest._
+import org.scalatest.funsuite.AnyFunSuite
 import spinal.crypto._
 
 
-class PolynomialTester extends FunSuite {
+class PolynomialTester extends AnyFunSuite {
 
   test("Polynomial creation") {
 

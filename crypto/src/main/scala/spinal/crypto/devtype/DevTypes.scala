@@ -99,7 +99,7 @@ abstract class DNode{
         false
       }else{
         // Each time a children form b match a, we remove the children of the list
-        val listChildren = c2.to[ListBuffer]
+        val listChildren = ListBuffer(c2: _ *)
 
         for (child_a <- c1){
           breakable{

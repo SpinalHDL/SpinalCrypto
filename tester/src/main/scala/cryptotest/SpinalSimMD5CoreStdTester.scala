@@ -1,7 +1,7 @@
 package cryptotest
 
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.hash.MD5
 
 import spinal.core._
@@ -17,7 +17,7 @@ import spinal.crypto.hash.sim.{HashEngineIOsim, HashIOsim}
 /**
   * Test MD5Core_Std
   */
-class SpinalSimMD5CoreStdTester extends FunSuite {
+class SpinalSimMD5CoreStdTester extends AnyFunSuite {
 
   // RTL to simulate
   val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new MD5Core_Std())
@@ -48,7 +48,7 @@ class SpinalSimMD5CoreStdTester extends FunSuite {
 /**
   * Test MD5Engine_Std
   */
-class SpinalSimMD5EngineStdTester extends FunSuite {
+class SpinalSimMD5EngineStdTester extends AnyFunSuite {
 
   // RTL to simulate
   val compiledRTL = SimConfig.withConfig(SpinalConfig(inlineRom = true)).compile(new MD5Engine_Std())

@@ -3,14 +3,14 @@ package cryptotest
 import spinal.core._
 import spinal.core.sim._
 import spinal.crypto.checksum._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.checksum.crc._
 import spinal.crypto.checksum.sim.CRCCombinationalsim
 
 import scala.util.Random
 
 
-class SpinalSimCRCTester extends FunSuite {
+class SpinalSimCRCTester extends AnyFunSuite {
 
 
   /**

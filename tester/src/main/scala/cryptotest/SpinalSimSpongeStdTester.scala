@@ -2,7 +2,7 @@ package cryptotest
 
 import spinal.core._
 import spinal.core.sim._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.constructor.Sponge
 import spinal.crypto.{BigIntToHexString, CastByteArray}
 import spinal.crypto.construtor.{SpongeCoreCmd_Std, SpongeCoreRsp_Std, SpongeCore_Std}
@@ -11,7 +11,7 @@ import spinal.lib._
 import scala.util.Random
 
 
-class SpinalSimSpongeStdTester extends FunSuite {
+class SpinalSimSpongeStdTester extends AnyFunSuite {
 
   val NBR_ITERATION = 10
 

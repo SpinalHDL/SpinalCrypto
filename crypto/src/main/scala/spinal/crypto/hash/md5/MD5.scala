@@ -56,7 +56,7 @@ object MD5 {
 
 
   /** T[i] := floor(2^32 × abs(sin(i + 1))) */
-  def constantT: List[BigInt] = for(i <- List.range(0,64)) yield BigDecimal((pow(2,32) * sin(i + 1.0).abs)).toBigInt()
+  def constantT: List[BigInt] = for(i <- List.range(0,64)) yield BigDecimal((pow(2,32) * sin(i + 1.0).abs)).toBigInt
 
 
   /**
