@@ -100,12 +100,12 @@ package object crypto{
 
       // convert hexadecimal str into binary string
       var bitCount = -1
-      if(radix == 16){
-        val split = strPoly.split(''')
+      if (radix == 16) {
+        val split = strPoly.split('\'')
         bitCount  = split(0).toInt
         strPoly   = split(1).substring(1)
         strPoly   = BigIntToListBoolean(BigInt(strPoly, 16), bitCount bits).map(b => if(b) "1" else "0").reverse.mkString("")
-      }else{
+      } else {
         strPoly = strPoly.substring(1)
       }
 

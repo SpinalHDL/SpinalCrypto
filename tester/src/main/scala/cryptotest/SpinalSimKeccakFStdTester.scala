@@ -2,13 +2,13 @@ package cryptotest
 
 import spinal.core._
 import spinal.core.sim._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import spinal.crypto.BigIntToHexString
 import spinal.crypto.primitive.keccak.KeccakF_Std
 
 
 
-class SpinalSimKeccakFStdTester extends FunSuite {
+class SpinalSimKeccakFStdTester extends AnyFunSuite {
 
   test("KeccakF_1600"){
 

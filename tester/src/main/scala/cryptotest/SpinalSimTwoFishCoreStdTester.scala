@@ -2,7 +2,7 @@ package cryptotest
 
 import spinal.core.SpinalConfig
 import spinal.core.sim.SimConfig
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
 import spinal.core.sim._
@@ -11,7 +11,7 @@ import spinal.crypto.symmetric.twofish._
 
 
 
-class SpinalSimTwoFishCoreStdTester extends FunSuite {
+class SpinalSimTwoFishCoreStdTester extends AnyFunSuite {
 
   val ref_key_128     = List(
     BigInt("00000000000000000000000000000000", 16),

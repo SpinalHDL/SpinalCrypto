@@ -1,6 +1,6 @@
 package cryptotest
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import ref.symmetric.TripleDES
 import spinal.core._
 import spinal.crypto.symmetric.sim.SymmetricCryptoBlockIOSim
@@ -11,7 +11,7 @@ import scala.util.Random
 
 
 
-class SpinalSimTripleDESCoreTester extends FunSuite {
+class SpinalSimTripleDESCoreTester extends AnyFunSuite {
 
 
   /**

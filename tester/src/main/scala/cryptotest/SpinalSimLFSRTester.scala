@@ -1,7 +1,7 @@
 package cryptotest
 
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.core.sim._
 import spinal.crypto.misc.LFSR
@@ -79,7 +79,7 @@ class LFSRTester(lfsr: (Bits) => (Bits)) extends Component {
 
 
 
-class SpinalSimLFSRTester extends FunSuite {
+class SpinalSimLFSRTester extends AnyFunSuite {
 
   // RTL to simulate
   val compiledRTL_galois      = SimConfig.compile(new LFSRTester((reg: Bits) => LFSR.Galois(reg, LFSR.polynomial_8bits)))
