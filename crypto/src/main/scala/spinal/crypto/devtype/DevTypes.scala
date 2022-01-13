@@ -136,9 +136,9 @@ abstract class DNode{
   /**
     * Get all children and return a map with the number of occurrence of each children
     */
-  private def ctnChildrenOccurrence(children: List[DNode]): Map[DNode, Int] = {
+  private def ctnChildrenOccurrence(children: List[DNode]): mutable.LinkedHashMap[DNode, Int] = {
 
-    val map = mutable.Map[DNode, Int]()
+    val map = mutable.LinkedHashMap[DNode, Int]()
 
     for(child <- children){
       breakable {
@@ -153,7 +153,7 @@ abstract class DNode{
       }
     }
 
-    map.toMap
+    map
   }
 
   /**
