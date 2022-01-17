@@ -294,7 +294,7 @@ abstract class DNode{
   }
 
 
-  def processGraphWithInput(node: DNode, inputs: Map[DNode, Boolean]): Boolean = {
+  def processGraphWithInput(node: DNode, inputs: mutable.LinkedHashMap[DNode, Boolean]): Boolean = {
 
     // rebuild the graph with the given value
     def parseTree(n: DNode): List[DNode] =  n match {
@@ -330,7 +330,8 @@ abstract class DNode{
     val result = ListBuffer[Int]()
     for(i <- 0 until math.pow(2, variables.size).toInt){
       val binValue = BigIntToListBoolean(i, variables.size bits)
-      val map = variables.zip(binValue).toMap
+      val map = mutable.LinkedHashMap[DNode, Boolean]()
+      variables.zip(binValue).foreach(e => map.update(e._1, e._2))
 
       if(processGraphWithInput(this, map)){
         result += i

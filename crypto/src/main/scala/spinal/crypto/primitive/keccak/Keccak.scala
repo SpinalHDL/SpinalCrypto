@@ -25,12 +25,14 @@
 \*                                                                           */
 package spinal.crypto.primitive.keccak
 
+import scala.collection.mutable
+
 object Keccak {
 
   /**
     * The rotation offsets r[x,y]
     */
-  private var pRawOffset : Map[(Int, Int), Int] = Map((0,0) -> 0)
+  private var pRawOffset : mutable.LinkedHashMap[(Int, Int), Int] = mutable.LinkedHashMap((0,0) -> 0)
 
 
   /**
