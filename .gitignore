@@ -3,6 +3,7 @@
 *.bak
 *.gtkw
 *.yaml
+!.github/workflows/*.yaml
 *.bin
 .DS_Store
 
