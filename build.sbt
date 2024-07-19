@@ -16,7 +16,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value,
     libraryDependencies += compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-plugin" % CryptoVersion.spinal),
     libraryDependencies += "org.bouncycastle" % "bcprov-jdk15on" % "1.60",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.17"
   )
 
 fork := true
